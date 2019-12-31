@@ -1,4 +1,4 @@
-package rom
+package model
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ func TestFetchINESHeader(t *testing.T) {
 	}{
 		{
 			name:    "when rom is valid, return header",
-			openRom: func() ([]byte, error) { return openROM("../test/roms/hello-world/hello-world.nes") },
+			openRom: func() ([]byte, error) { return openROM("../../test/roms/hello-world/hello-world.nes") },
 			want: &INESHeader{
 				PRGROMSize: 0x02,
 				CHRROMSize: 0x01,
@@ -74,7 +74,7 @@ func TestFetchROM(t *testing.T) {
 	}{
 		{
 			name:     "when rom is valid, not return error",
-			openRom:  func() ([]byte, error) { return openROM("../test/roms/hello-world/hello-world.nes") },
+			openRom:  func() ([]byte, error) { return openROM("../../test/roms/hello-world/hello-world.nes") },
 			hasError: false,
 		},
 	}
