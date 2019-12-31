@@ -1,0 +1,13 @@
+package model
+
+// Opcode ...
+type Opcode uint8
+
+// Operand ...
+type Operand uint8
+
+// Mnemonic ...
+type Mnemonic string
+
+// AddressingMode ...
+type AddressingMode string
