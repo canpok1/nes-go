@@ -16,21 +16,8 @@ func TestFetchINESHeader(t *testing.T) {
 		makeWantErr func() error
 	}{
 		{
-			name: "when rom is valid, return header",
-			openRom: func() ([]byte, error) {
-				romPath := "../test/roms/hello-world/hello-world.nes"
-				f, err := os.Open(romPath)
-				if err != nil {
-					return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", romPath, err)
-				}
-				defer f.Close()
-
-				b, err := ioutil.ReadAll(f)
-				if err != nil {
-					return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", romPath, err)
-				}
-				return b, nil
-			},
+			name:    "when rom is valid, return header",
+			openRom: func() ([]byte, error) { return openROM("../test/roms/hello-world/hello-world.nes") },
 			want: &INESHeader{
 				PRGROMSize: 0x02,
 				CHRROMSize: 0x01,
@@ -77,4 +64,46 @@ func TestFetchINESHeader(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFetchROM(t *testing.T) {
+	tests := []struct {
+		name     string
+		openRom  func() ([]byte, error)
+		hasError bool
+	}{
+		{
+			name:     "when rom is valid, not return error",
+			openRom:  func() ([]byte, error) { return openROM("../test/roms/hello-world/hello-world.nes") },
+			hasError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		rom, err := tt.openRom()
+		if err != nil {
+			t.Errorf("failed to open rom\nerr: %#v", err)
+			return
+		}
+
+		_, err = FetchROM(rom)
+		if (err != nil) != tt.hasError {
+			t.Errorf("wrong error\ngot: %#v\nhasError: %#v", err, tt.hasError)
+			return
+		}
+	}
+}
+
+func openROM(p string) ([]byte, error) {
+	f, err := os.Open(p)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
+	}
+	defer f.Close()
+
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
+	}
+	return b, nil
 }
