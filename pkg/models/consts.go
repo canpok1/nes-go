@@ -2,6 +2,9 @@ package model
 
 // Opcode ...
 type Opcode uint8
+const (
+	ErrorOpcode Opcode = 0
+)
 
 // Operand ...
 type Operand uint8

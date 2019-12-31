@@ -1,5 +1,9 @@
 package model
 
+import (
+	"fmt"
+)
+
 // Registers ...
 type Registers struct {
 	A  uint8
@@ -101,44 +105,57 @@ func (c *CPUBus) write(addr uint32, data byte) {
 }
 
 // Run ...
-func (c *CPU) Run() {
-	// TODO 実装
-	// https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E5%AE%9F%E8%A3%85%E3%82%A4%E3%83%A1%E3%83%BC%E3%82%B8
+func (c *CPU) Run() error {
+	for {
+		// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
+		var oc Opcode
+		if oc, err := c.fetchOpcode(); err != nil {
+			return fmt.Errorf("%w", err)
+		}
 
-	// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
-	oc := c.fetchOpcode()
+		// 命令とアドレッシング・モードを判別
+		var ocp OpcodeProp
+		if ocp, err := decodeOpcode(oc); err != nil {
+			return fmt.Errorf("%w", err)
+		}
 
-	// 命令とアドレッシング・モードを判別
-	mne, mode, _ := decodeOpcode(oc)
+		// （必要であれば）オペランドをフェッチ（PCをインクリメント）
+		var ors []Operand
+		if ors, err := c.fetchOperands(ocp.AddressingMode); err != nil {
+			return fmt.Errorf("%w", err)
+		}
 
-	// （必要であれば）オペランドをフェッチ（PCをインクリメント）
-	ors := c.fetchOperands(mode)
-
-	// 命令を実行
-	c.exec(mne, ors...)
+		// 命令を実行
+		if err := c.exec(ocp.Mnemonic, ors...); err != nil {
+			return fmt.Errorf("%w", err)
+		}
+	}
 }
 
 // decodeOpcode ...
-func decodeOpcode(o Opcode) (Mnemonic, AddressingMode, int) {
-	// TODO 実装
-	return "", "", 0
+func decodeOpcode(o Opcode) (OpcodeProp) {
+	return OpcodeProps[o]
 }
 
 // fetch ...
-func (c *CPU) fetch() uint32 {
+func (c *CPU) fetch() uint32, error {
 	// TODO 実装
-	return 0
+	return 0, nil
 }
 
 // fetchOpcode ...
-func (c *CPU) fetchOpcode() Opcode {
-	return Opcode(c.fetch())
+func (c *CPU) fetchOpcode() Opcode, error {
+	v, err := c.fetch()
+	if err != nil {
+		return ErrorOpcode, fmt.Errorf("%w", err)
+	}
+	return Opcode(v), nil
 }
 
 // fetchOperands ...
-func (c *CPU) fetchOperands(mode AddressingMode) []Operand {
+func (c *CPU) fetchOperands(mode AddressingMode) []Operand, error {
 	// TODO 実装
-	return []Operand{}
+	return []Operand{}, nil
 }
 
 // interruptNMI ...
@@ -166,7 +183,8 @@ func (c *CPU) interruptIRQ() {
 }
 
 // exec ...
-func (c *CPU) exec(mne Mnemonic, opr ...Operand) {
+func (c *CPU) exec(mne Mnemonic, opr ...Operand) error {
 	// TODO 実装
 	// （必要であれば）演算対象となるアドレスを算出
+	return nil
 }
