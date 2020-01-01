@@ -67,8 +67,8 @@ func parseROM(rom []byte) (*ROM, error) {
 	log.Printf("rom header: %#v", h)
 
 	begin := 0x0010
-	prgromEnd := 0x0010 + int(h.CHRROMSize)*0x4000
-	chrromEnd := prgromEnd + int(h.PRGROMSize)*0x2000
+	prgromEnd := 0x0010 + int(h.PRGROMSize)*0x4000
+	chrromEnd := prgromEnd + int(h.CHRROMSize)*0x2000
 
 	log.Printf("prg-rom byte index: %#v-%#v", begin, (prgromEnd - 1))
 	log.Printf("chr-rom byte index: %#v-%#v", prgromEnd, (chrromEnd - 1))
