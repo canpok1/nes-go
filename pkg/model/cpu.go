@@ -108,9 +108,10 @@ func (c *CPUBus) read(addr uint32) byte {
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
 
-	log.Printf("CPUBus.read addr = %v", addr)
+	var data byte 
+	log.Printf("CPUBus.read[addr=%#v] => %#v", addr, data)
 
-	return 0
+	return data
 }
 
 // write ...
@@ -126,11 +127,13 @@ func (c *CPUBus) write(addr uint32, data byte) {
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
 
-	log.Printf("CPUBus.write addr=%v, data=%v", addr, data)
+	log.Printf("CPUBus.write[addr=%#v] <= %#v", addr, data)
 }
 
 // Run ...
 func (c *CPU) Run() error {
+	c.interruptRESET()
+	log.Printf("CPU : %#v", c.String())
 	for {
 		log.Printf("===== cycle start =====")
 		log.Printf("CPU : %#v", c.String())
@@ -213,8 +216,18 @@ func (c *CPU) interruptNMI() {
 
 // interruptRESET ...
 func (c *CPU) interruptRESET() {
-	// TODO 実装
-	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#interrupt
+	log.Printf("interrupt[reset]")
+
+	beforeI := c.registers.P.Interrupt
+	c.registers.P.Interrupt = true
+	log.Printf("reset[Interrupt flag] %#v => %#v", beforeI, c.registers.P.Interrupt)
+
+	l := c.bus.read(0xFFFC)
+	h := c.bus.read(0xFFFD)
+
+	beforePC := c.registers.PC
+	c.registers.PC = uint16((h << 4) | l)
+	log.Printf("reset[PC] %#v => %#v", beforePC, c.registers.PC)
 }
 
 // interruptBRK ...
