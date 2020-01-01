@@ -2,6 +2,7 @@ package model
 
 // Opcode ...
 type Opcode uint8
+
 const (
 	ErrorOpcode Opcode = 0
 )

@@ -108,20 +108,20 @@ func (c *CPUBus) write(addr uint32, data byte) {
 func (c *CPU) Run() error {
 	for {
 		// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
-		var oc Opcode
-		if oc, err := c.fetchOpcode(); err != nil {
+		oc, err := c.fetchOpcode()
+		if err != nil {
 			return fmt.Errorf("%w", err)
 		}
 
 		// 命令とアドレッシング・モードを判別
-		var ocp OpcodeProp
-		if ocp, err := decodeOpcode(oc); err != nil {
+		ocp, err := decodeOpcode(oc)
+		if err != nil {
 			return fmt.Errorf("%w", err)
 		}
 
 		// （必要であれば）オペランドをフェッチ（PCをインクリメント）
-		var ors []Operand
-		if ors, err := c.fetchOperands(ocp.AddressingMode); err != nil {
+		ors, err := c.fetchOperands(ocp.AddressingMode)
+		if err != nil {
 			return fmt.Errorf("%w", err)
 		}
 
@@ -133,18 +133,21 @@ func (c *CPU) Run() error {
 }
 
 // decodeOpcode ...
-func decodeOpcode(o Opcode) (OpcodeProp) {
-	return OpcodeProps[o]
+func decodeOpcode(o Opcode) (*OpcodeProp, error) {
+	if p, ok := OpcodeProps[o]; ok {
+		return &p, nil
+	}
+	return nil, fmt.Errorf("opcode is not support; opcode: %#v", o)
 }
 
 // fetch ...
-func (c *CPU) fetch() uint32, error {
+func (c *CPU) fetch() (uint32, error) {
 	// TODO 実装
 	return 0, nil
 }
 
 // fetchOpcode ...
-func (c *CPU) fetchOpcode() Opcode, error {
+func (c *CPU) fetchOpcode() (Opcode, error) {
 	v, err := c.fetch()
 	if err != nil {
 		return ErrorOpcode, fmt.Errorf("%w", err)
@@ -153,7 +156,7 @@ func (c *CPU) fetchOpcode() Opcode, error {
 }
 
 // fetchOperands ...
-func (c *CPU) fetchOperands(mode AddressingMode) []Operand, error {
+func (c *CPU) fetchOperands(mode AddressingMode) ([]Operand, error) {
 	// TODO 実装
 	return []Operand{}, nil
 }
