@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestFetchINESHeader(t *testing.T) {
+func TestParseINESHeader(t *testing.T) {
 	tests := []struct {
 		name        string
 		openRom     func() ([]byte, error)
@@ -29,7 +29,7 @@ func TestFetchINESHeader(t *testing.T) {
 			openRom: func() ([]byte, error) { return nil, nil },
 			want:    nil,
 			makeWantErr: func() error {
-				return fmt.Errorf("failed to fetch, rom is nil")
+				return fmt.Errorf("failed to parse, rom is nil")
 			},
 		},
 		{
@@ -37,7 +37,7 @@ func TestFetchINESHeader(t *testing.T) {
 			openRom: func() ([]byte, error) { return []byte{0x00, 0x01, 0x02, 0x03, 0x04}, nil },
 			want:    nil,
 			makeWantErr: func() error {
-				return fmt.Errorf("failed to fetch, rom is too short")
+				return fmt.Errorf("failed to parse, rom is too short")
 			},
 		},
 	}
@@ -52,7 +52,7 @@ func TestFetchINESHeader(t *testing.T) {
 
 			wantErr := tt.makeWantErr()
 
-			got, err := fetchINESHeader(rom)
+			got, err := parseINESHeader(rom)
 			if !reflect.DeepEqual(err, wantErr) {
 				t.Errorf("wrong error\ngot: %#v\nwant: %#v", err, wantErr)
 				return
@@ -69,25 +69,18 @@ func TestFetchINESHeader(t *testing.T) {
 func TestFetchROM(t *testing.T) {
 	tests := []struct {
 		name     string
-		openRom  func() ([]byte, error)
+		romPath  string
 		hasError bool
 	}{
 		{
 			name:     "when rom is valid, not return error",
-			openRom:  func() ([]byte, error) { return openROM("../../test/roms/hello-world/hello-world.nes") },
+			romPath:  "../../test/roms/hello-world/hello-world.nes",
 			hasError: false,
 		},
 	}
 
 	for _, tt := range tests {
-		rom, err := tt.openRom()
-		if err != nil {
-			t.Errorf("failed to open rom\nerr: %#v", err)
-			return
-		}
-
-		_, err = FetchROM(rom)
-		if (err != nil) != tt.hasError {
+		if _, err := FetchROM(tt.romPath); (err != nil) != tt.hasError {
 			t.Errorf("wrong error\ngot: %#v\nhasError: %#v", err, tt.hasError)
 			return
 		}

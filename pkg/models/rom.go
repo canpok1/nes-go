@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 )
 
 // INESHeader ...
@@ -24,12 +26,26 @@ type ROM struct {
 	chrrom *CHRROM
 }
 
-func fetchINESHeader(rom []byte) (*INESHeader, error) {
+func readFile(p string) ([]byte, error) {
+	f, err := os.Open(p)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
+	}
+	defer f.Close()
+
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
+	}
+	return b, nil
+}
+
+func parseINESHeader(rom []byte) (*INESHeader, error) {
 	if rom == nil {
-		return nil, fmt.Errorf("failed to fetch, rom is nil")
+		return nil, fmt.Errorf("failed to parse, rom is nil")
 	}
 	if len(rom) < 6 {
-		return nil, fmt.Errorf("failed to fetch, rom is too short")
+		return nil, fmt.Errorf("failed to parse, rom is too short")
 	}
 
 	prg := uint8(rom[4])
@@ -41,8 +57,8 @@ func fetchINESHeader(rom []byte) (*INESHeader, error) {
 	}, nil
 }
 
-func FetchROM(rom []byte) (*ROM, error) {
-	h, err := fetchINESHeader(rom)
+func parseROM(rom []byte) (*ROM, error) {
+	h, err := parseINESHeader(rom)
 	if err != nil {
 		return nil, err
 	}
@@ -58,4 +74,18 @@ func FetchROM(rom []byte) (*ROM, error) {
 		prgrom: &p,
 		chrrom: &c,
 	}, nil
+}
+
+func FetchROM(romPath string) (*ROM, error) {
+	f, err := readFile(romPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed fetch rom; %w", err)
+	}
+
+	r, err := parseROM(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed fetch rom; %w", err)
+	}
+
+	return r, nil
 }
