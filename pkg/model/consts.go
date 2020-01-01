@@ -11,98 +11,98 @@ const (
 type Operand uint8
 
 // Mnemonic ...
-type Mnemonic int
+type Mnemonic string
 
 const (
-	ADC Mnemonic = iota
-	SBC
-	AND
-	ORA
-	EOR
-	ASL
-	LSR
-	ROL
-	ROR
-	BCC
-	BCS
-	BEQ
-	BNE
-	BVC
-	BVS
-	BPL
-	BMI
-	BIT
-	JMP
-	JSR
-	RTS
-	BRK
-	RTI
-	CMP
-	CPX
-	CPY
-	INC
-	DEC
-	INX
-	DEX
-	INY
-	DEY
-	CLC
-	SEC
-	CLI
-	SEI
-	CLD
-	SED
-	CLV
-	LDA
-	LDX
-	LDY
-	STA
-	STX
-	STY
-	TAX
-	TXA
-	TAY
-	TYA
-	TSX
-	TXS
-	PHA
-	PLA
-	PHP
-	PLP
-	NOP
+	ADC Mnemonic = "ADC"
+	SBC Mnemonic = "SBC"
+	AND Mnemonic = "AND"
+	ORA Mnemonic = "ORA"
+	EOR Mnemonic = "EOR"
+	ASL Mnemonic = "ASL"
+	LSR Mnemonic = "LSR"
+	ROL Mnemonic = "ROL"
+	ROR Mnemonic = "ROR"
+	BCC Mnemonic = "BCC"
+	BCS Mnemonic = "BCS"
+	BEQ Mnemonic = "BEQ"
+	BNE Mnemonic = "BNE"
+	BVC Mnemonic = "BVC"
+	BVS Mnemonic = "BVS"
+	BPL Mnemonic = "BPL"
+	BMI Mnemonic = "BMI"
+	BIT Mnemonic = "BIT"
+	JMP Mnemonic = "JMP"
+	JSR Mnemonic = "JSR"
+	RTS Mnemonic = "RTS"
+	BRK Mnemonic = "BRK"
+	RTI Mnemonic = "RTI"
+	CMP Mnemonic = "CMP"
+	CPX Mnemonic = "CPX"
+	CPY Mnemonic = "CPY"
+	INC Mnemonic = "INC"
+	DEC Mnemonic = "DEC"
+	INX Mnemonic = "INX"
+	DEX Mnemonic = "DEX"
+	INY Mnemonic = "INY"
+	DEY Mnemonic = "DEY"
+	CLC Mnemonic = "CLC"
+	SEC Mnemonic = "SEC"
+	CLI Mnemonic = "CLI"
+	SEI Mnemonic = "SEI"
+	CLD Mnemonic = "CLD"
+	SED Mnemonic = "SED"
+	CLV Mnemonic = "CLV"
+	LDA Mnemonic = "LDA"
+	LDX Mnemonic = "LDX"
+	LDY Mnemonic = "LDY"
+	STA Mnemonic = "STA"
+	STX Mnemonic = "STX"
+	STY Mnemonic = "STY"
+	TAX Mnemonic = "TAX"
+	TXA Mnemonic = "TXA"
+	TAY Mnemonic = "TAY"
+	TYA Mnemonic = "TYA"
+	TSX Mnemonic = "TSX"
+	TXS Mnemonic = "TXS"
+	PHA Mnemonic = "PHA"
+	PLA Mnemonic = "PLA"
+	PHP Mnemonic = "PHP"
+	PLP Mnemonic = "PLP"
+	NOP Mnemonic = "NOP"
 )
 
 // AddressingMode ...
 // http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm
-type AddressingMode int
+type AddressingMode string
 
 const (
 	// Accumulator ...
-	Accumulator AddressingMode = iota
+	Accumulator AddressingMode = "Accumulator"
 	// Immediate ...
-	Immediate
+	Immediate AddressingMode = "Immediate"
 	// Absolute ...
-	Absolute
+	Absolute AddressingMode = "Absolute"
 	// ZeroPage ...
-	ZeroPage
+	ZeroPage AddressingMode = "ZeroPage"
 	// IndexedZeroPageX ...
-	IndexedZeroPageX
+	IndexedZeroPageX AddressingMode = "IndexedZeroPageX"
 	// IndexedZeroPageY ...
-	IndexedZeroPageY
+	IndexedZeroPageY AddressingMode = "IndexedZeroPageY"
 	// IndexedAbsoluteX ...
-	IndexedAbsoluteX
+	IndexedAbsoluteX AddressingMode = "IndexedAbsoluteX"
 	// IndexedAbsoluteY ...
-	IndexedAbsoluteY
+	IndexedAbsoluteY AddressingMode = "IndexedAbsoluteY"
 	// Implied ...
-	Implied
+	Implied AddressingMode = "Implied"
 	// Relative ...
-	Relative
+	Relative AddressingMode = "Relative"
 	// IndexedIndirect ...
-	IndexedIndirect
+	IndexedIndirect AddressingMode = "IndexedIndirect"
 	// IndirectIndexed ...
-	IndirectIndexed
+	IndirectIndexed AddressingMode = "IndirectIndexed"
 	// AbsoluteIndirect ...
-	AbsoluteIndirect
+	AbsoluteIndirect AddressingMode = "AbsoluteIndirect"
 )
 
 // OpcodeProp ...
