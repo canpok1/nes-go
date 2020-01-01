@@ -108,7 +108,7 @@ func (c *CPU) String() string {
 }
 
 // read ...
-func (c *CPUBus) read(addr uint32) (byte, error) {
+func (c *CPUBus) read(addr Address) (byte, error) {
 	var data byte 
 	var err error
 	var target string
@@ -302,7 +302,7 @@ func decodeOpcode(o Opcode) (*OpcodeProp, error) {
 
 // fetch ...
 func (c *CPU) fetch() (byte, error) {
-	var addr uint32
+	var addr Address
 	var data byte
 	var err error
 
@@ -314,7 +314,7 @@ func (c *CPU) fetch() (byte, error) {
 		}
 	}()
 
-	addr = uint32(c.registers.PC)
+	addr = Address(c.registers.PC)
 	data, err = c.bus.read(addr)
 	if err != nil {
 		return data, fmt.Errorf("failed fetch; %w", err)
@@ -336,8 +336,165 @@ func (c *CPU) fetchOpcode() (Opcode, error) {
 
 // fetchOperands ...
 func (c *CPU) fetchOperands(mode AddressingMode) ([]Operand, error) {
-	// TODO 実装
-	return []Operand{}, nil
+	switch mode {
+	case Accumulator:
+		return []Operand{}, nil
+	case Immediate:
+		b, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+		return []Operand{Operand(b)}, nil
+	case Absolute:
+		l, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		h, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand((uint16(h) << 8) | uint16(l))
+
+		return []Operand{op}, nil
+	case ZeroPage:
+		l, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand(l)
+
+		return []Operand{op}, nil
+	case IndexedZeroPageX:
+		l, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand(uint8(l) + uint8(c.registers.X))
+
+		return []Operand{op}, nil
+	case IndexedZeroPageY:
+		l, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand(uint8(l) + uint8(c.registers.Y))
+
+		return []Operand{op}, nil
+	case IndexedAbsoluteX:
+		l, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		h, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.X))
+
+		return []Operand{op}, nil
+	case IndexedAbsoluteY:
+		l, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		h, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.Y))
+
+		return []Operand{op}, nil
+	case Implied:
+		return []Operand{}, nil
+	case Relative:
+		b, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand(c.registers.PC + uint16(int8(b)))
+
+		return []Operand{op}, nil
+	case IndexedIndirect:
+		b, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+		addr := Address(uint8(b) + c.registers.X)
+
+		l, err := c.bus.read(addr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		h, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand((uint16(h) << 8) | uint16(l))
+
+		return []Operand{op}, nil
+	case IndirectIndexed:
+		b, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+		addr := Address(uint8(b) + c.registers.X)
+
+		h, err := c.bus.read(addr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		l, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand((uint16(h) << 8) + uint16(l) + uint16(c.registers.Y))
+
+		return []Operand{op}, nil
+	case AbsoluteIndirect:
+		f1, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		f2, err := c.fetch()
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		addr := Address((uint16(f2) << 8) + uint16(f1))
+		nextAddr := addr + 1
+
+		opl, err := c.bus.read(addr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		oph, err := c.bus.read(nextAddr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+		}
+
+		op := Operand((uint16(oph) << 8) + uint16(opl))
+
+		return []Operand{op}, nil
+	}
+
+	return nil, fmt.Errorf("failed fetch operands, AddressingMode is unsupported; mode: %#v", mode)
 }
 
 // interruptNMI ...

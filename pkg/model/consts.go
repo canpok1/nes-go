@@ -8,7 +8,9 @@ const (
 )
 
 // Operand ...
-type Operand uint8
+type Operand uint16
+
+type Address uint16
 
 // Mnemonic ...
 type Mnemonic string
