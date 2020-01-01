@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"log"
+	"time"
 )
 
 // Registers ...
@@ -19,6 +21,20 @@ func NewRegisters() *Registers {
 	return &Registers{
 		P: NewStatusRegister(),
 	}
+}
+
+// String ...
+func (r *Registers) String() string {
+	return fmt.Sprintf(
+		"{A:%#v, X:%#v, Y:%#v, S:%#v, P:%#v, PC:%#v}",
+		r.A,
+		r.X,
+		r.Y,
+		r.S,
+		r.P,
+		r.PC,
+	)
+
 }
 
 // StatusRegister ...
@@ -67,11 +83,16 @@ type CPU struct {
 }
 
 // NewCPU ...
-func NewCPU(p *PRGROM) *CPU {
+func NewCPU(p *ROM) *CPU {
 	return &CPU{
 		registers: NewRegisters(),
-		bus:       NewCPUBus(p),
+		bus:       NewCPUBus(p.prgrom),
 	}
+}
+
+// String ...
+func (c *CPU) String() string {
+	return fmt.Sprintf("registers %v", c.registers.String())
 }
 
 // read ...
@@ -86,6 +107,8 @@ func (c *CPUBus) read(addr uint32) byte {
 	// 0x6000～0x7FFF	0x2000	拡張RAM
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
+
+	log.Printf("CPUBus.read addr = %v", addr)
 
 	return 0
 }
@@ -102,11 +125,16 @@ func (c *CPUBus) write(addr uint32, data byte) {
 	// 0x6000～0x7FFF	0x2000	拡張RAM
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
+
+	log.Printf("CPUBus.write addr=%v, data=%v", addr, data)
 }
 
 // Run ...
 func (c *CPU) Run() error {
 	for {
+		log.Printf("===== cycle start =====")
+		log.Printf("CPU : %#v", c.String())
+
 		// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
 		oc, err := c.fetchOpcode()
 		if err != nil {
@@ -129,21 +157,37 @@ func (c *CPU) Run() error {
 		if err := c.exec(ocp.Mnemonic, ors...); err != nil {
 			return fmt.Errorf("%w", err)
 		}
+
+		time.Sleep(time.Second * 1)
 	}
 }
 
 // decodeOpcode ...
 func decodeOpcode(o Opcode) (*OpcodeProp, error) {
 	if p, ok := OpcodeProps[o]; ok {
+		log.Printf("decode[opcode=%#v] => %#v", o, p)
 		return &p, nil
 	}
+	log.Printf("decode[%#v] => not found", o)
 	return nil, fmt.Errorf("opcode is not support; opcode: %#v", o)
 }
 
 // fetch ...
 func (c *CPU) fetch() (uint32, error) {
+	var addr uint32
+	var data uint32
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("fetch[addr=%#v] => error %#v", addr, err)
+		} else {
+			log.Printf("fetch[addr=%#v] => %#v", addr, data)
+		}
+	}()
+
 	// TODO 実装
-	return 0, nil
+	return data, nil
 }
 
 // fetchOpcode ...
@@ -187,6 +231,7 @@ func (c *CPU) interruptIRQ() {
 
 // exec ...
 func (c *CPU) exec(mne Mnemonic, opr ...Operand) error {
+	log.Printf("exec %#v %#v", mne, opr)
 	// TODO 実装
 	// （必要であれば）演算対象となるアドレスを算出
 	return nil
