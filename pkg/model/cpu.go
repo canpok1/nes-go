@@ -66,12 +66,24 @@ func NewStatusRegister() *StatusRegister {
 
 // CPUBus ...
 type CPUBus struct {
+	wram []byte
+	wramMirror []byte
+	ppuRegister []byte
+	ppuRegisterMirror []byte
+	io []byte
+	exrom []byte
+	exram []byte
 	programRom *PRGROM
 }
 
 // NewCPUBus ...
 func NewCPUBus(p *PRGROM) *CPUBus {
 	return &CPUBus{
+		wram: make([]byte, 0x0800),
+		ppuRegister: make([]byte, 0x0008),
+		io: make([]byte, 0x0020),
+		exrom: make([]byte, 0x1FE0),
+		exram: make([]byte, 0x2000),
 		programRom: p,
 	}
 }
@@ -96,22 +108,72 @@ func (c *CPU) String() string {
 }
 
 // read ...
-func (c *CPUBus) read(addr uint32) byte {
-	// TODO 実装
+func (c *CPUBus) read(addr uint32) (byte, error) {
+	var data byte 
+	var err error
+	defer func() {
+		if err != nil {
+			log.Printf("CPUBus.read[addr=%#v] => %#v", addr, err)
+		} else {
+			log.Printf("CPUBus.read[addr=%#v] => %#v", addr, data)
+		}
+	}()
+
 	// 0x0000～0x07FF	0x0800	WRAM
+	if addr >= 0x0000 && addr <= 0x07FF {
+		data = c.wram[addr]
+		return data, nil
+	} 
+
 	// 0x0800～0x1FFF	-	WRAMのミラー
+	if addr >= 0x0800 && addr <= 0x1FFF {
+		data = c.wram[addr - 0x0800]
+		return data, nil
+	} 
+
 	// 0x2000～0x2007	0x0008	PPU レジスタ
+	if addr >= 0x2000 && addr <= 0x2007 {
+		data = c.ppuRegister[addr - 0x2000]
+		return data, nil
+	} 
+
 	// 0x2008～0x3FFF	-	PPUレジスタのミラー
+	if addr >= 0x2008 && addr <= 0x3FFF {
+		data = c.ppuRegister[addr - 0x2008]
+		return data, nil
+	} 
+
 	// 0x4000～0x401F	0x0020	APU I/O、PAD
+	if addr >= 0x4000 && addr <= 0x401F {
+		data = c.io[addr - 0x4000]
+		return data, nil
+	} 
+
 	// 0x4020～0x5FFF	0x1FE0	拡張ROM
+	if addr >= 0x4000 && addr <= 0x401F {
+		data = c.exrom[addr - 0x4000]
+		return data, nil
+	} 
+
 	// 0x6000～0x7FFF	0x2000	拡張RAM
+	if addr >= 0x6000 && addr <= 0x7FFF {
+		data = c.exram[addr - 0x6000]
+		return data, nil
+	} 
+
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
+	if addr >= 0x8000 && addr <= 0xFFFF {
+		r := *c.programRom
+		if len(r) <= 0x4000 {
+			data = r[addr - 0xC000]
+		} else {
+			data = r[addr - 0x8000]
+		}
+		return data, nil
+	} 
 
-	var data byte 
-	log.Printf("CPUBus.read[addr=%#v] => %#v", addr, data)
-
-	return data
+	return 0, fmt.Errorf("failed read, addr out of range; addr: %#v", addr)
 }
 
 // write ...
@@ -132,7 +194,10 @@ func (c *CPUBus) write(addr uint32, data byte) {
 
 // Run ...
 func (c *CPU) Run() error {
-	c.interruptRESET()
+	if err := c.interruptRESET(); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
 	log.Printf("CPU : %#v", c.String())
 	for {
 		log.Printf("===== cycle start =====")
@@ -215,19 +280,28 @@ func (c *CPU) interruptNMI() {
 }
 
 // interruptRESET ...
-func (c *CPU) interruptRESET() {
+func (c *CPU) interruptRESET() error {
 	log.Printf("interrupt[reset]")
 
 	beforeI := c.registers.P.Interrupt
 	c.registers.P.Interrupt = true
 	log.Printf("reset[Interrupt flag] %#v => %#v", beforeI, c.registers.P.Interrupt)
 
-	l := c.bus.read(0xFFFC)
-	h := c.bus.read(0xFFFD)
+	l, err := c.bus.read(0xFFFC)
+	if err != nil {
+		return fmt.Errorf("failed reset; %w", err)
+	}
+
+	h, err := c.bus.read(0xFFFD)
+	if err != nil {
+		return fmt.Errorf("failed reset; %w", err)
+	}
 
 	beforePC := c.registers.PC
 	c.registers.PC = uint16((h << 4) | l)
 	log.Printf("reset[PC] %#v => %#v", beforePC, c.registers.PC)
+
+	return nil
 }
 
 // interruptBRK ...

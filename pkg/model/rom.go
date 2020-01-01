@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"log"
 )
 
 // INESHeader ...
@@ -63,9 +64,14 @@ func parseROM(rom []byte) (*ROM, error) {
 		return nil, err
 	}
 
+	log.Printf("rom header: %#v", h)
+
 	begin := 0x0010
 	prgromEnd := 0x0010 + int(h.CHRROMSize)*0x4000
 	chrromEnd := prgromEnd + int(h.PRGROMSize)*0x2000
+
+	log.Printf("prg-rom byte index: %#v-%#v", begin, (prgromEnd - 1))
+	log.Printf("chr-rom byte index: %#v-%#v", prgromEnd, (chrromEnd - 1))
 
 	p := PRGROM(rom[begin:prgromEnd])
 	c := CHRROM(rom[prgromEnd:chrromEnd])
@@ -77,6 +83,7 @@ func parseROM(rom []byte) (*ROM, error) {
 }
 
 func FetchROM(romPath string) (*ROM, error) {
+	log.Printf("fetch[rom]: %v", romPath)
 	f, err := readFile(romPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed fetch rom; %w", err)
