@@ -111,52 +111,60 @@ func (c *CPU) String() string {
 func (c *CPUBus) read(addr uint32) (byte, error) {
 	var data byte 
 	var err error
+	var target string
 	defer func() {
 		if err != nil {
 			log.Printf("CPUBus.read[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Printf("CPUBus.read[addr=%#v] => %#v", addr, data)
+			log.Printf("CPUBus.read[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 
 	// 0x0000～0x07FF	0x0800	WRAM
 	if addr >= 0x0000 && addr <= 0x07FF {
+		target = "WRAM"
 		data = c.wram[addr]
 		return data, nil
 	} 
 
 	// 0x0800～0x1FFF	-	WRAMのミラー
 	if addr >= 0x0800 && addr <= 0x1FFF {
+		target = "WRAM Mirror"
 		data = c.wram[addr - 0x0800]
 		return data, nil
 	} 
 
 	// 0x2000～0x2007	0x0008	PPU レジスタ
 	if addr >= 0x2000 && addr <= 0x2007 {
+		target = "PPU Register"
 		data = c.ppuRegister[addr - 0x2000]
 		return data, nil
 	} 
 
 	// 0x2008～0x3FFF	-	PPUレジスタのミラー
 	if addr >= 0x2008 && addr <= 0x3FFF {
+		target = "PPU Register Mirror"
 		data = c.ppuRegister[addr - 0x2008]
 		return data, nil
 	} 
 
 	// 0x4000～0x401F	0x0020	APU I/O、PAD
 	if addr >= 0x4000 && addr <= 0x401F {
+		target = "APU I/O, PAD"
 		data = c.io[addr - 0x4000]
 		return data, nil
 	} 
 
 	// 0x4020～0x5FFF	0x1FE0	拡張ROM
 	if addr >= 0x4000 && addr <= 0x401F {
+		target = "EX ROM"
 		data = c.exrom[addr - 0x4000]
 		return data, nil
 	} 
 
 	// 0x6000～0x7FFF	0x2000	拡張RAM
 	if addr >= 0x6000 && addr <= 0x7FFF {
+		target = "EX RAM"
 		data = c.exram[addr - 0x6000]
 		return data, nil
 	} 
@@ -164,6 +172,7 @@ func (c *CPUBus) read(addr uint32) (byte, error) {
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
 	if addr >= 0x8000 && addr <= 0xFFFF {
+		target = "PRG-ROM"
 		r := *c.programRom
 		if len(r) <= 0x4000 {
 			data = r[addr - 0xC000]
@@ -241,9 +250,9 @@ func decodeOpcode(o Opcode) (*OpcodeProp, error) {
 }
 
 // fetch ...
-func (c *CPU) fetch() (uint32, error) {
+func (c *CPU) fetch() (byte, error) {
 	var addr uint32
-	var data uint32
+	var data byte
 	var err error
 
 	defer func() {
@@ -254,7 +263,14 @@ func (c *CPU) fetch() (uint32, error) {
 		}
 	}()
 
-	// TODO 実装
+	addr = uint32(c.registers.PC)
+	data, err = c.bus.read(addr)
+	if err != nil {
+		return data, fmt.Errorf("failed fetch; %w", err)
+	}
+
+	c.registers.PC = c.registers.PC + 1
+
 	return data, nil
 }
 
@@ -298,7 +314,7 @@ func (c *CPU) interruptRESET() error {
 	}
 
 	beforePC := c.registers.PC
-	c.registers.PC = uint16((h << 4) | l)
+	c.registers.PC = (uint16(h) << 8) | uint16(l)
 	log.Printf("reset[PC] %#v => %#v", beforePC, c.registers.PC)
 
 	return nil
