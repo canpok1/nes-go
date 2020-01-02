@@ -1,20 +1,22 @@
 package main
 
 import (
-	"log"
-
+	"github.com/canpok1/nes-go/pkg/log"
 	"github.com/canpok1/nes-go/pkg/model"
+	"os"
 )
 
 func main() {
-	log.Printf("start")
+	log.SetOutput(os.Stdout)
+
+	log.Debug("start")
 
 	var err error
 	defer func() {
 		if err != nil {
-			log.Printf("error: %v", err)
+			log.Fatal("error: %v", err)
 		}
-		log.Printf("end")
+		log.Debug("end")
 	}()
 
 	romPath := "./test/roms/hello-world/hello-world.nes"

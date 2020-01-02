@@ -2,8 +2,9 @@ package model
 
 import (
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/canpok1/nes-go/pkg/log"
 )
 
 // Registers ...
@@ -66,25 +67,25 @@ func NewStatusRegister() *StatusRegister {
 
 // CPUBus ...
 type CPUBus struct {
-	wram []byte
-	wramMirror []byte
-	ppuRegister []byte
+	wram              []byte
+	wramMirror        []byte
+	ppuRegister       []byte
 	ppuRegisterMirror []byte
-	io []byte
-	exrom []byte
-	exram []byte
-	programRom *PRGROM
+	io                []byte
+	exrom             []byte
+	exram             []byte
+	programRom        *PRGROM
 }
 
 // NewCPUBus ...
 func NewCPUBus(p *PRGROM) *CPUBus {
 	return &CPUBus{
-		wram: make([]byte, 0x0800),
+		wram:        make([]byte, 0x0800),
 		ppuRegister: make([]byte, 0x0008),
-		io: make([]byte, 0x0020),
-		exrom: make([]byte, 0x1FE0),
-		exram: make([]byte, 0x2000),
-		programRom: p,
+		io:          make([]byte, 0x0020),
+		exrom:       make([]byte, 0x1FE0),
+		exram:       make([]byte, 0x2000),
+		programRom:  p,
 	}
 }
 
@@ -107,7 +108,6 @@ func (c *CPU) String() string {
 	return fmt.Sprintf("registers %v", c.registers.String())
 }
 
-
 // updateZ ...
 func (s *StatusRegister) updateZ(result byte) {
 	s.Zero = (result == 0x00)
@@ -120,14 +120,14 @@ func (s *StatusRegister) updateN(result byte) {
 
 // read ...
 func (c *CPUBus) read(addr Address) (byte, error) {
-	var data byte 
+	var data byte
 	var err error
 	var target string
 	defer func() {
 		if err != nil {
-			log.Printf("CPUBus.read[addr=%#v] => %#v", addr, err)
+			log.Debug("CPUBus.read[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Printf("CPUBus.read[addr=%#v][%v] => %#v", addr, target, data)
+			log.Debug("CPUBus.read[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 
@@ -136,49 +136,49 @@ func (c *CPUBus) read(addr Address) (byte, error) {
 		target = "WRAM"
 		data = c.wram[addr]
 		return data, nil
-	} 
+	}
 
 	// 0x0800～0x1FFF	-	WRAMのミラー
 	if addr >= 0x0800 && addr <= 0x1FFF {
 		target = "WRAM Mirror"
-		data = c.wram[addr - 0x0800]
+		data = c.wram[addr-0x0800]
 		return data, nil
-	} 
+	}
 
 	// 0x2000～0x2007	0x0008	PPU レジスタ
 	if addr >= 0x2000 && addr <= 0x2007 {
 		target = "PPU Register"
-		data = c.ppuRegister[addr - 0x2000]
+		data = c.ppuRegister[addr-0x2000]
 		return data, nil
-	} 
+	}
 
 	// 0x2008～0x3FFF	-	PPUレジスタのミラー
 	if addr >= 0x2008 && addr <= 0x3FFF {
 		target = "PPU Register Mirror"
-		data = c.ppuRegister[addr - 0x2008]
+		data = c.ppuRegister[addr-0x2008]
 		return data, nil
-	} 
+	}
 
 	// 0x4000～0x401F	0x0020	APU I/O、PAD
 	if addr >= 0x4000 && addr <= 0x401F {
 		target = "APU I/O, PAD"
-		data = c.io[addr - 0x4000]
+		data = c.io[addr-0x4000]
 		return data, nil
-	} 
+	}
 
 	// 0x4020～0x5FFF	0x1FE0	拡張ROM
 	if addr >= 0x4000 && addr <= 0x401F {
 		target = "EX ROM"
-		data = c.exrom[addr - 0x4000]
+		data = c.exrom[addr-0x4000]
 		return data, nil
-	} 
+	}
 
 	// 0x6000～0x7FFF	0x2000	拡張RAM
 	if addr >= 0x6000 && addr <= 0x7FFF {
 		target = "EX RAM"
-		data = c.exram[addr - 0x6000]
+		data = c.exram[addr-0x6000]
 		return data, nil
-	} 
+	}
 
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
@@ -186,12 +186,12 @@ func (c *CPUBus) read(addr Address) (byte, error) {
 		target = "PRG-ROM"
 		r := *c.programRom
 		if len(r) <= 0x4000 {
-			data = r[addr - 0xC000]
+			data = r[addr-0xC000]
 		} else {
-			data = r[addr - 0x8000]
+			data = r[addr-0x8000]
 		}
 		return data, nil
-	} 
+	}
 
 	return 0, fmt.Errorf("failed read, addr out of range; addr: %#v", addr)
 }
@@ -202,9 +202,9 @@ func (c *CPUBus) write(addr Address, data byte) error {
 	var target string
 	defer func() {
 		if err != nil {
-			log.Printf("CPUBus.write[addr=%#v] => %#v", addr, err)
+			log.Debug("CPUBus.write[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Printf("CPUBus.write[addr=%#v][%v] <= %#v", addr, target, data)
+			log.Debug("CPUBus.write[addr=%#v][%v] <= %#v", addr, target, data)
 		}
 	}()
 	// 0x0000～0x07FF	0x0800	WRAM
@@ -212,53 +212,53 @@ func (c *CPUBus) write(addr Address, data byte) error {
 		target = "WRAM"
 		c.wram[addr] = data
 		return nil
-	} 
+	}
 
 	// 0x0800～0x1FFF	-	WRAMのミラー
 	if addr >= 0x0800 && addr <= 0x1FFF {
 		target = "WRAM Mirror"
-		c.wram[addr - 0x0800] = data
+		c.wram[addr-0x0800] = data
 		return nil
-	} 
+	}
 
 	// 0x2000～0x2007	0x0008	PPU レジスタ
 	if addr >= 0x2000 && addr <= 0x2007 {
 		target = "PPU Register"
-		c.ppuRegister[addr - 0x2000] = data
+		c.ppuRegister[addr-0x2000] = data
 		return nil
-	} 
+	}
 
 	// 0x2008～0x3FFF	-	PPUレジスタのミラー
 	if addr >= 0x2008 && addr <= 0x3FFF {
 		target = "PPU Register Mirror"
-		c.ppuRegister[addr - 0x2008] = data
+		c.ppuRegister[addr-0x2008] = data
 		return nil
-	} 
+	}
 
 	// 0x4000～0x401F	0x0020	APU I/O、PAD
 	if addr >= 0x4000 && addr <= 0x401F {
 		target = "APU I/O, PAD"
-		c.io[addr - 0x4000] = data
+		c.io[addr-0x4000] = data
 		return nil
-	} 
+	}
 
 	// 0x4020～0x5FFF	0x1FE0	拡張ROM
 	if addr >= 0x4000 && addr <= 0x401F {
 		return fmt.Errorf("failed write, cannot write EX ROM; addr: %#v", addr)
-	} 
+	}
 
 	// 0x6000～0x7FFF	0x2000	拡張RAM
 	if addr >= 0x6000 && addr <= 0x7FFF {
 		target = "EX RAM"
-		c.exram[addr - 0x6000] = data
+		c.exram[addr-0x6000] = data
 		return nil
-	} 
+	}
 
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
 	if addr >= 0x8000 && addr <= 0xFFFF {
 		return fmt.Errorf("failed write, cannot write PRG-ROM; addr: %#v", addr)
-	} 
+	}
 
 	return fmt.Errorf("failed write, addr out of range; addr: %#v", addr)
 }
@@ -269,10 +269,10 @@ func (c *CPU) Run() error {
 		return fmt.Errorf("%w", err)
 	}
 
-	log.Printf("CPU : %#v", c.String())
+	log.Debug("CPU : %#v", c.String())
 	for {
-		log.Printf("===== cycle start =====")
-		log.Printf("CPU : %#v", c.String())
+		log.Debug("===== cycle start =====")
+		log.Debug("CPU : %#v", c.String())
 
 		// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
 		oc, err := c.fetchOpcode()
@@ -304,10 +304,10 @@ func (c *CPU) Run() error {
 // decodeOpcode ...
 func decodeOpcode(o Opcode) (*OpcodeProp, error) {
 	if p, ok := OpcodeProps[o]; ok {
-		log.Printf("decode[opcode=%#v] => %#v", o, p)
+		log.Debug("decode[opcode=%#v] => %#v", o, p)
 		return &p, nil
 	}
-	log.Printf("decode[%#v] => not found", o)
+	log.Debug("decode[%#v] => not found", o)
 	return nil, fmt.Errorf("opcode is not support; opcode: %#v", o)
 }
 
@@ -319,9 +319,9 @@ func (c *CPU) fetch() (byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("fetch[addr=%#v] => error %#v", addr, err)
+			log.Debug("fetch[addr=%#v] => error %#v", addr, err)
 		} else {
-			log.Printf("fetch[addr=%#v] => %#v", addr, data)
+			log.Debug("fetch[addr=%#v] => %#v", addr, data)
 		}
 	}()
 
@@ -510,11 +510,11 @@ func (c *CPU) interruptNMI() {
 
 // interruptRESET ...
 func (c *CPU) interruptRESET() error {
-	log.Printf("interrupt[reset]")
+	log.Info("interrupt[reset]")
 
 	beforeI := c.registers.P.Interrupt
 	c.registers.P.Interrupt = true
-	log.Printf("reset[Interrupt flag] %#v => %#v", beforeI, c.registers.P.Interrupt)
+	log.Debug("reset[Interrupt flag] %#v => %#v", beforeI, c.registers.P.Interrupt)
 
 	l, err := c.bus.read(0xFFFC)
 	if err != nil {
@@ -528,7 +528,7 @@ func (c *CPU) interruptRESET() error {
 
 	beforePC := c.registers.PC
 	c.registers.PC = (uint16(h) << 8) | uint16(l)
-	log.Printf("reset[PC] %#v => %#v", beforePC, c.registers.PC)
+	log.Debug("reset[PC] %#v => %#v", beforePC, c.registers.PC)
 
 	return nil
 }
@@ -551,11 +551,11 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 
 	defer func() {
 		if err != nil {
-			log.Printf("exec %#v %#v => failed", mne, addr)
+			log.Warn("exec %#v %#v => failed", mne, addr)
 		} else if addr == nil {
-			log.Printf("exec %#v %#v => completed", mne, addr)
+			log.Info("exec %#v %#v => completed", mne, addr)
 		} else {
-			log.Printf("exec %#v %#v => completed", mne, *addr)
+			log.Info("exec %#v %#v => completed", mne, *addr)
 		}
 	}()
 
@@ -645,7 +645,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
 			break
 		}
-		
+
 		var b byte
 		b, err = c.bus.read(*addr)
 		if err != nil {
@@ -660,7 +660,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
 			break
 		}
-		
+
 		var b byte
 		b, err = c.bus.read(*addr)
 		if err != nil {
