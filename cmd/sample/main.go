@@ -1,13 +1,15 @@
 package main
 
 import (
+	"os"
+
 	"github.com/canpok1/nes-go/pkg/log"
 	"github.com/canpok1/nes-go/pkg/model"
-	"os"
 )
 
 func main() {
 	log.SetOutput(os.Stdout)
+	log.SetLogLevel(log.LevelInfo)
 
 	log.Debug("start")
 

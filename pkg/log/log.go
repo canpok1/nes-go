@@ -21,16 +21,21 @@ const (
 
 // Config ...
 type Config struct {
-	LogLevel Level
+	logLevel Level
 }
 
 var config = Config{
-	LogLevel: LevelInfo,
+	logLevel: LevelDebug,
 }
 
 // SetOutput ...
 func SetOutput(w io.Writer) {
 	log.SetOutput(w)
+}
+
+// SetLogLevel ...
+func SetLogLevel(l Level) {
+	config.logLevel = l
 }
 
 // print ...
@@ -42,7 +47,7 @@ func print(level string, format string, v ...interface{}) {
 
 // Fatal ...
 func Fatal(format string, v ...interface{}) {
-	if config.LogLevel > LevelFatal {
+	if config.logLevel > LevelFatal {
 		return
 	}
 	print("F", format, v...)
@@ -50,7 +55,7 @@ func Fatal(format string, v ...interface{}) {
 
 // Warn ...
 func Warn(format string, v ...interface{}) {
-	if config.LogLevel > LevelWarn {
+	if config.logLevel > LevelWarn {
 		return
 	}
 	print("W", format, v...)
@@ -58,7 +63,7 @@ func Warn(format string, v ...interface{}) {
 
 // Info ...
 func Info(format string, v ...interface{}) {
-	if config.LogLevel > LevelInfo {
+	if config.logLevel > LevelInfo {
 		return
 	}
 	print("I", format, v...)
@@ -66,7 +71,7 @@ func Info(format string, v ...interface{}) {
 
 // Debug ...
 func Debug(format string, v ...interface{}) {
-	if config.LogLevel > LevelDebug {
+	if config.logLevel > LevelDebug {
 		return
 	}
 	print("D", format, v...)
