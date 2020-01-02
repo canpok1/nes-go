@@ -7,9 +7,7 @@ const (
 	ErrorOpcode Opcode = 0
 )
 
-// Operand ...
-type Operand uint16
-
+// Address ...
 type Address uint16
 
 // Mnemonic ...
