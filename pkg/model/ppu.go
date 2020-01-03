@@ -194,7 +194,13 @@ func (p *PPU) WriteRegisters(addr Address, data byte) error {
 }
 
 // Run ...
-func (p *PPU) Run() error {
+func (p *PPU) Run() ([]byte, error) {
 	// TODO 実装
-	return nil
+	// 動作確認のためのサンプルコード
+	size := 4 * ResolutionWidth * ResolutionHeight
+	pixels := make([]byte, size)
+	for i := range pixels {
+		pixels[i] = 0x99
+	}
+	return pixels, nil
 }

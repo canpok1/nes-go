@@ -27,6 +27,22 @@ func main() {
 		log.Debug("========================================")
 	}()
 
+	romPath := "./test/roms/hello-world/hello-world.nes"
+
+	rom, err := model.FetchROM(romPath)
+	if err != nil {
+		return
+	}
+
+	bus := model.NewBus()
+	cpu := model.NewCPU()
+	ppu := model.NewPPU()
+
+	bus.Setup(rom, ppu)
+
+	cpu.SetBus(bus)
+	ppu.SetBus(bus)
+
 	m := infra.NewMonitor(
 		model.ResolutionWidth,
 		model.ResolutionHeight,
@@ -35,21 +51,24 @@ func main() {
 	)
 
 	go func() {
-		size := 4 * model.ResolutionWidth * model.ResolutionHeight
-		pixels := make([]byte, size)
-		var color uint8
-
 		for {
-			color = (color + 1) & 0xFF
-			for i := range pixels {
-				pixels[i] = color
-			}
-			if err := m.Render(pixels); err != nil {
+			err := cpu.Run()
+			if err != nil {
 				log.Fatal("error: %v", err)
 				break
 			}
 
-			log.Debug("color: %v", color)
+			p, err := ppu.Run()
+			if err != nil {
+				log.Fatal("error: %v", err)
+				break
+			}
+
+			err = m.Render(p)
+			if err != nil {
+				log.Fatal("error: %v", err)
+				break
+			}
 
 			time.Sleep(time.Millisecond * 100)
 		}
