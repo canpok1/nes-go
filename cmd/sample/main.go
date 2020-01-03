@@ -28,7 +28,11 @@ func main() {
 		return
 	}
 
-	cpu := model.NewCPU(rom)
+	bus := model.NewBus((*rom).Prgrom)
+
+	cpu := model.NewCPU()
+	cpu.SetBus(bus)
+
 	err = cpu.Run()
 	if err != nil {
 		return

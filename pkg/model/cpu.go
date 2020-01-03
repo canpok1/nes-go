@@ -72,16 +72,20 @@ type CPU struct {
 }
 
 // NewCPU ...
-func NewCPU(p *ROM) *CPU {
+func NewCPU() *CPU {
 	return &CPU{
 		registers: NewRegisters(),
-		bus:       NewBus(p.prgrom),
 	}
 }
 
 // String ...
 func (c *CPU) String() string {
 	return fmt.Sprintf("registers %v", c.registers.String())
+}
+
+// SetBus ...
+func (c *CPU) SetBus(b *Bus) {
+	c.bus = b
 }
 
 // updateZ ...
@@ -96,6 +100,10 @@ func (s *StatusRegister) updateN(result byte) {
 
 // Run ...
 func (c *CPU) Run() error {
+	if c.bus == nil {
+		return fmt.Errorf("failed to run, bus is nil")
+	}
+
 	if err := c.interruptRESET(); err != nil {
 		return fmt.Errorf("%w", err)
 	}

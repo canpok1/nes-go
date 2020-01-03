@@ -2,9 +2,10 @@ package model
 
 import (
 	"fmt"
-	"github.com/canpok1/nes-go/pkg/log"
 	"io/ioutil"
 	"os"
+
+	"github.com/canpok1/nes-go/pkg/log"
 )
 
 // INESHeader ...
@@ -22,9 +23,9 @@ type CHRROM []byte
 
 // ROM ...
 type ROM struct {
-	header *INESHeader
-	prgrom *PRGROM
-	chrrom *CHRROM
+	Header *INESHeader
+	Prgrom *PRGROM
+	Chrrom *CHRROM
 }
 
 func readFile(p string) ([]byte, error) {
@@ -76,9 +77,9 @@ func parseROM(rom []byte) (*ROM, error) {
 	p := PRGROM(rom[begin:prgromEnd])
 	c := CHRROM(rom[prgromEnd:chrromEnd])
 	return &ROM{
-		header: h,
-		prgrom: &p,
-		chrrom: &c,
+		Header: h,
+		Prgrom: &p,
+		Chrrom: &c,
 	}, nil
 }
 
