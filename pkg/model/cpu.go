@@ -48,28 +48,28 @@ func (r *Registers) String() string {
 func (r *Registers) updateA(a byte) {
 	old := r.a
 	r.a = a
-	log.Debug("update[A] %#v => %#v", old, r.a)
+	log.Debug("CPU.update[A] %#v => %#v", old, r.a)
 }
 
 // updateX ...
 func (r *Registers) updateX(x byte) {
 	old := r.x
 	r.x = x
-	log.Debug("update[X] %#v => %#v", old, r.x)
+	log.Debug("CPU.update[X] %#v => %#v", old, r.x)
 }
 
 // updateY ...
 func (r *Registers) updateY(y byte) {
 	old := r.y
 	r.y = y
-	log.Debug("update[Y] %#v => %#v", old, r.y)
+	log.Debug("CPU.update[Y] %#v => %#v", old, r.y)
 }
 
 // updateS ...
 func (r *Registers) updateS(s byte) {
 	old := r.s
 	r.s = s
-	log.Debug("update[S] %#v => %#v", old, r.s)
+	log.Debug("CPU.update[S] %#v => %#v", old, r.s)
 }
 
 // incrementPC ...
@@ -81,7 +81,7 @@ func (r *Registers) incrementPC() {
 func (r *Registers) updatePC(pc uint16) {
 	old := r.pc
 	r.pc = pc
-	log.Debug("update[PC] %#v => %#v", old, r.pc)
+	log.Debug("CPU.update[PC] %#v => %#v", old, r.pc)
 }
 
 // StatusRegister ...
@@ -130,21 +130,21 @@ func (s *StatusRegister) String() string {
 func (s *StatusRegister) updateN(result byte) {
 	old := s.negative
 	s.negative = ((result & 0x80) == 0x80)
-	log.Debug("update[N] %#v => %#v", old, s.negative)
+	log.Debug("CPU.update[N] %#v => %#v", old, s.negative)
 }
 
 // updateI ...
 func (s *StatusRegister) updateI(i bool) {
 	old := s.interrupt
 	s.interrupt = i
-	log.Debug("update[I] %#v => %#v", old, s.interrupt)
+	log.Debug("CPU.update[I] %#v => %#v", old, s.interrupt)
 }
 
 // updateZ ...
 func (s *StatusRegister) updateZ(result byte) {
 	old := s.zero
 	s.zero = (result == 0x00)
-	log.Debug("update[Z] %#v => %#v", old, s.zero)
+	log.Debug("CPU.update[Z] %#v => %#v", old, s.zero)
 }
 
 // CPU ...
@@ -221,10 +221,10 @@ func (c *CPU) Run() error {
 // decodeOpcode ...
 func decodeOpcode(o Opcode) (*OpcodeProp, error) {
 	if p, ok := OpcodeProps[o]; ok {
-		log.Debug("decode[opcode=%#v] => %#v", o, p)
+		log.Debug("CPU.decode[opcode=%#v] => %#v", o, p)
 		return &p, nil
 	}
-	log.Debug("decode[%#v] => not found", o)
+	log.Debug("CPU.decode[%#v] => not found", o)
 	return nil, fmt.Errorf("opcode is not support; opcode: %#v", o)
 }
 
@@ -234,12 +234,12 @@ func (c *CPU) fetch() (byte, error) {
 	var data byte
 	var err error
 
-	log.Debug("fetch ...")
+	log.Debug("CPU.fetch ...")
 	defer func() {
 		if err != nil {
-			log.Debug("fetched[addr=%#v] => error %#v", addr, err)
+			log.Debug("CPU.fetched[addr=%#v] => error %#v", addr, err)
 		} else {
-			log.Debug("fetched[addr=%#v] => %#v", addr, data)
+			log.Debug("CPU.fetched[addr=%#v] => %#v", addr, data)
 		}
 	}()
 
@@ -417,7 +417,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 		return &addr, nil
 	}
 
-	return nil, fmt.Errorf("failed fetch operands, AddressingMode is unsupported; mode: %#v", mode)
+	return nil, fmt.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", mode)
 }
 
 // interruptNMI ...
@@ -428,18 +428,18 @@ func (c *CPU) interruptNMI() {
 
 // interruptRESET ...
 func (c *CPU) interruptRESET() error {
-	log.Info("interrupt[RESET] ...")
+	log.Info("CPU.interrupt[RESET] ...")
 
 	c.registers.p.updateI(true)
 
 	l, err := c.bus.readByCPU(0xFFFC)
 	if err != nil {
-		return fmt.Errorf("failed reset; %w", err)
+		return fmt.Errorf("failed to reset; %w", err)
 	}
 
 	h, err := c.bus.readByCPU(0xFFFD)
 	if err != nil {
-		return fmt.Errorf("failed reset; %w", err)
+		return fmt.Errorf("failed to reset; %w", err)
 	}
 
 	c.registers.updatePC((uint16(h) << 8) | uint16(l))
@@ -450,14 +450,14 @@ func (c *CPU) interruptRESET() error {
 
 // interruptBRK ...
 func (c *CPU) interruptBRK() {
-	log.Info("interrupt[BRK] ...")
+	log.Info("CPU.interrupt[BRK] ...")
 	// TODO 実装
 	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#interrupt
 }
 
 // interruptIRQ ...
 func (c *CPU) interruptIRQ() {
-	log.Info("interrupt[IRQ] ...")
+	log.Info("CPU.interrupt[IRQ] ...")
 	// TODO 実装
 	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#interrupt
 }
@@ -466,14 +466,14 @@ func (c *CPU) interruptIRQ() {
 func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 	var err error
 
-	log.Debug("exec[%#v][%#v] ...", mne, addr)
+	log.Debug("CPU.exec[%#v][%#v] ...", mne, addr)
 	defer func() {
 		if err != nil {
-			log.Warn("exec[%#v][%#v] => failed", mne, addr)
+			log.Warn("CPU.exec[%#v][%#v] => failed", mne, addr)
 		} else if addr == nil {
-			log.Info("exec[%#v][%#v] => completed", mne, addr)
+			log.Info("CPU.exec[%#v][%#v] => completed", mne, addr)
 		} else {
-			log.Info("exec[%#v][%#v] => completed", mne, *addr)
+			log.Info("CPU.exec[%#v][%#v] => completed", mne, *addr)
 		}
 	}()
 

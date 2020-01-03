@@ -37,9 +37,9 @@ func (c *Bus) readByCPU(addr Address) (byte, error) {
 	var target string
 	defer func() {
 		if err != nil {
-			log.Debug("bus.readByCPU[addr=%#v] => %#v", addr, err)
+			log.Debug("Bus.readByCPU[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Debug("bus.readByCPU[addr=%#v][%v] => %#v", addr, target, data)
+			log.Debug("Bus.readByCPU[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 
@@ -114,9 +114,9 @@ func (c *Bus) writeByCPU(addr Address, data byte) error {
 	var target string
 	defer func() {
 		if err != nil {
-			log.Debug("CPUBus.write[addr=%#v] => %#v", addr, err)
+			log.Debug("Bus.writeByCPU[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Debug("CPUBus.write[addr=%#v][%v] <= %#v", addr, target, data)
+			log.Debug("Bus.writeByCPU[addr=%#v][%v] <= %#v", addr, target, data)
 		}
 	}()
 	// 0x0000～0x07FF	0x0800	WRAM
