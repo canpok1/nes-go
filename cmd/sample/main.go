@@ -36,6 +36,7 @@ func main() {
 	bus.Setup(rom, ppu)
 
 	cpu.SetBus(bus)
+	ppu.SetBus(bus)
 
 	for {
 		err = cpu.Run()

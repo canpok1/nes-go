@@ -236,9 +236,9 @@ func (c *CPU) fetch() (byte, error) {
 	log.Debug("CPU.fetch ...")
 	defer func() {
 		if err != nil {
-			log.Debug("CPU.fetched[addr=%#v] => error %#v", addr, err)
+			log.Debug("CPU.fetch[addr=%#v] => error %#v", addr, err)
 		} else {
-			log.Debug("CPU.fetched[addr=%#v] => %#v", addr, data)
+			log.Debug("CPU.fetch[addr=%#v] => %#v", addr, data)
 		}
 	}()
 

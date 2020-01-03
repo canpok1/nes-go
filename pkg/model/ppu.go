@@ -50,120 +50,6 @@ func (r *PPURegisters) String() string {
 	)
 }
 
-// incrementPPUADDR
-func (r *PPURegisters) incrementPPUADDR() {
-	old := r.ppuaddrFull
-	if (r.ppuctrl & 0x04) == 0 {
-		r.ppuaddrFull = r.ppuaddrFull + 1
-	} else {
-		r.ppuaddrFull = r.ppuaddrFull + 32
-	}
-	log.Debug("PPURegisters.update[PPUADDR Full] %#v => %#v", old, r.ppuaddrFull)
-}
-
-// Read ...
-func (r *PPURegisters) Read(addr Address) (byte, error) {
-	var data byte
-	var err error
-	var target string
-	defer func() {
-		if err != nil {
-			log.Warn("PPURegisters.Read[%#v][%#v] => %#v", addr, target, err)
-		} else {
-			log.Debug("PPURegisters.Read[%#v][%#v] => %#v", addr, target, data)
-		}
-	}()
-
-	switch addr {
-	case 0:
-		target = "PPUCTRL"
-		err = fmt.Errorf("failed to read, PPURegister[PPUCTRL] is write only; addr: %#v", addr)
-	case 1:
-		target = "PPUMASK"
-		err = fmt.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
-	case 2:
-		target = "PPUSTATUS"
-		data = r.ppustatus
-	case 3:
-		target = "OAMADDR"
-		err = fmt.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
-	case 4:
-		target = "OAMDATA"
-		data = r.oamdata
-	case 5:
-		target = "PPUSCROLL"
-		err = fmt.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
-	case 6:
-		target = "PPUADDR"
-		err = fmt.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
-	case 7:
-		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", r.ppuaddrFull)
-		// TODO ppuaddrFullを読み込み
-		r.incrementPPUADDR()
-	default:
-		target = "-"
-		err = fmt.Errorf("failed to read PPURegisters, address is out of range; addr: %#v", addr)
-	}
-
-	return data, err
-}
-
-// Write ...
-func (r *PPURegisters) Write(addr Address, data byte) error {
-	var err error
-	var target string
-	defer func() {
-		if err != nil {
-			log.Warn("PPURegisters.Write[%#v][%#v] => %#v", addr, target, err)
-		} else {
-			log.Debug("PPURegisters.Write[%#v][%#v] <= %#v", addr, target, data)
-		}
-	}()
-
-	switch addr {
-	case 0:
-		r.ppuctrl = data
-		target = "PPUCTRL"
-	case 1:
-		r.ppumask = data
-		target = "PPUMASK"
-	case 2:
-		err = fmt.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
-		target = "PPUSTATUS"
-	case 3:
-		r.oamaddr = data
-		target = "OAMADDR"
-	case 4:
-		r.oamdata = data
-		target = "OAMDATA"
-	case 5:
-		r.ppuscroll = data
-		target = "PPUSCROLL"
-	case 6:
-		r.ppuaddr = data
-		switch r.ppuaddrWriteCount {
-		case 0, 2:
-			r.ppuaddrBuf = Address(r.ppuaddr) << 8
-			r.ppuaddrWriteCount = 1
-			target = "PPUADDR(for high 8 bits)"
-		case 1:
-			r.ppuaddrBuf = r.ppuaddrBuf + Address(r.ppuaddr)
-			r.ppuaddrFull = r.ppuaddrBuf
-			r.ppuaddrWriteCount = 2
-			target = "PPUADDR(for low 8 bits)"
-		}
-	case 7:
-		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", r.ppuaddrFull)
-		// TODO ppuaddrFullに書き込み
-		r.incrementPPUADDR()
-	default:
-		target = "-"
-		err = fmt.Errorf("failed to write PPURegisters, address is out of range; addr: %#v", addr)
-	}
-
-	return err
-}
-
 // PPU ...
 type PPU struct {
 	registers *PPURegisters
@@ -188,6 +74,122 @@ func (p *PPU) String() string {
 // SetBus ...
 func (p *PPU) SetBus(b *Bus) {
 	p.bus = b
+}
+
+// incrementPPUADDR
+func (p *PPU) incrementPPUADDR() {
+	old := p.registers.ppuaddrFull
+	if (p.registers.ppuctrl & 0x04) == 0 {
+		p.registers.ppuaddrFull = p.registers.ppuaddrFull + 1
+	} else {
+		p.registers.ppuaddrFull = p.registers.ppuaddrFull + 32
+	}
+	log.Debug("PPURegisters.update[PPUADDR Full] %#v => %#v", old, p.registers.ppuaddrFull)
+}
+
+// ReadRegisters ...
+func (p *PPU) ReadRegisters(addr Address) (byte, error) {
+	var data byte
+	var err error
+	var target string
+	log.Warn("PPU.ReadRegisters[%#v] ...", addr)
+	defer func() {
+		if err != nil {
+			log.Warn("PPU.ReadRegisters[%#v][%#v] => %#v", addr, target, err)
+		} else {
+			log.Debug("PPU.ReadRegisters[%#v][%#v] => %#v", addr, target, data)
+		}
+	}()
+
+	switch addr {
+	case 0:
+		target = "PPUCTRL"
+		err = fmt.Errorf("failed to read, PPURegister[PPUCTRL] is write only; addr: %#v", addr)
+	case 1:
+		target = "PPUMASK"
+		err = fmt.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
+	case 2:
+		target = "PPUSTATUS"
+		data = p.registers.ppustatus
+	case 3:
+		target = "OAMADDR"
+		err = fmt.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
+	case 4:
+		target = "OAMDATA"
+		data = p.registers.oamdata
+	case 5:
+		target = "PPUSCROLL"
+		err = fmt.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
+	case 6:
+		target = "PPUADDR"
+		err = fmt.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
+	case 7:
+		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", p.registers.ppuaddrFull)
+		data, err = p.bus.readByPPU(p.registers.ppuaddrFull)
+		p.incrementPPUADDR()
+	default:
+		target = "-"
+		err = fmt.Errorf("failed to read PPURegisters, address is out of range; addr: %#v", addr)
+	}
+
+	return data, err
+}
+
+// WriteRegisters ...
+func (p *PPU) WriteRegisters(addr Address, data byte) error {
+	var err error
+	var target string
+	log.Warn("PPU.WriteRegisters[%#v] ...", addr)
+	defer func() {
+		if err != nil {
+			log.Warn("PPU.WriteRegisters[%#v][%#v] => %#v", addr, target, err)
+		} else {
+			log.Debug("PPU.WriteRegisters[%#v][%#v] <= %#v", addr, target, data)
+		}
+	}()
+
+	switch addr {
+	case 0:
+		p.registers.ppuctrl = data
+		target = "PPUCTRL"
+	case 1:
+		p.registers.ppumask = data
+		target = "PPUMASK"
+	case 2:
+		err = fmt.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
+		target = "PPUSTATUS"
+	case 3:
+		p.registers.oamaddr = data
+		target = "OAMADDR"
+	case 4:
+		p.registers.oamdata = data
+		target = "OAMDATA"
+	case 5:
+		p.registers.ppuscroll = data
+		target = "PPUSCROLL"
+	case 6:
+		p.registers.ppuaddr = data
+		switch p.registers.ppuaddrWriteCount {
+		case 0, 2:
+			p.registers.ppuaddrBuf = Address(p.registers.ppuaddr) << 8
+			p.registers.ppuaddrWriteCount = 1
+			target = "PPUADDR(for high 8 bits)"
+		case 1:
+			p.registers.ppuaddrBuf = p.registers.ppuaddrBuf + Address(p.registers.ppuaddr)
+			p.registers.ppuaddrFull = p.registers.ppuaddrBuf
+			p.registers.ppuaddrWriteCount = 2
+			target = "PPUADDR(for low 8 bits)"
+		}
+	case 7:
+		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.registers.ppuaddrFull)
+		err = p.bus.writeByPPU(p.registers.ppuaddrFull, data)
+		p.incrementPPUADDR()
+	default:
+		target = "-"
+		err = fmt.Errorf("failed to write PPURegisters, address is out of range; addr: %#v", addr)
+	}
+
+	return err
 }
 
 // Run ...

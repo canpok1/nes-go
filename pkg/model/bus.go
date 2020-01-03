@@ -15,7 +15,7 @@ type Bus struct {
 	exram      []byte
 	programROM *PRGROM
 
-	ppuRegisters *PPURegisters
+	ppu *PPU
 
 	charactorROM *CHRROM
 	nameTable0   []byte
@@ -42,7 +42,7 @@ func NewBus() *Bus {
 func (b *Bus) Setup(rom *ROM, ppu *PPU) {
 	b.programROM = rom.Prgrom
 	b.charactorROM = rom.Chrrom
-	b.ppuRegisters = ppu.registers
+	b.ppu = ppu
 
 	b.setupped = true
 }
@@ -61,6 +61,10 @@ func (b *Bus) readByCPU(addr Address) (byte, error) {
 		}
 	}()
 
+	if b == nil {
+		err = fmt.Errorf("failed to readByCPU, bus is nil")
+		return data, err
+	}
 	if !b.setupped {
 		err = fmt.Errorf("failed to readByCPU, bus setup is not completed")
 		return data, err
@@ -83,14 +87,14 @@ func (b *Bus) readByCPU(addr Address) (byte, error) {
 	// 0x2000～0x2007	0x0008	PPU レジスタ
 	if addr >= 0x2000 && addr <= 0x2007 {
 		target = "PPU Register"
-		data, err = b.ppuRegisters.Read(addr - 0x2000)
+		data, err = b.ppu.ReadRegisters(addr - 0x2000)
 		return data, err
 	}
 
 	// 0x2008～0x3FFF	-	PPUレジスタのミラー
 	if addr >= 0x2008 && addr <= 0x3FFF {
 		target = "PPU Register Mirror"
-		data, err = b.ppuRegisters.Read(addr - 0x2008)
+		data, err = b.ppu.ReadRegisters(addr - 0x2008)
 		return data, err
 	}
 
@@ -144,8 +148,13 @@ func (b *Bus) writeByCPU(addr Address, data byte) error {
 		}
 	}()
 
+	if b == nil {
+		err = fmt.Errorf("failed to writeByCPU, bus is nil")
+		return err
+	}
 	if !b.setupped {
 		err = fmt.Errorf("failed to writeByCPU, bus setup is not completed")
+		return err
 	}
 
 	// 0x0000～0x07FF	0x0800	WRAM
@@ -165,14 +174,14 @@ func (b *Bus) writeByCPU(addr Address, data byte) error {
 	// 0x2000～0x2007	0x0008	PPU レジスタ
 	if addr >= 0x2000 && addr <= 0x2007 {
 		target = "PPU Register"
-		err = b.ppuRegisters.Write(addr-0x2000, data)
+		err = b.ppu.WriteRegisters(addr-0x2000, data)
 		return err
 	}
 
 	// 0x2008～0x3FFF	-	PPUレジスタのミラー
 	if addr >= 0x2008 && addr <= 0x3FFF {
 		target = "PPU Register Mirror"
-		err = b.ppuRegisters.Write(addr-0x2008, data)
+		err = b.ppu.WriteRegisters(addr-0x2008, data)
 		return err
 	}
 
@@ -218,8 +227,13 @@ func (b *Bus) readByPPU(addr Address) (byte, error) {
 		}
 	}()
 
+	if b == nil {
+		err = fmt.Errorf("failed to readByPPU, bus is nil")
+		return data, err
+	}
 	if !b.setupped {
 		err = fmt.Errorf("failed to readByPPU, bus setup is not completed")
+		return data, err
 	}
 
 	// TODO 実装
@@ -254,8 +268,13 @@ func (b *Bus) writeByPPU(addr Address, data byte) error {
 		}
 	}()
 
+	if b == nil {
+		err = fmt.Errorf("failed to writeByPPU, bus is nil")
+		return err
+	}
 	if !b.setupped {
 		err = fmt.Errorf("failed to writeByPPU, bus setup is not completed")
+		return err
 	}
 
 	// TODO 実装
