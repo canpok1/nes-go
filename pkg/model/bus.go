@@ -6,8 +6,8 @@ import (
 	"github.com/canpok1/nes-go/pkg/log"
 )
 
-// CPUBus ...
-type CPUBus struct {
+// Bus ...
+type Bus struct {
 	wram              []byte
 	wramMirror        []byte
 	ppuRegister       []byte
@@ -18,9 +18,9 @@ type CPUBus struct {
 	programRom        *PRGROM
 }
 
-// NewCPUBus ...
-func NewCPUBus(p *PRGROM) *CPUBus {
-	return &CPUBus{
+// NewBus ...
+func NewBus(p *PRGROM) *Bus {
+	return &Bus{
 		wram:        make([]byte, 0x0800),
 		ppuRegister: make([]byte, 0x0008),
 		io:          make([]byte, 0x0020),
@@ -30,8 +30,8 @@ func NewCPUBus(p *PRGROM) *CPUBus {
 	}
 }
 
-// read ...
-func (c *CPUBus) read(addr Address) (byte, error) {
+// readByCPU ...
+func (c *Bus) readByCPU(addr Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
@@ -108,8 +108,8 @@ func (c *CPUBus) read(addr Address) (byte, error) {
 	return 0, fmt.Errorf("failed read, addr out of range; addr: %#v", addr)
 }
 
-// write ...
-func (c *CPUBus) write(addr Address, data byte) error {
+// writeByCPU ...
+func (c *Bus) writeByCPU(addr Address, data byte) error {
 	var err error
 	var target string
 	defer func() {

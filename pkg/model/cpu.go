@@ -68,14 +68,14 @@ func NewStatusRegister() *StatusRegister {
 // CPU ...
 type CPU struct {
 	registers *Registers
-	bus       *CPUBus
+	bus       *Bus
 }
 
 // NewCPU ...
 func NewCPU(p *ROM) *CPU {
 	return &CPU{
 		registers: NewRegisters(),
-		bus:       NewCPUBus(p.prgrom),
+		bus:       NewBus(p.prgrom),
 	}
 }
 
@@ -157,7 +157,7 @@ func (c *CPU) fetch() (byte, error) {
 	}()
 
 	addr = Address(c.registers.PC)
-	data, err = c.bus.read(addr)
+	data, err = c.bus.readByCPU(addr)
 	if err != nil {
 		return data, fmt.Errorf("failed fetch; %w", err)
 	}
@@ -270,7 +270,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 		}
 		dest := Address(uint8(b) + c.registers.X)
 
-		l, err := c.bus.read(dest)
+		l, err := c.bus.readByCPU(dest)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
@@ -289,7 +289,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 		}
 		dest := Address(uint8(b) + c.registers.X)
 
-		h, err := c.bus.read(dest)
+		h, err := c.bus.readByCPU(dest)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
@@ -316,12 +316,12 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 		dest := Address((uint16(f2) << 8) + uint16(f1))
 		nextDest := dest + 1
 
-		addrL, err := c.bus.read(dest)
+		addrL, err := c.bus.readByCPU(dest)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
 
-		addrH, err := c.bus.read(nextDest)
+		addrH, err := c.bus.readByCPU(nextDest)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
@@ -347,12 +347,12 @@ func (c *CPU) interruptRESET() error {
 	c.registers.P.Interrupt = true
 	log.Debug("reset[Interrupt flag] %#v => %#v", beforeI, c.registers.P.Interrupt)
 
-	l, err := c.bus.read(0xFFFC)
+	l, err := c.bus.readByCPU(0xFFFC)
 	if err != nil {
 		return fmt.Errorf("failed reset; %w", err)
 	}
 
-	h, err := c.bus.read(0xFFFD)
+	h, err := c.bus.readByCPU(0xFFFD)
 	if err != nil {
 		return fmt.Errorf("failed reset; %w", err)
 	}
@@ -463,7 +463,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 		}
 
 		var b byte
-		b, err = c.bus.read(*addr)
+		b, err = c.bus.readByCPU(*addr)
 		if err != nil {
 			break
 		}
@@ -478,7 +478,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 		}
 
 		var b byte
-		b, err = c.bus.read(*addr)
+		b, err = c.bus.readByCPU(*addr)
 		if err != nil {
 			break
 		}
@@ -493,7 +493,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 		}
 
 		var b byte
-		b, err = c.bus.read(*addr)
+		b, err = c.bus.readByCPU(*addr)
 		if err != nil {
 			break
 		}
@@ -507,7 +507,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 			break
 		}
 
-		err = c.bus.write(*addr, c.registers.A)
+		err = c.bus.writeByCPU(*addr, c.registers.A)
 		if err != nil {
 			break
 		}
