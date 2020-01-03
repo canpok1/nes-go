@@ -41,7 +41,6 @@ func (r *CPURegisters) String() string {
 		r.p.String(),
 		r.pc,
 	)
-
 }
 
 // updateA ...

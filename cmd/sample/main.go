@@ -10,7 +10,7 @@ import (
 
 func main() {
 	log.SetOutput(os.Stdout)
-	log.SetLogLevel(log.LevelDebug)
+	log.SetLogLevel(log.LevelInfo)
 
 	log.Debug("start")
 
@@ -29,9 +29,12 @@ func main() {
 		return
 	}
 
-	bus := model.NewBus((*rom).Prgrom)
-
+	bus := model.NewBus()
 	cpu := model.NewCPU()
+	ppu := model.NewPPU()
+
+	bus.Setup(rom, ppu)
+
 	cpu.SetBus(bus)
 
 	for {
@@ -40,6 +43,6 @@ func main() {
 			return
 		}
 
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Millisecond * 1)
 	}
 }
