@@ -52,6 +52,7 @@ func (b *Bus) readByCPU(addr Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
+	log.Debug("Bus.readByCPU[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
 			log.Debug("Bus.readByCPU[addr=%#v] => %#v", addr, err)
@@ -134,6 +135,7 @@ func (b *Bus) readByCPU(addr Address) (byte, error) {
 func (b *Bus) writeByCPU(addr Address, data byte) error {
 	var err error
 	var target string
+	log.Debug("Bus.writeByCPU[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
 			log.Debug("Bus.writeByCPU[addr=%#v] => %#v", addr, err)
@@ -207,6 +209,7 @@ func (b *Bus) readByPPU(addr Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
+	log.Debug("Bus.readByPPU[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
 			log.Debug("Bus.readByPPU[addr=%#v] => %#v", addr, err)
@@ -242,6 +245,7 @@ func (b *Bus) readByPPU(addr Address) (byte, error) {
 func (b *Bus) writeByPPU(addr Address, data byte) error {
 	var err error
 	var target string
+	log.Debug("Bus.writeByPPU[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
 			log.Debug("Bus.writeByPPU[addr=%#v] => %#v", addr, err)
