@@ -37,9 +37,9 @@ func (c *Bus) readByCPU(addr Address) (byte, error) {
 	var target string
 	defer func() {
 		if err != nil {
-			log.Debug("CPUBus.read[addr=%#v] => %#v", addr, err)
+			log.Debug("bus.readByCPU[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Debug("CPUBus.read[addr=%#v][%v] => %#v", addr, target, data)
+			log.Debug("bus.readByCPU[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/canpok1/nes-go/pkg/log"
 	"github.com/canpok1/nes-go/pkg/model"
@@ -9,7 +10,7 @@ import (
 
 func main() {
 	log.SetOutput(os.Stdout)
-	log.SetLogLevel(log.LevelInfo)
+	log.SetLogLevel(log.LevelDebug)
 
 	log.Debug("start")
 
@@ -33,8 +34,12 @@ func main() {
 	cpu := model.NewCPU()
 	cpu.SetBus(bus)
 
-	err = cpu.Run()
-	if err != nil {
-		return
+	for {
+		err = cpu.Run()
+		if err != nil {
+			return
+		}
+
+		time.Sleep(time.Second * 1)
 	}
 }

@@ -2,85 +2,173 @@ package model
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/canpok1/nes-go/pkg/log"
 )
 
 // Registers ...
 type Registers struct {
-	A  byte
-	X  byte
-	Y  byte
-	S  byte
-	P  *StatusRegister
-	PC uint16
+	a  byte
+	x  byte
+	y  byte
+	s  byte
+	p  *StatusRegister
+	pc uint16
 }
 
 // NewRegisters ...
 func NewRegisters() *Registers {
+	// initialize as CPU power up state
+	// https://wiki.nesdev.com/w/index.php/CPU_power_up_state
 	return &Registers{
-		P: NewStatusRegister(),
+		a:  0,
+		x:  0,
+		y:  0,
+		s:  0xFD,
+		p:  NewStatusRegister(),
+		pc: 0,
 	}
 }
 
 // String ...
 func (r *Registers) String() string {
 	return fmt.Sprintf(
-		"{A:%#v, X:%#v, Y:%#v, S:%#v, P:%#v, PC:%#v}",
-		r.A,
-		r.X,
-		r.Y,
-		r.S,
-		r.P,
-		r.PC,
+		"{A:%#v, X:%#v, Y:%#v, S:%#v, P:%v, PC:%#v}",
+		r.a,
+		r.x,
+		r.y,
+		r.s,
+		r.p.String(),
+		r.pc,
 	)
 
+}
+
+// updateA ...
+func (r *Registers) updateA(a byte) {
+	old := r.a
+	r.a = a
+	log.Debug("update[A] %#v => %#v", old, r.a)
+}
+
+// updateX ...
+func (r *Registers) updateX(x byte) {
+	old := r.x
+	r.x = x
+	log.Debug("update[X] %#v => %#v", old, r.x)
+}
+
+// updateY ...
+func (r *Registers) updateY(y byte) {
+	old := r.y
+	r.y = y
+	log.Debug("update[Y] %#v => %#v", old, r.y)
+}
+
+// updateS ...
+func (r *Registers) updateS(s byte) {
+	old := r.s
+	r.s = s
+	log.Debug("update[S] %#v => %#v", old, r.s)
+}
+
+// incrementPC ...
+func (r *Registers) incrementPC() {
+	r.updatePC(r.pc + 1)
+}
+
+// updatePC ...
+func (r *Registers) updatePC(pc uint16) {
+	old := r.pc
+	r.pc = pc
+	log.Debug("update[PC] %#v => %#v", old, r.pc)
 }
 
 // StatusRegister ...
 // https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9%E3%83%AC%E3%82%B8%E3%82%B9%E3%82%BF
 type StatusRegister struct {
-	Negative  bool // bit7	N	ネガティブ	演算結果のbit7が1の時にセット
-	Overflow  bool // bit6	V	オーバーフロー	P演算結果がオーバーフローを起こした時にセット
-	Reserved  bool // bit5	R	予約済み	常にセットされている
-	Break     bool // bit4	B	ブレークモード	BRK発生時にセット、IRQ発生時にクリア
-	Decimal   bool // bit3	D	デシマルモード	0:デフォルト、1:BCDモード (未実装)
-	Interrupt bool // bit2	I	IRQ禁止	0:IRQ許可、1:IRQ禁止
-	Zero      bool // bit1	Z	ゼロ	演算結果が0の時にセット
-	Carry     bool // bit0	C	キャリー	キャリー発生時にセット
+	negative    bool // bit7	N	ネガティブ	演算結果のbit7が1の時にセット
+	overflow    bool // bit6	V	オーバーフロー	P演算結果がオーバーフローを起こした時にセット
+	reserved    bool // bit5	R	予約済み	常にセットされている
+	breakMode   bool // bit4	B	ブレークモード	BRK発生時にセット、IRQ発生時にクリア
+	decimalMode bool // bit3	D	デシマルモード	0:デフォルト、1:BCDモード (未実装)
+	interrupt   bool // bit2	I	IRQ禁止	0:IRQ許可、1:IRQ禁止
+	zero        bool // bit1	Z	ゼロ	演算結果が0の時にセット
+	carry       bool // bit0	C	キャリー	キャリー発生時にセット
 }
 
 // NewStatusRegister ...
 func NewStatusRegister() *StatusRegister {
 	return &StatusRegister{
-		Negative:  false,
-		Overflow:  false,
-		Reserved:  true,
-		Break:     false,
-		Decimal:   false,
-		Interrupt: false,
-		Zero:      false,
-		Carry:     false,
+		negative:    false,
+		overflow:    false,
+		reserved:    true,
+		breakMode:   true,
+		decimalMode: false,
+		interrupt:   true,
+		zero:        false,
+		carry:       false,
 	}
+}
+
+// String ...
+func (s *StatusRegister) String() string {
+	return fmt.Sprintf(
+		"{N:%#v, V:%#v, R:%#v, B:%#v, D:%#v, I:%#v, Z:%#v, C:%#v}",
+		s.negative,
+		s.overflow,
+		s.reserved,
+		s.breakMode,
+		s.decimalMode,
+		s.interrupt,
+		s.zero,
+		s.carry,
+	)
+}
+
+// updateN ...
+func (s *StatusRegister) updateN(result byte) {
+	old := s.negative
+	s.negative = ((result & 0x80) == 0x80)
+	log.Debug("update[N] %#v => %#v", old, s.negative)
+}
+
+// updateI ...
+func (s *StatusRegister) updateI(i bool) {
+	old := s.interrupt
+	s.interrupt = i
+	log.Debug("update[I] %#v => %#v", old, s.interrupt)
+}
+
+// updateZ ...
+func (s *StatusRegister) updateZ(result byte) {
+	old := s.zero
+	s.zero = (result == 0x00)
+	log.Debug("update[Z] %#v => %#v", old, s.zero)
 }
 
 // CPU ...
 type CPU struct {
-	registers *Registers
-	bus       *Bus
+	registers   *Registers
+	bus         *Bus
+	shouldReset bool
 }
 
 // NewCPU ...
 func NewCPU() *CPU {
 	return &CPU{
-		registers: NewRegisters(),
+		registers:   NewRegisters(),
+		shouldReset: true,
 	}
 }
 
 // String ...
 func (c *CPU) String() string {
-	return fmt.Sprintf("registers %v", c.registers.String())
+	return fmt.Sprintf(
+		"CPU Info\nregisters: %v\nshould reset: %v",
+		c.registers.String(),
+		c.shouldReset,
+	)
 }
 
 // SetBus ...
@@ -88,56 +176,46 @@ func (c *CPU) SetBus(b *Bus) {
 	c.bus = b
 }
 
-// updateZ ...
-func (s *StatusRegister) updateZ(result byte) {
-	s.Zero = (result == 0x00)
-}
-
-// updateN ...
-func (s *StatusRegister) updateN(result byte) {
-	s.Zero = ((result & 0x80) == 0x80)
-}
-
 // Run ...
 func (c *CPU) Run() error {
+	log.Debug("===== CPU RUN =====")
+	log.Debug(c.String())
+
 	if c.bus == nil {
 		return fmt.Errorf("failed to run, bus is nil")
 	}
 
-	if err := c.interruptRESET(); err != nil {
+	if c.shouldReset {
+		if err := c.interruptRESET(); err != nil {
+			return fmt.Errorf("%w", err)
+		}
+		return nil
+	}
+
+	// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
+	oc, err := c.fetchOpcode()
+	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
 
-	log.Debug("CPU : %#v", c.String())
-	for {
-		log.Debug("===== cycle start =====")
-		log.Debug("CPU : %#v", c.String())
-
-		// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
-		oc, err := c.fetchOpcode()
-		if err != nil {
-			return fmt.Errorf("%w", err)
-		}
-
-		// 命令とアドレッシング・モードを判別
-		ocp, err := decodeOpcode(oc)
-		if err != nil {
-			return fmt.Errorf("%w", err)
-		}
-
-		// （必要であれば）オペランドをフェッチ（PCをインクリメント）
-		addr, err := c.makeAddress(ocp.AddressingMode)
-		if err != nil {
-			return fmt.Errorf("%w", err)
-		}
-
-		// 命令を実行
-		if err := c.exec(ocp.Mnemonic, addr); err != nil {
-			return fmt.Errorf("%w", err)
-		}
-
-		time.Sleep(time.Second * 1)
+	// 命令とアドレッシング・モードを判別
+	ocp, err := decodeOpcode(oc)
+	if err != nil {
+		return fmt.Errorf("%w", err)
 	}
+
+	// （必要であれば）オペランドをフェッチ（PCをインクリメント）
+	addr, err := c.makeAddress(ocp.AddressingMode)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	// 命令を実行
+	if err := c.exec(ocp.Mnemonic, addr); err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	return nil
 }
 
 // decodeOpcode ...
@@ -156,21 +234,22 @@ func (c *CPU) fetch() (byte, error) {
 	var data byte
 	var err error
 
+	log.Debug("fetch ...")
 	defer func() {
 		if err != nil {
-			log.Debug("fetch[addr=%#v] => error %#v", addr, err)
+			log.Debug("fetched[addr=%#v] => error %#v", addr, err)
 		} else {
-			log.Debug("fetch[addr=%#v] => %#v", addr, data)
+			log.Debug("fetched[addr=%#v] => %#v", addr, data)
 		}
 	}()
 
-	addr = Address(c.registers.PC)
+	addr = Address(c.registers.pc)
 	data, err = c.bus.readByCPU(addr)
 	if err != nil {
-		return data, fmt.Errorf("failed fetch; %w", err)
+		return data, fmt.Errorf("failed to fetch; %w", err)
 	}
 
-	c.registers.PC = c.registers.PC + 1
+	c.registers.incrementPC()
 
 	return data, nil
 }
@@ -223,7 +302,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
 
-		addr := Address(uint8(l) + uint8(c.registers.X))
+		addr := Address(uint8(l) + uint8(c.registers.x))
 		return &addr, nil
 	case IndexedZeroPageY:
 		l, err := c.fetch()
@@ -231,7 +310,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
 
-		addr := Address(uint8(l) + uint8(c.registers.Y))
+		addr := Address(uint8(l) + uint8(c.registers.y))
 		return &addr, nil
 	case IndexedAbsoluteX:
 		l, err := c.fetch()
@@ -244,7 +323,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
 
-		addr := Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.X))
+		addr := Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.x))
 
 		return &addr, nil
 	case IndexedAbsoluteY:
@@ -258,7 +337,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
 
-		addr := Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.Y))
+		addr := Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.y))
 		return &addr, nil
 	case Implied:
 		return nil, nil
@@ -268,7 +347,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
 
-		addr := Address(c.registers.PC + uint16(int8(b)))
+		addr := Address(c.registers.pc + uint16(int8(b)))
 
 		return &addr, nil
 	case IndexedIndirect:
@@ -276,7 +355,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
-		dest := Address(uint8(b) + c.registers.X)
+		dest := Address(uint8(b) + c.registers.x)
 
 		l, err := c.bus.readByCPU(dest)
 		if err != nil {
@@ -295,7 +374,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
-		dest := Address(uint8(b) + c.registers.X)
+		dest := Address(uint8(b) + c.registers.x)
 
 		h, err := c.bus.readByCPU(dest)
 		if err != nil {
@@ -307,7 +386,7 @@ func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
 			return nil, fmt.Errorf("failed to fetch operands; %w", err)
 		}
 
-		addr := Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.Y))
+		addr := Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.y))
 
 		return &addr, nil
 	case AbsoluteIndirect:
@@ -349,11 +428,9 @@ func (c *CPU) interruptNMI() {
 
 // interruptRESET ...
 func (c *CPU) interruptRESET() error {
-	log.Info("interrupt[reset]")
+	log.Info("interrupt[RESET] ...")
 
-	beforeI := c.registers.P.Interrupt
-	c.registers.P.Interrupt = true
-	log.Debug("reset[Interrupt flag] %#v => %#v", beforeI, c.registers.P.Interrupt)
+	c.registers.p.updateI(true)
 
 	l, err := c.bus.readByCPU(0xFFFC)
 	if err != nil {
@@ -365,21 +442,22 @@ func (c *CPU) interruptRESET() error {
 		return fmt.Errorf("failed reset; %w", err)
 	}
 
-	beforePC := c.registers.PC
-	c.registers.PC = (uint16(h) << 8) | uint16(l)
-	log.Debug("reset[PC] %#v => %#v", beforePC, c.registers.PC)
+	c.registers.updatePC((uint16(h) << 8) | uint16(l))
 
+	c.shouldReset = false
 	return nil
 }
 
 // interruptBRK ...
 func (c *CPU) interruptBRK() {
+	log.Info("interrupt[BRK] ...")
 	// TODO 実装
 	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#interrupt
 }
 
 // interruptIRQ ...
 func (c *CPU) interruptIRQ() {
+	log.Info("interrupt[IRQ] ...")
 	// TODO 実装
 	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#interrupt
 }
@@ -388,13 +466,14 @@ func (c *CPU) interruptIRQ() {
 func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 	var err error
 
+	log.Debug("exec[%#v][%#v] ...", mne, addr)
 	defer func() {
 		if err != nil {
-			log.Warn("exec %#v %#v => failed", mne, addr)
+			log.Warn("exec[%#v][%#v] => failed", mne, addr)
 		} else if addr == nil {
-			log.Info("exec %#v %#v => completed", mne, addr)
+			log.Info("exec[%#v][%#v] => completed", mne, addr)
 		} else {
-			log.Info("exec %#v %#v => completed", mne, *addr)
+			log.Info("exec[%#v][%#v] => completed", mne, *addr)
 		}
 	}()
 
@@ -417,8 +496,8 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
 			break
 		}
-		if !c.registers.P.Zero {
-			c.registers.PC = uint16(*addr)
+		if !c.registers.p.zero {
+			c.registers.updatePC(uint16(*addr))
 		}
 	// TODO 実装 BVC Mnemonic = "BVC"
 	// TODO 実装 BVS Mnemonic = "BVS"
@@ -430,7 +509,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
 			break
 		}
-		c.registers.PC = uint16(*addr)
+		c.registers.updatePC(uint16(*addr))
 	// TODO 実装 JSR Mnemonic = "JSR"
 	// TODO 実装 RTS Mnemonic = "RTS"
 	// TODO 実装 BRK Mnemonic = "BRK"
@@ -441,26 +520,26 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 	// TODO 実装 INC Mnemonic = "INC"
 	// TODO 実装 DEC Mnemonic = "DEC"
 	case INX:
-		c.registers.X = c.registers.X + 1
-		c.registers.P.updateN(c.registers.X)
-		c.registers.P.updateZ(c.registers.X)
+		c.registers.updateX(c.registers.x + 1)
+		c.registers.p.updateN(c.registers.x)
+		c.registers.p.updateZ(c.registers.x)
 	case DEX:
-		c.registers.X = c.registers.X - 1
-		c.registers.P.updateN(c.registers.X)
-		c.registers.P.updateZ(c.registers.X)
+		c.registers.updateX(c.registers.x - 1)
+		c.registers.p.updateN(c.registers.x)
+		c.registers.p.updateZ(c.registers.x)
 	case INY:
-		c.registers.Y = c.registers.Y + 1
-		c.registers.P.updateN(c.registers.Y)
-		c.registers.P.updateZ(c.registers.Y)
+		c.registers.updateY(c.registers.y + 1)
+		c.registers.p.updateN(c.registers.y)
+		c.registers.p.updateZ(c.registers.y)
 	case DEY:
-		c.registers.Y = c.registers.Y - 1
-		c.registers.P.updateN(c.registers.Y)
-		c.registers.P.updateZ(c.registers.Y)
+		c.registers.updateY(c.registers.y - 1)
+		c.registers.p.updateN(c.registers.y)
+		c.registers.p.updateZ(c.registers.y)
 	// TODO 実装 CLC Mnemonic = "CLC"
 	// TODO 実装 SEC Mnemonic = "SEC"
 	// TODO 実装 CLI Mnemonic = "CLI"
 	case SEI:
-		c.registers.P.Interrupt = true
+		c.registers.p.updateI(true)
 	// TODO 実装 CLD Mnemonic = "CLD"
 	// TODO 実装 SED Mnemonic = "SED"
 	// TODO 実装 CLV Mnemonic = "CLV"
@@ -476,9 +555,9 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 			break
 		}
 
-		c.registers.A = b
-		c.registers.P.updateN(c.registers.A)
-		c.registers.P.updateZ(c.registers.A)
+		c.registers.updateA(b)
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
 	case LDX:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
@@ -491,9 +570,9 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 			break
 		}
 
-		c.registers.X = b
-		c.registers.P.updateN(c.registers.X)
-		c.registers.P.updateZ(c.registers.X)
+		c.registers.updateX(b)
+		c.registers.p.updateN(c.registers.x)
+		c.registers.p.updateZ(c.registers.x)
 	case LDY:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
@@ -506,16 +585,16 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 			break
 		}
 
-		c.registers.Y = b
-		c.registers.P.updateN(c.registers.Y)
-		c.registers.P.updateZ(c.registers.Y)
+		c.registers.updateY(b)
+		c.registers.p.updateN(c.registers.y)
+		c.registers.p.updateZ(c.registers.y)
 	case STA:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
 			break
 		}
 
-		err = c.bus.writeByCPU(*addr, c.registers.A)
+		err = c.bus.writeByCPU(*addr, c.registers.a)
 		if err != nil {
 			break
 		}
@@ -527,7 +606,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 	// TODO 実装 TYA Mnemonic = "TYA"
 	// TODO 実装 TSX Mnemonic = "TSX"
 	case TXS:
-		c.registers.S = c.registers.X
+		c.registers.updateS(c.registers.x)
 	// TODO 実装 PHA Mnemonic = "PHA"
 	// TODO 実装 PLA Mnemonic = "PLA"
 	// TODO 実装 PHP Mnemonic = "PHP"
