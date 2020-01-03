@@ -15,24 +15,18 @@ type PPURegisters struct {
 	oamdata   byte // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
 	ppuscroll byte // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
 	ppuaddr   byte // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
-
-	ppuaddrWriteCount uint8   // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
-	ppuaddrBuf        Address // 組み立て中のPPUADDR
-	ppuaddrFull       Address // 組み立て済のPPUADDR
 }
 
 // NewPPURegisters ...
 func NewPPURegisters() *PPURegisters {
 	return &PPURegisters{
-		ppuctrl:           0,
-		ppumask:           0,
-		ppustatus:         0,
-		oamaddr:           0,
-		oamdata:           0,
-		ppuscroll:         0,
-		ppuaddr:           0,
-		ppuaddrWriteCount: 0,
-		ppuaddrFull:       0,
+		ppuctrl:   0,
+		ppumask:   0,
+		ppustatus: 0,
+		oamaddr:   0,
+		oamdata:   0,
+		ppuscroll: 0,
+		ppuaddr:   0,
 	}
 }
 
@@ -54,12 +48,19 @@ func (r *PPURegisters) String() string {
 type PPU struct {
 	registers *PPURegisters
 	bus       *Bus
+
+	ppuaddrWriteCount uint8   // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
+	ppuaddrBuf        Address // 組み立て中のPPUADDR
+	ppuaddrFull       Address // 組み立て済のPPUADDR
 }
 
 // NewPPU ...
 func NewPPU() *PPU {
 	return &PPU{
-		registers: NewPPURegisters(),
+		registers:         NewPPURegisters(),
+		ppuaddrWriteCount: 0,
+		ppuaddrBuf:        0,
+		ppuaddrFull:       0,
 	}
 }
 
@@ -78,13 +79,13 @@ func (p *PPU) SetBus(b *Bus) {
 
 // incrementPPUADDR
 func (p *PPU) incrementPPUADDR() {
-	old := p.registers.ppuaddrFull
+	old := p.ppuaddrFull
 	if (p.registers.ppuctrl & 0x04) == 0 {
-		p.registers.ppuaddrFull = p.registers.ppuaddrFull + 1
+		p.ppuaddrFull = p.ppuaddrFull + 1
 	} else {
-		p.registers.ppuaddrFull = p.registers.ppuaddrFull + 32
+		p.ppuaddrFull = p.ppuaddrFull + 32
 	}
-	log.Debug("PPURegisters.update[PPUADDR Full] %#v => %#v", old, p.registers.ppuaddrFull)
+	log.Debug("PPURegisters.update[PPUADDR Full] %#v => %#v", old, p.ppuaddrFull)
 }
 
 // ReadRegisters ...
@@ -124,8 +125,8 @@ func (p *PPU) ReadRegisters(addr Address) (byte, error) {
 		target = "PPUADDR"
 		err = fmt.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
 	case 7:
-		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", p.registers.ppuaddrFull)
-		data, err = p.bus.readByPPU(p.registers.ppuaddrFull)
+		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", p.ppuaddrFull)
+		data, err = p.bus.readByPPU(p.ppuaddrFull)
 		p.incrementPPUADDR()
 	default:
 		target = "-"
@@ -169,20 +170,20 @@ func (p *PPU) WriteRegisters(addr Address, data byte) error {
 		target = "PPUSCROLL"
 	case 6:
 		p.registers.ppuaddr = data
-		switch p.registers.ppuaddrWriteCount {
+		switch p.ppuaddrWriteCount {
 		case 0, 2:
-			p.registers.ppuaddrBuf = Address(p.registers.ppuaddr) << 8
-			p.registers.ppuaddrWriteCount = 1
+			p.ppuaddrBuf = Address(p.registers.ppuaddr) << 8
+			p.ppuaddrWriteCount = 1
 			target = "PPUADDR(for high 8 bits)"
 		case 1:
-			p.registers.ppuaddrBuf = p.registers.ppuaddrBuf + Address(p.registers.ppuaddr)
-			p.registers.ppuaddrFull = p.registers.ppuaddrBuf
-			p.registers.ppuaddrWriteCount = 2
+			p.ppuaddrBuf = p.ppuaddrBuf + Address(p.registers.ppuaddr)
+			p.ppuaddrFull = p.ppuaddrBuf
+			p.ppuaddrWriteCount = 2
 			target = "PPUADDR(for low 8 bits)"
 		}
 	case 7:
-		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.registers.ppuaddrFull)
-		err = p.bus.writeByPPU(p.registers.ppuaddrFull, data)
+		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.ppuaddrFull)
+		err = p.bus.writeByPPU(p.ppuaddrFull, data)
 		p.incrementPPUADDR()
 	default:
 		target = "-"
