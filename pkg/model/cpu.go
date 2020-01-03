@@ -6,32 +6,32 @@ import (
 	"github.com/canpok1/nes-go/pkg/log"
 )
 
-// Registers ...
-type Registers struct {
+// CPURegisters ...
+type CPURegisters struct {
 	a  byte
 	x  byte
 	y  byte
 	s  byte
-	p  *StatusRegister
+	p  *CPUStatusRegister
 	pc uint16
 }
 
-// NewRegisters ...
-func NewRegisters() *Registers {
+// NewCPURegisters ...
+func NewCPURegisters() *CPURegisters {
 	// initialize as CPU power up state
 	// https://wiki.nesdev.com/w/index.php/CPU_power_up_state
-	return &Registers{
+	return &CPURegisters{
 		a:  0,
 		x:  0,
 		y:  0,
 		s:  0xFD,
-		p:  NewStatusRegister(),
+		p:  NewCPUStatusRegister(),
 		pc: 0,
 	}
 }
 
 // String ...
-func (r *Registers) String() string {
+func (r *CPURegisters) String() string {
 	return fmt.Sprintf(
 		"{A:%#v, X:%#v, Y:%#v, S:%#v, P:%v, PC:%#v}",
 		r.a,
@@ -45,48 +45,48 @@ func (r *Registers) String() string {
 }
 
 // updateA ...
-func (r *Registers) updateA(a byte) {
+func (r *CPURegisters) updateA(a byte) {
 	old := r.a
 	r.a = a
 	log.Debug("CPU.update[A] %#v => %#v", old, r.a)
 }
 
 // updateX ...
-func (r *Registers) updateX(x byte) {
+func (r *CPURegisters) updateX(x byte) {
 	old := r.x
 	r.x = x
 	log.Debug("CPU.update[X] %#v => %#v", old, r.x)
 }
 
 // updateY ...
-func (r *Registers) updateY(y byte) {
+func (r *CPURegisters) updateY(y byte) {
 	old := r.y
 	r.y = y
 	log.Debug("CPU.update[Y] %#v => %#v", old, r.y)
 }
 
 // updateS ...
-func (r *Registers) updateS(s byte) {
+func (r *CPURegisters) updateS(s byte) {
 	old := r.s
 	r.s = s
 	log.Debug("CPU.update[S] %#v => %#v", old, r.s)
 }
 
 // incrementPC ...
-func (r *Registers) incrementPC() {
+func (r *CPURegisters) incrementPC() {
 	r.updatePC(r.pc + 1)
 }
 
 // updatePC ...
-func (r *Registers) updatePC(pc uint16) {
+func (r *CPURegisters) updatePC(pc uint16) {
 	old := r.pc
 	r.pc = pc
 	log.Debug("CPU.update[PC] %#v => %#v", old, r.pc)
 }
 
-// StatusRegister ...
+// CPUStatusRegister ...
 // https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9%E3%83%AC%E3%82%B8%E3%82%B9%E3%82%BF
-type StatusRegister struct {
+type CPUStatusRegister struct {
 	negative    bool // bit7	N	ネガティブ	演算結果のbit7が1の時にセット
 	overflow    bool // bit6	V	オーバーフロー	P演算結果がオーバーフローを起こした時にセット
 	reserved    bool // bit5	R	予約済み	常にセットされている
@@ -97,9 +97,9 @@ type StatusRegister struct {
 	carry       bool // bit0	C	キャリー	キャリー発生時にセット
 }
 
-// NewStatusRegister ...
-func NewStatusRegister() *StatusRegister {
-	return &StatusRegister{
+// NewCPUStatusRegister ...
+func NewCPUStatusRegister() *CPUStatusRegister {
+	return &CPUStatusRegister{
 		negative:    false,
 		overflow:    false,
 		reserved:    true,
@@ -112,7 +112,7 @@ func NewStatusRegister() *StatusRegister {
 }
 
 // String ...
-func (s *StatusRegister) String() string {
+func (s *CPUStatusRegister) String() string {
 	return fmt.Sprintf(
 		"{N:%#v, V:%#v, R:%#v, B:%#v, D:%#v, I:%#v, Z:%#v, C:%#v}",
 		s.negative,
@@ -127,21 +127,21 @@ func (s *StatusRegister) String() string {
 }
 
 // updateN ...
-func (s *StatusRegister) updateN(result byte) {
+func (s *CPUStatusRegister) updateN(result byte) {
 	old := s.negative
 	s.negative = ((result & 0x80) == 0x80)
 	log.Debug("CPU.update[N] %#v => %#v", old, s.negative)
 }
 
 // updateI ...
-func (s *StatusRegister) updateI(i bool) {
+func (s *CPUStatusRegister) updateI(i bool) {
 	old := s.interrupt
 	s.interrupt = i
 	log.Debug("CPU.update[I] %#v => %#v", old, s.interrupt)
 }
 
 // updateZ ...
-func (s *StatusRegister) updateZ(result byte) {
+func (s *CPUStatusRegister) updateZ(result byte) {
 	old := s.zero
 	s.zero = (result == 0x00)
 	log.Debug("CPU.update[Z] %#v => %#v", old, s.zero)
@@ -149,7 +149,7 @@ func (s *StatusRegister) updateZ(result byte) {
 
 // CPU ...
 type CPU struct {
-	registers   *Registers
+	registers   *CPURegisters
 	bus         *Bus
 	shouldReset bool
 }
@@ -157,7 +157,7 @@ type CPU struct {
 // NewCPU ...
 func NewCPU() *CPU {
 	return &CPU{
-		registers:   NewRegisters(),
+		registers:   NewCPURegisters(),
 		shouldReset: true,
 	}
 }
