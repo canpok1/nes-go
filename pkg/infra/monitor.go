@@ -42,8 +42,8 @@ func (m *Monitor) Run() error {
 	return ebiten.Run(m.update, m.height, m.width, m.scale, m.title)
 }
 
-// SetPixels ...
-func (m *Monitor) SetPixels(p []byte) error {
+// Render ...
+func (m *Monitor) Render(p []byte) error {
 	m.pixels = p
 	return nil
 }

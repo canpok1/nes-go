@@ -44,7 +44,7 @@ func main() {
 			for i := range pixels {
 				pixels[i] = color
 			}
-			if err := m.SetPixels(pixels); err != nil {
+			if err := m.Render(pixels); err != nil {
 				log.Fatal("error: %v", err)
 				break
 			}
