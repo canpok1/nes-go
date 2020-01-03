@@ -61,19 +61,19 @@ func (r *PPURegisters) Read(addr Address) (byte, error) {
 
 	switch addr {
 	case 0:
-		data = r.ppuctrl
+		err = fmt.Errorf("failed to read, PPURegister[PPUCTRL] is write only; addr: %#v", addr)
 	case 1:
-		data = r.ppumask
+		err = fmt.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
 	case 2:
 		data = r.ppustatus
 	case 3:
-		data = r.oamaddr
+		err = fmt.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
 	case 4:
 		data = r.oamdata
 	case 5:
-		data = r.ppuscroll
+		err = fmt.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
 	case 6:
-		data = r.ppuaddr
+		err = fmt.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
 	case 7:
 		data = r.ppudata
 	default:
@@ -100,7 +100,7 @@ func (r *PPURegisters) Write(addr Address, data byte) error {
 	case 1:
 		r.ppumask = data
 	case 2:
-		r.ppustatus = data
+		err = fmt.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
 	case 3:
 		r.oamaddr = data
 	case 4:
