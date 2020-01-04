@@ -6,6 +6,22 @@ import (
 	"github.com/canpok1/nes-go/pkg/log"
 )
 
+// Palette ...
+type Palette []byte
+
+// NewPalette ...
+func NewPalette() *Palette {
+	p := Palette(make([]byte, 4))
+	return &p
+}
+
+// GetColor ...
+func (p *Palette) GetColor(no uint8) (uint8, uint8, uint8) {
+	index := (*p)[no]
+	c := colors[index]
+	return c[0], c[1], c[2]
+}
+
 // Bus ...
 type Bus struct {
 	wram       []byte
@@ -17,23 +33,37 @@ type Bus struct {
 
 	ppu *PPU
 
-	charactorROM *CHRROM
-	nameTable0   []byte
-	nameTable1   []byte
-	nameTable2   []byte
-	nameTable3   []byte
-	paletteRAM   []byte
+	charactorROM      *CHRROM
+	nameTable0        []byte
+	nameTable1        []byte
+	nameTable2        []byte
+	nameTable3        []byte
+	backgroundPalette []Palette
+	spritePalette     []Palette
 
 	setupped bool
 }
 
 // NewBus ...
 func NewBus() *Bus {
+	bp := []Palette{}
+	sp := []Palette{}
+	for i := 0; i < 4; i++ {
+		newBP := NewPalette()
+		newSP := NewPalette()
+		bp := append(bp, *newBP)
+		sp := append(sp, *newSP)
+	}
+
 	return &Bus{
-		wram:     make([]byte, 0x0800),
-		io:       make([]byte, 0x0020),
-		exrom:    make([]byte, 0x1FE0),
-		exram:    make([]byte, 0x2000),
+		wram:  make([]byte, 0x0800),
+		io:    make([]byte, 0x0020),
+		exrom: make([]byte, 0x1FE0),
+		exram: make([]byte, 0x2000),
+
+		backgroundPalette: bp,
+		spritePalette:     sp,
+
 		setupped: false,
 	}
 }
@@ -294,4 +324,19 @@ func (b *Bus) writeByPPU(addr Address, data byte) error {
 	// 0x3F20～0x3FFF	-	0x3F00-0x3F1Fのミラー
 
 	return err
+}
+
+// GetSprite ...
+func (b *Bus) GetSprite(no uint8) *Sprite {
+	return b.charactorROM.GetSprite(no)
+}
+
+// GetBackgroundPalette ...
+func (b *Bus) GetBackgroundPalette(no uint8) *Palette {
+	return &b.backgroundPalette[no]
+}
+
+// GetSpritePalette ...
+func (b *Bus) GetSpritePalette(no uint8) *Palette {
+	return &b.spritePalette[no]
 }

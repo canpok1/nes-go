@@ -15,11 +15,22 @@ type INESHeader struct {
 	CHRROMSize uint8 // 5: Size of CHR ROM in 8 KB units (Value 0 means the board uses CHR RAM)
 }
 
+// Sprite ...
+type Sprite []byte
+
 // PRGROM ...
 type PRGROM []byte
 
 // CHRROM ...
 type CHRROM []byte
+
+// GetSprite ...
+func (c *CHRROM) GetSprite(no uint8) *Sprite {
+	begin := no * 0x0010
+	end := begin + 0x000F + 1
+	s := Sprite((*c)[begin:end])
+	return &s
+}
 
 // ROM ...
 type ROM struct {
