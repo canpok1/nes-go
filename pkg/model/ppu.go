@@ -282,5 +282,9 @@ func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
 		}
 	}
 
-	return p.spriteImages, nil
+	if p.drawingPoint.X == ResolutionWidth-1 && p.drawingPoint.Y == ResolutionHeight-1 {
+		return p.spriteImages, nil
+	} else {
+		return nil, nil
+	}
 }
