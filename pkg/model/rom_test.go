@@ -87,6 +87,122 @@ func TestFetchROM(t *testing.T) {
 	}
 }
 
+func TestSpriteToColorMap(t *testing.T) {
+	tests := []struct {
+		name   string
+		sprite Sprite
+		want   [][]byte
+	}{
+		{
+			name: "when sprite is all 0, return all 0 colorMap",
+			sprite: Sprite([]byte{
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+				0x00, // 0b 0000 0000
+			}),
+			want: [][]byte{
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+			},
+		},
+		{
+			name: "when sprite is all 0xFF, return all 3 colorMap",
+			sprite: Sprite([]byte{
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+			}),
+			want: [][]byte{
+				{3, 3, 3, 3, 3, 3, 3, 3},
+				{3, 3, 3, 3, 3, 3, 3, 3},
+				{3, 3, 3, 3, 3, 3, 3, 3},
+				{3, 3, 3, 3, 3, 3, 3, 3},
+				{3, 3, 3, 3, 3, 3, 3, 3},
+				{3, 3, 3, 3, 3, 3, 3, 3},
+				{3, 3, 3, 3, 3, 3, 3, 3},
+				{3, 3, 3, 3, 3, 3, 3, 3},
+			},
+		},
+		{
+			// このページのパターンでテスト
+			// https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E3%82%AD%E3%83%A3%E3%83%A9%E3%82%AF%E3%82%BF%E3%83%BCrom
+			name: "when sprite is hert pattern, return hert pattern colorMap",
+			sprite: Sprite([]byte{
+				0x66, // 0b 0110 0110
+				0x7F, // 0b 0111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0x7E, // 0b 0111 1110
+				0x3C, // 0b 0011 1100
+				0x18, // 0b 0001 1000
+
+				0x66, // 0b 0110 0110
+				0x5F, // 0b 0101 1111
+				0xBF, // 0b 1011 1111
+				0xBF, // 0b 1011 1111
+				0xFF, // 0b 1111 1111
+				0x7E, // 0b 0111 1110
+				0x3C, // 0b 0011 1100
+				0x18, // 0b 0001 1000
+			}),
+			want: [][]byte{
+				{0, 3, 3, 0, 0, 3, 3, 0},
+				{0, 3, 1, 3, 3, 3, 3, 3},
+				{3, 1, 3, 3, 3, 3, 3, 3},
+				{3, 1, 3, 3, 3, 3, 3, 3},
+				{3, 3, 3, 3, 3, 3, 3, 3},
+				{0, 3, 3, 3, 3, 3, 3, 0},
+				{0, 0, 3, 3, 3, 3, 0, 0},
+				{0, 0, 0, 3, 3, 0, 0, 0},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.sprite.toColorMap()
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("wrong output\nsprite: %#v\ngot: %#v\nwant: %#v", tt.sprite, got, tt.want)
+			}
+		})
+	}
+}
+
 func openROM(p string) ([]byte, error) {
 	f, err := os.Open(p)
 	if err != nil {
