@@ -35,9 +35,13 @@ type Bus struct {
 
 	charactorROM      *CHRROM
 	nameTable0        []byte
+	attributeTable0   []byte
 	nameTable1        []byte
+	attributeTable1   []byte
 	nameTable2        []byte
+	attributeTable2   []byte
 	nameTable3        []byte
+	attributeTable3   []byte
 	backgroundPalette []Palette
 	spritePalette     []Palette
 
@@ -51,8 +55,8 @@ func NewBus() *Bus {
 	for i := 0; i < 4; i++ {
 		newBP := NewPalette()
 		newSP := NewPalette()
-		bp := append(bp, *newBP)
-		sp := append(sp, *newSP)
+		bp = append(bp, *newBP)
+		sp = append(sp, *newSP)
 	}
 
 	return &Bus{
@@ -60,6 +64,15 @@ func NewBus() *Bus {
 		io:    make([]byte, 0x0020),
 		exrom: make([]byte, 0x1FE0),
 		exram: make([]byte, 0x2000),
+
+		nameTable0:      make([]byte, 0x03C0),
+		attributeTable0: make([]byte, 0x0040),
+		nameTable1:      make([]byte, 0x03C0),
+		attributeTable1: make([]byte, 0x0040),
+		nameTable2:      make([]byte, 0x03C0),
+		attributeTable2: make([]byte, 0x0040),
+		nameTable3:      make([]byte, 0x03C0),
+		attributeTable3: make([]byte, 0x0040),
 
 		backgroundPalette: bp,
 		spritePalette:     sp,
@@ -326,9 +339,69 @@ func (b *Bus) writeByPPU(addr Address, data byte) error {
 	return err
 }
 
+// GetSpriteNo ...
+func (b *Bus) GetSpriteNo(x MonitorX, y MonitorY) (no uint8, err error) {
+	log.Debug("Bus.GetSpriteNo[(x,y)=(%v,%v)] ...", x, y)
+	defer func() {
+		if err != nil {
+			log.Warn("Bus.GetSpriteNo[(x,y)=(%v,%v)] => %#v", x, y, err)
+		} else {
+			log.Warn("Bus.GetSpriteNo[(x,y)=(%v,%v)] => %#v", x, y, no)
+		}
+	}()
+
+	if err = x.Validate(); err != nil {
+		return
+	}
+	if err = y.Validate(); err != nil {
+		return
+	}
+
+	nameTblX := x / 8
+	nameTblY := y / 8
+	nameTblIndex := uint32(nameTblY)*0x20 + uint32(nameTblX)
+
+	no = b.nameTable0[nameTblIndex]
+
+	return
+}
+
 // GetSprite ...
 func (b *Bus) GetSprite(no uint8) *Sprite {
 	return b.charactorROM.GetSprite(no)
+}
+
+// GetPaletteNo ...
+func (b *Bus) GetPaletteNo(x MonitorX, y MonitorY) (no uint8, err error) {
+	log.Debug("Bus.GetPaletteNo[(x,y)=(%v,%v)] ...", x, y)
+	defer func() {
+		if err != nil {
+			log.Debug("Bus.GetPaletteNo[(x,y)=(%v,%v)] => %#v", x, y, err)
+		} else {
+			log.Debug("Bus.GetPaletteNo[(x,y)=(%v,%v)] => %#v", x, y, no)
+		}
+	}()
+
+	if err = x.Validate(); err != nil {
+		return
+	}
+	if err = y.Validate(); err != nil {
+		return
+	}
+
+	attrTblX := x / 8
+	attrTblY := y / 8
+	attrTblIndex := uint32(attrTblY)*0x10 + uint32(attrTblX)
+
+	attribute := b.attributeTable0[attrTblIndex]
+
+	attributeX := (x % 32) / 16
+	attributeY := (y % 32) / 16
+	attributeIndex := uint32(attributeY)*0x02 + uint32(attributeX)
+
+	no = (attribute & (0x03 << attributeIndex)) >> attributeIndex
+
+	return
 }
 
 // GetBackgroundPalette ...
