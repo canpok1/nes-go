@@ -51,8 +51,9 @@ func (s Sprite) ToSpriteImage(p *Palette) *SpriteImage {
 		r[y] = make([]byte, SpriteWidth)
 		g[y] = make([]byte, SpriteWidth)
 		b[y] = make([]byte, SpriteWidth)
-		for x, colorIndex := range line {
-			c := colors[colorIndex]
+		for x, paletteNo := range line {
+			cIndex := (*p)[paletteNo]
+			c := colors[cIndex]
 			r[y][x] = c[0]
 			g[y][x] = c[1]
 			b[y][x] = c[2]
