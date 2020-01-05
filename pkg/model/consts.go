@@ -271,6 +271,10 @@ const (
 	ResolutionWidth = 256
 	// ResolutionHeight ... 解像度(縦)
 	ResolutionHeight = 240
+	// SpriteWidth ... スプライトサイズ（横）
+	SpriteWidth = 8
+	// SpriteHeight ... スプライトサイズ（横）
+	SpriteHeight = 8
 )
 
 var colors = [][]byte{
