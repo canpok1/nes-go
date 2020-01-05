@@ -35,6 +35,8 @@ func (s Sprite) toColorMap() [][]byte {
 		}
 	}
 
+	log.Debug("Sprite.toColorMap => %#v", colorMap)
+
 	return colorMap
 }
 
