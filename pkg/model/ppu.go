@@ -234,7 +234,17 @@ func (p *PPU) updateDrawingPoint() {
 }
 
 // Run ...
-func (p *PPU) Run() ([][]SpriteImage, error) {
+func (p *PPU) Run(cycle int) (si [][]SpriteImage, err error) {
+	for i := 0; i < cycle; i++ {
+		if si, err = p.Run1Cycle(); err != nil {
+			return
+		}
+	}
+	return
+}
+
+// Run1Cycle ...
+func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
 	log.Debug("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
 
 	defer p.updateDrawingPoint()

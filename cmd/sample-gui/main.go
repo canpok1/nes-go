@@ -58,13 +58,13 @@ func main() {
 
 	go func() {
 		for {
-			err := cpu.Run()
+			cycle, err := cpu.Run()
 			if err != nil {
 				log.Fatal("error: %v", err)
 				break
 			}
 
-			imgs, err := ppu.Run()
+			imgs, err := ppu.Run(cycle * 3)
 			if err != nil {
 				log.Fatal("error: %v", err)
 				break

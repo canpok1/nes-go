@@ -176,45 +176,45 @@ func (c *CPU) SetBus(b *Bus) {
 }
 
 // Run ...
-func (c *CPU) Run() error {
+func (c *CPU) Run() (int, error) {
 	log.Debug("===== CPU RUN =====")
 	log.Debug(c.String())
 
 	if c.bus == nil {
-		return fmt.Errorf("failed to run, bus is nil")
+		return 0, fmt.Errorf("failed to run, bus is nil")
 	}
 
 	if c.shouldReset {
 		if err := c.interruptRESET(); err != nil {
-			return fmt.Errorf("%w", err)
+			return 0, fmt.Errorf("%w", err)
 		}
-		return nil
+		return 0, nil
 	}
 
 	// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
 	oc, err := c.fetchOpcode()
 	if err != nil {
-		return fmt.Errorf("%w", err)
+		return 0, fmt.Errorf("%w", err)
 	}
 
 	// 命令とアドレッシング・モードを判別
 	ocp, err := decodeOpcode(oc)
 	if err != nil {
-		return fmt.Errorf("%w", err)
+		return 0, fmt.Errorf("%w", err)
 	}
 
 	// （必要であれば）オペランドをフェッチ（PCをインクリメント）
 	addr, err := c.makeAddress(ocp.AddressingMode)
 	if err != nil {
-		return fmt.Errorf("%w", err)
+		return 0, fmt.Errorf("%w", err)
 	}
 
 	// 命令を実行
 	if err := c.exec(ocp.Mnemonic, addr); err != nil {
-		return fmt.Errorf("%w", err)
+		return 0, fmt.Errorf("%w", err)
 	}
 
-	return nil
+	return ocp.Cycle, nil
 }
 
 // decodeOpcode ...
@@ -462,9 +462,7 @@ func (c *CPU) interruptIRQ() {
 }
 
 // exec ...
-func (c *CPU) exec(mne Mnemonic, addr *Address) error {
-	var err error
-
+func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
 	log.Debug("CPU.exec[%#v][%#v] ...", mne, addr)
 	defer func() {
 		if err != nil {
@@ -493,11 +491,12 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 	case BNE:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			break
+			return
 		}
 		if !c.registers.p.zero {
 			c.registers.updatePC(uint16(*addr))
 		}
+		return
 	// TODO 実装 BVC Mnemonic = "BVC"
 	// TODO 実装 BVS Mnemonic = "BVS"
 	// TODO 実装 BPL Mnemonic = "BPL"
@@ -506,9 +505,10 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 	case JMP:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			break
+			return
 		}
 		c.registers.updatePC(uint16(*addr))
+		return
 	// TODO 実装 JSR Mnemonic = "JSR"
 	// TODO 実装 RTS Mnemonic = "RTS"
 	// TODO 実装 BRK Mnemonic = "BRK"
@@ -522,81 +522,90 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 		c.registers.updateX(c.registers.x + 1)
 		c.registers.p.updateN(c.registers.x)
 		c.registers.p.updateZ(c.registers.x)
+		return
 	case DEX:
 		c.registers.updateX(c.registers.x - 1)
 		c.registers.p.updateN(c.registers.x)
 		c.registers.p.updateZ(c.registers.x)
+		return
 	case INY:
 		c.registers.updateY(c.registers.y + 1)
 		c.registers.p.updateN(c.registers.y)
 		c.registers.p.updateZ(c.registers.y)
+		return
 	case DEY:
 		c.registers.updateY(c.registers.y - 1)
 		c.registers.p.updateN(c.registers.y)
 		c.registers.p.updateZ(c.registers.y)
+		return
 	// TODO 実装 CLC Mnemonic = "CLC"
 	// TODO 実装 SEC Mnemonic = "SEC"
 	// TODO 実装 CLI Mnemonic = "CLI"
 	case SEI:
 		c.registers.p.updateI(true)
+		return
 	// TODO 実装 CLD Mnemonic = "CLD"
 	// TODO 実装 SED Mnemonic = "SED"
 	// TODO 実装 CLV Mnemonic = "CLV"
 	case LDA:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			break
+			return
 		}
 
 		var b byte
 		b, err = c.bus.readByCPU(*addr)
 		if err != nil {
-			break
+			return
 		}
 
 		c.registers.updateA(b)
 		c.registers.p.updateN(c.registers.a)
 		c.registers.p.updateZ(c.registers.a)
+		return
 	case LDX:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			break
+			return
 		}
 
 		var b byte
 		b, err = c.bus.readByCPU(*addr)
 		if err != nil {
-			break
+			return
 		}
 
 		c.registers.updateX(b)
 		c.registers.p.updateN(c.registers.x)
 		c.registers.p.updateZ(c.registers.x)
+		return
 	case LDY:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			break
+			return
 		}
 
 		var b byte
 		b, err = c.bus.readByCPU(*addr)
 		if err != nil {
-			break
+			return
 		}
 
 		c.registers.updateY(b)
 		c.registers.p.updateN(c.registers.y)
 		c.registers.p.updateZ(c.registers.y)
+		return
 	case STA:
 		if addr == nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			break
+			return
 		}
 
 		err = c.bus.writeByCPU(*addr, c.registers.a)
 		if err != nil {
-			break
+			return
 		}
+		return
 	// TODO 実装 STX Mnemonic = "STX"
 	// TODO 実装 STY Mnemonic = "STY"
 	// TODO 実装 TAX Mnemonic = "TAX"
@@ -606,6 +615,7 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 	// TODO 実装 TSX Mnemonic = "TSX"
 	case TXS:
 		c.registers.updateS(c.registers.x)
+		return
 	// TODO 実装 PHA Mnemonic = "PHA"
 	// TODO 実装 PLA Mnemonic = "PLA"
 	// TODO 実装 PHP Mnemonic = "PHP"
@@ -613,7 +623,6 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) error {
 	// TODO 実装 NOP Mnemonic = "NOP"
 	default:
 		err = fmt.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", mne)
+		return
 	}
-
-	return err
 }
