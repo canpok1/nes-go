@@ -70,10 +70,12 @@ func main() {
 				break
 			}
 
-			err = m.Render(imgs)
-			if err != nil {
-				log.Fatal("error: %v", err)
-				break
+			if imgs != nil {
+				err = m.Render(imgs)
+				if err != nil {
+					log.Fatal("error: %v", err)
+					break
+				}
 			}
 
 			time.Sleep(time.Millisecond * 100)

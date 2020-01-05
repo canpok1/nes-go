@@ -239,12 +239,18 @@ func (p *PPU) Run() ([][]SpriteImage, error) {
 
 	defer p.updateDrawingPoint()
 
+	if p.drawingPoint.X >= ResolutionWidth {
+		return nil, nil
+	}
+	if p.drawingPoint.Y >= ResolutionHeight {
+		return nil, nil
+	}
+
 	// 8ライン単位で書き込む
-	shouldDrawline := (p.drawingPoint.X == 255) && (p.drawingPoint.Y%8 == 7)
+	shouldDrawline := (p.drawingPoint.X == ResolutionWidth-1) && (p.drawingPoint.Y%8 == 7)
 	if shouldDrawline {
 		y := p.drawingPoint.Y
-		for x := 0x00; x <= 0xFF; x = x + 0x10 {
-
+		for x := 0; x < ResolutionWidth; x = x + SpriteWidth {
 			spriteNo, err := p.bus.GetSpriteNo(MonitorX(x), MonitorY(y))
 			if err != nil {
 				return nil, err

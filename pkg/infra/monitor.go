@@ -2,10 +2,11 @@ package infra
 
 import (
 	"fmt"
-	"image/color"
 	"nes-go/pkg/model"
+	"time"
 
 	"github.com/hajimehoshi/ebiten"
+	"github.com/hajimehoshi/ebiten/ebitenutil"
 )
 
 // Monitor ...
@@ -15,6 +16,9 @@ type Monitor struct {
 	scale    float64
 	title    string
 	imageBuf *ebiten.Image
+
+	lastRenderedTime time.Time
+	fps              float64
 }
 
 // NewMonitor ...
@@ -40,6 +44,7 @@ func (m *Monitor) update(screen *ebiten.Image) error {
 	}
 
 	screen.DrawImage(m.imageBuf, nil)
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %v", m.fps))
 
 	return nil
 }
@@ -50,41 +55,47 @@ func (m *Monitor) Run() error {
 }
 
 // Render ...
-func (m *Monitor) Render(ss [][]model.SpriteImage) error {
-	for y, simgs := range ss {
-		for x, simg := range simgs {
-			img, err := makeImage(&simg)
-			if err != nil {
-				return fmt.Errorf("failed to render; err: %w", err)
-			}
+func (m *Monitor) Render(sis [][]model.SpriteImage) error {
+	p := toPixels(sis)
+	m.imageBuf.ReplacePixels(p)
 
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(x), float64(y))
-
-			m.imageBuf.DrawImage(img, op)
-		}
-	}
+	m.fps = 1 / time.Since(m.lastRenderedTime).Seconds()
+	m.lastRenderedTime = time.Now()
 
 	return nil
 }
 
-// makeImage ...
-func makeImage(si *model.SpriteImage) (*ebiten.Image, error) {
-	img, err := ebiten.NewImage(model.SpriteWidth, model.SpriteHeight, ebiten.FilterDefault)
-	if err != nil {
-		return nil, fmt.Errorf("failed to makeImage; err: %w", err)
-	}
+// toPixels ...
+func toPixels(sis [][]model.SpriteImage) []byte {
+	pixels := make([]byte, 4*model.ResolutionHeight*model.ResolutionWidth)
 
-	for y := 0; y < model.SpriteHeight; y++ {
-		for x := 0; x < model.SpriteWidth; x++ {
-			img.Set(x, y, color.NRGBA{
-				R: si.R[y][x],
-				G: si.G[y][x],
-				B: si.B[y][x],
-				A: 0xFF,
-			})
+	idx := 0
+	for y := 0; y < model.ResolutionHeight; y++ {
+		for x := 0; x < model.ResolutionWidth; x++ {
+			r, g, b, a := getPixel(sis, model.MonitorX(x), model.MonitorY(y))
+
+			pixels[idx] = r
+			idx++
+
+			pixels[idx] = g
+			idx++
+
+			pixels[idx] = b
+			idx++
+
+			pixels[idx] = a
+			idx++
 		}
 	}
 
-	return img, nil
+	return pixels
+}
+
+func getPixel(sis [][]model.SpriteImage, x model.MonitorX, y model.MonitorY) (r, g, b, a byte) {
+	s := sis[y/model.SpriteHeight][x/model.SpriteWidth]
+
+	iy := y % model.SpriteHeight
+	ix := x % model.SpriteWidth
+
+	return s.R[iy][ix], s.G[iy][ix], s.B[iy][ix], 0xFF
 }
