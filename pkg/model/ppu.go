@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"image"
 
 	"github.com/canpok1/nes-go/pkg/log"
 )
@@ -52,16 +53,32 @@ type PPU struct {
 	ppuaddrWriteCount uint8   // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
 	ppuaddrBuf        Address // 組み立て中のPPUADDR
 	ppuaddrFull       Address // 組み立て済のPPUADDR
+
+	spriteImages [][]SpriteImage
+
+	drawingPoint *image.Point
 }
 
 // NewPPU ...
-func NewPPU() *PPU {
+func NewPPU() (*PPU, error) {
+	sizeY := ResolutionHeight / SpriteHeight
+	sizeX := ResolutionWidth / SpriteWidth
+	spriteImages := make([][]SpriteImage, sizeY)
+	for y := 0; y < sizeY; y++ {
+		spriteImages[y] = make([]SpriteImage, sizeX)
+		for x := 0; x < sizeX; x++ {
+			spriteImages[y][x] = *NewSpriteImage()
+		}
+	}
+
 	return &PPU{
 		registers:         NewPPURegisters(),
 		ppuaddrWriteCount: 0,
 		ppuaddrBuf:        0,
 		ppuaddrFull:       0,
-	}
+		spriteImages:      spriteImages,
+		drawingPoint:      &image.Point{0, 0},
+	}, nil
 }
 
 // String ...
@@ -86,6 +103,15 @@ func (p *PPU) incrementPPUADDR() {
 		p.ppuaddrFull = p.ppuaddrFull + 32
 	}
 	log.Debug("PPURegisters.update[PPUADDR Full] %#v => %#v", old, p.ppuaddrFull)
+}
+
+// flatten ...
+func flatten(org [][]byte) []byte {
+	flat := []byte{}
+	for _, o := range org {
+		flat = append(flat, o...)
+	}
+	return flat
 }
 
 // ReadRegisters ...
@@ -193,14 +219,52 @@ func (p *PPU) WriteRegisters(addr Address, data byte) error {
 	return err
 }
 
-// Run ...
-func (p *PPU) Run() ([]byte, error) {
-	// TODO 実装
-	// 動作確認のためのサンプルコード
-	size := 4 * ResolutionWidth * ResolutionHeight
-	pixels := make([]byte, size)
-	for i := range pixels {
-		pixels[i] = 0x99
+// updateDrawingPoint ...
+func (p *PPU) updateDrawingPoint() {
+	// 1ライン描画は341クロック
+	// 1画面は262ライン
+	p.drawingPoint.X = p.drawingPoint.X + 1
+	if p.drawingPoint.X >= 341 {
+		p.drawingPoint.X = 0
+		p.drawingPoint.Y = p.drawingPoint.Y + 1
+		if p.drawingPoint.Y >= 262 {
+			p.drawingPoint.Y = 0
+		}
 	}
-	return pixels, nil
+}
+
+// Run ...
+func (p *PPU) Run() ([][]SpriteImage, error) {
+	log.Debug("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
+
+	defer p.updateDrawingPoint()
+
+	// 8ライン単位で書き込む
+	shouldDrawline := (p.drawingPoint.X == 255) && (p.drawingPoint.Y%8 == 7)
+	if shouldDrawline {
+		y := p.drawingPoint.Y
+		for x := 0x00; x <= 0xFF; x = x + 0x10 {
+
+			spriteNo, err := p.bus.GetSpriteNo(MonitorX(x), MonitorY(y))
+			if err != nil {
+				return nil, err
+			}
+
+			paletteNo, err := p.bus.GetPaletteNo(MonitorX(x), MonitorY(y))
+			if err != nil {
+				return nil, err
+			}
+
+			sprite := p.bus.GetSprite(spriteNo)
+			palette := p.bus.GetSpritePalette(paletteNo)
+
+			// 書き込む
+			ix := x / SpriteWidth
+			iy := y / SpriteHeight
+			si := sprite.ToSpriteImage(palette)
+			p.spriteImages[iy][ix] = *si
+		}
+	}
+
+	return p.spriteImages, nil
 }

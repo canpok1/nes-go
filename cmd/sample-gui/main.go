@@ -36,19 +36,25 @@ func main() {
 
 	bus := model.NewBus()
 	cpu := model.NewCPU()
-	ppu := model.NewPPU()
+	ppu, err := model.NewPPU()
+	if err != nil {
+		return
+	}
 
 	bus.Setup(rom, ppu)
 
 	cpu.SetBus(bus)
 	ppu.SetBus(bus)
 
-	m := infra.NewMonitor(
+	m, err := infra.NewMonitor(
 		model.ResolutionWidth,
 		model.ResolutionHeight,
 		2,
 		"nes-go",
 	)
+	if err != nil {
+		return
+	}
 
 	go func() {
 		for {
@@ -58,13 +64,13 @@ func main() {
 				break
 			}
 
-			p, err := ppu.Run()
+			imgs, err := ppu.Run()
 			if err != nil {
 				log.Fatal("error: %v", err)
 				break
 			}
 
-			err = m.Render(p)
+			err = m.Render(imgs)
 			if err != nil {
 				log.Fatal("error: %v", err)
 				break

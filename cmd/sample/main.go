@@ -31,7 +31,10 @@ func main() {
 
 	bus := model.NewBus()
 	cpu := model.NewCPU()
-	ppu := model.NewPPU()
+	ppu, err := model.NewPPU()
+	if err != nil {
+		return
+	}
 
 	bus.Setup(rom, ppu)
 
