@@ -272,7 +272,7 @@ func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
 			}
 
 			sprite := p.bus.GetSprite(spriteNo)
-			palette := p.bus.GetSpritePalette(paletteNo)
+			palette := p.bus.GetBackgroundPalette(paletteNo)
 
 			// 書き込む
 			ix := x / SpriteWidth
