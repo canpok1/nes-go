@@ -185,7 +185,7 @@ func (b *Bus) writeByCPU(addr Address, data byte) error {
 	log.Debug("Bus.writeByCPU[addr=%#v] (<=%#v) ...", addr, data)
 	defer func() {
 		if err != nil {
-			log.Debug("Bus.writeByCPU[addr=%#v] => %#v", addr, err)
+			log.Warn("Bus.writeByCPU[addr=%#v] => %#v", addr, err)
 		} else {
 			log.Debug("Bus.writeByCPU[addr=%#v][%v] <= %#v", addr, target, data)
 		}
