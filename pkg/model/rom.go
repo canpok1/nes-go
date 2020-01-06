@@ -100,7 +100,7 @@ type CHRROM []byte
 
 // GetSprite ...
 func (c *CHRROM) GetSprite(no uint8) *Sprite {
-	begin := no * 0x0010
+	begin := uint16(no) * 0x0010
 	end := begin + 0x000F + 1
 	s := Sprite((*c)[begin:end])
 	return &s
