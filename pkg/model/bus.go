@@ -95,12 +95,12 @@ func (b *Bus) readByCPU(addr Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
-	log.Debug("Bus.readByCPU[addr=%#v] ...", addr)
+	log.Trace("Bus.readByCPU[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Debug("Bus.readByCPU[addr=%#v] => %#v", addr, err)
+			log.Warn("Bus.readByCPU[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Debug("Bus.readByCPU[addr=%#v][%v] => %#v", addr, target, data)
+			log.Trace("Bus.readByCPU[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 
@@ -182,12 +182,12 @@ func (b *Bus) readByCPU(addr Address) (byte, error) {
 func (b *Bus) writeByCPU(addr Address, data byte) error {
 	var err error
 	var target string
-	log.Debug("Bus.writeByCPU[addr=%#v] (<=%#v) ...", addr, data)
+	log.Trace("Bus.writeByCPU[addr=%#v] (<=%#v) ...", addr, data)
 	defer func() {
 		if err != nil {
 			log.Warn("Bus.writeByCPU[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Debug("Bus.writeByCPU[addr=%#v][%v] <= %#v", addr, target, data)
+			log.Trace("Bus.writeByCPU[addr=%#v][%v] <= %#v", addr, target, data)
 		}
 	}()
 
@@ -259,12 +259,12 @@ func (b *Bus) writeByCPU(addr Address, data byte) error {
 // readByPPU ...
 func (b *Bus) readByPPU(addr Address) (data byte, err error) {
 	var target string
-	log.Debug("Bus.readByPPU[addr=%#v] ...", addr)
+	log.Trace("Bus.readByPPU[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Debug("Bus.readByPPU[addr=%#v] => %#v", addr, err)
+			log.Trace("Bus.readByPPU[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Debug("Bus.readByPPU[addr=%#v][%v] => %#v", addr, target, data)
+			log.Trace("Bus.readByPPU[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 
@@ -381,12 +381,12 @@ func (b *Bus) readByPPU(addr Address) (data byte, err error) {
 // writeByPPU ...
 func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
 	var target string
-	log.Debug("Bus.writeByPPU[addr=%#v] (<=%#v)...", addr, data)
+	log.Trace("Bus.writeByPPU[addr=%#v] (<=%#v)...", addr, data)
 	defer func() {
 		if err != nil {
-			log.Debug("Bus.writeByPPU[addr=%#v] => %#v", addr, err)
+			log.Warn("Bus.writeByPPU[addr=%#v] => %#v", addr, err)
 		} else {
-			log.Debug("Bus.writeByPPU[addr=%#v][%v] <= %#v", addr, target, data)
+			log.Trace("Bus.writeByPPU[addr=%#v][%v] <= %#v", addr, target, data)
 		}
 	}()
 
@@ -501,12 +501,12 @@ func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
 
 // GetSpriteNo ...
 func (b *Bus) GetSpriteNo(p NameTablePoint) (no uint8, err error) {
-	log.Debug("Bus.GetSpriteNo[%#v] ...", p)
+	log.Trace("Bus.GetSpriteNo[%#v] ...", p)
 	defer func() {
 		if err != nil {
 			log.Warn("Bus.GetSpriteNo[%#v] => %#v", p, err)
 		} else {
-			log.Debug("Bus.GetSpriteNo[%#v] => %#v", p, no)
+			log.Trace("Bus.GetSpriteNo[%#v] => %#v", p, no)
 		}
 	}()
 
@@ -526,12 +526,12 @@ func (b *Bus) GetSprite(no uint8) *Sprite {
 
 // GetPaletteNo ...
 func (b *Bus) GetPaletteNo(p NameTablePoint) (no uint8, err error) {
-	log.Debug("Bus.GetPaletteNo[%#v] ...", p)
+	log.Trace("Bus.GetPaletteNo[%#v] ...", p)
 	defer func() {
 		if err != nil {
-			log.Debug("Bus.GetPaletteNo[%#v] => %#v", p, err)
+			log.Warn("Bus.GetPaletteNo[%#v] => %#v", p, err)
 		} else {
-			log.Debug("Bus.GetPaletteNo[%#v] => %#v", p, no)
+			log.Trace("Bus.GetPaletteNo[%#v] => %#v", p, no)
 		}
 	}()
 

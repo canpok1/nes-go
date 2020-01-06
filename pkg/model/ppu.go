@@ -102,7 +102,7 @@ func (p *PPU) incrementPPUADDR() {
 	} else {
 		p.ppuaddrFull = p.ppuaddrFull + 32
 	}
-	log.Debug("PPURegisters.update[PPUADDR Full] %#v => %#v", old, p.ppuaddrFull)
+	log.Trace("PPURegisters.update[PPUADDR Full] %#v => %#v", old, p.ppuaddrFull)
 }
 
 // flatten ...
@@ -124,7 +124,7 @@ func (p *PPU) ReadRegisters(addr Address) (byte, error) {
 		if err != nil {
 			log.Warn("PPU.ReadRegisters[%#v][%#v] => %#v", addr, target, err)
 		} else {
-			log.Debug("PPU.ReadRegisters[%#v][%#v] => %#v", addr, target, data)
+			log.Trace("PPU.ReadRegisters[%#v][%#v] => %#v", addr, target, data)
 		}
 	}()
 
@@ -166,12 +166,12 @@ func (p *PPU) ReadRegisters(addr Address) (byte, error) {
 func (p *PPU) WriteRegisters(addr Address, data byte) error {
 	var err error
 	var target string
-	log.Debug("PPU.WriteRegisters[%#v] ...", addr)
+	log.Trace("PPU.WriteRegisters[%#v] ...", addr)
 	defer func() {
 		if err != nil {
 			log.Warn("PPU.WriteRegisters[%#v][%#v] => %#v", addr, target, err)
 		} else {
-			log.Debug("PPU.WriteRegisters[%#v][%#v] <= %#v", addr, target, data)
+			log.Trace("PPU.WriteRegisters[%#v][%#v] <= %#v", addr, target, data)
 		}
 	}()
 
@@ -245,7 +245,7 @@ func (p *PPU) Run(cycle int) (si [][]SpriteImage, err error) {
 
 // Run1Cycle ...
 func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
-	log.Debug("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
+	log.Trace("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
 
 	defer p.updateDrawingPoint()
 

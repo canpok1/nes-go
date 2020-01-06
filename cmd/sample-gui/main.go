@@ -10,7 +10,7 @@ import (
 
 func main() {
 	log.SetOutput(os.Stdout)
-	log.SetLogLevel(log.LevelInfo)
+	log.SetLogLevel(log.LevelDebug)
 
 	log.Debug("========================================")
 	log.Debug("program start")

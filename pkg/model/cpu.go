@@ -47,28 +47,28 @@ func (r *CPURegisters) String() string {
 func (r *CPURegisters) updateA(a byte) {
 	old := r.a
 	r.a = a
-	log.Debug("CPU.update[A] %#v => %#v", old, r.a)
+	log.Trace("CPU.update[A] %#v => %#v", old, r.a)
 }
 
 // updateX ...
 func (r *CPURegisters) updateX(x byte) {
 	old := r.x
 	r.x = x
-	log.Debug("CPU.update[X] %#v => %#v", old, r.x)
+	log.Trace("CPU.update[X] %#v => %#v", old, r.x)
 }
 
 // updateY ...
 func (r *CPURegisters) updateY(y byte) {
 	old := r.y
 	r.y = y
-	log.Debug("CPU.update[Y] %#v => %#v", old, r.y)
+	log.Trace("CPU.update[Y] %#v => %#v", old, r.y)
 }
 
 // updateS ...
 func (r *CPURegisters) updateS(s byte) {
 	old := r.s
 	r.s = s
-	log.Debug("CPU.update[S] %#v => %#v", old, r.s)
+	log.Trace("CPU.update[S] %#v => %#v", old, r.s)
 }
 
 // incrementPC ...
@@ -80,7 +80,7 @@ func (r *CPURegisters) incrementPC() {
 func (r *CPURegisters) updatePC(pc uint16) {
 	old := r.pc
 	r.pc = pc
-	log.Debug("CPU.update[PC] %#v => %#v", old, r.pc)
+	log.Trace("CPU.update[PC] %#v => %#v", old, r.pc)
 }
 
 // CPUStatusRegister ...
@@ -129,21 +129,21 @@ func (s *CPUStatusRegister) String() string {
 func (s *CPUStatusRegister) updateN(result byte) {
 	old := s.negative
 	s.negative = ((result & 0x80) == 0x80)
-	log.Debug("CPU.update[N] %#v => %#v", old, s.negative)
+	log.Trace("CPU.update[N] %#v => %#v", old, s.negative)
 }
 
 // updateI ...
 func (s *CPUStatusRegister) updateI(i bool) {
 	old := s.interrupt
 	s.interrupt = i
-	log.Debug("CPU.update[I] %#v => %#v", old, s.interrupt)
+	log.Trace("CPU.update[I] %#v => %#v", old, s.interrupt)
 }
 
 // updateZ ...
 func (s *CPUStatusRegister) updateZ(result byte) {
 	old := s.zero
 	s.zero = (result == 0x00)
-	log.Debug("CPU.update[Z] %#v => %#v", old, s.zero)
+	log.Trace("CPU.update[Z] %#v => %#v", old, s.zero)
 }
 
 // CPU ...
@@ -177,8 +177,8 @@ func (c *CPU) SetBus(b *Bus) {
 
 // Run ...
 func (c *CPU) Run() (int, error) {
-	log.Debug("===== CPU RUN =====")
-	log.Debug(c.String())
+	log.Trace("===== CPU RUN =====")
+	log.Trace(c.String())
 
 	if c.bus == nil {
 		return 0, fmt.Errorf("failed to run, bus is nil")
@@ -220,10 +220,10 @@ func (c *CPU) Run() (int, error) {
 // decodeOpcode ...
 func decodeOpcode(o Opcode) (*OpcodeProp, error) {
 	if p, ok := OpcodeProps[o]; ok {
-		log.Debug("CPU.decode[opcode=%#v] => %#v", o, p)
+		log.Trace("CPU.decode[opcode=%#v] => %#v", o, p)
 		return &p, nil
 	}
-	log.Debug("CPU.decode[%#v] => not found", o)
+	log.Trace("CPU.decode[%#v] => not found", o)
 	return nil, fmt.Errorf("opcode is not support; opcode: %#v", o)
 }
 
@@ -233,12 +233,12 @@ func (c *CPU) fetch() (byte, error) {
 	var data byte
 	var err error
 
-	log.Debug("CPU.fetch ...")
+	log.Trace("CPU.fetch ...")
 	defer func() {
 		if err != nil {
-			log.Debug("CPU.fetch[addr=%#v] => error %#v", addr, err)
+			log.Warn("CPU.fetch[addr=%#v] => error %#v", addr, err)
 		} else {
-			log.Debug("CPU.fetch[addr=%#v] => %#v", addr, data)
+			log.Trace("CPU.fetch[addr=%#v] => %#v", addr, data)
 		}
 	}()
 
@@ -267,12 +267,12 @@ func (c *CPU) fetchOpcode() (Opcode, error) {
 // if mode is Immediate, return (byte, nil, nil)
 // if mode is other, return (nil, addr, nil)
 func (c *CPU) makeOperand(mode AddressingMode) (op *Operand, err error) {
-	log.Debug("CPU.makeAddress[%#v] ...", mode)
+	log.Trace("CPU.makeAddress[%#v] ...", mode)
 	defer func() {
 		if err != nil {
 			log.Warn("CPU.makeAddress[%#v] => %#v", mode, err)
 		} else {
-			log.Debug("CPU.makeAddress[%#v] => %#v", mode, op.String())
+			log.Trace("CPU.makeAddress[%#v] => %#v", mode, op.String())
 		}
 	}()
 
@@ -512,7 +512,7 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
 		if err != nil {
 			log.Warn("CPU.exec[%#v][%#v][%#v] => %v", mne, mode, op.String(), err)
 		} else {
-			log.Debug("CPU.exec[%#v][%#v][%#v] => completed", mne, mode, op.String())
+			log.Trace("CPU.exec[%#v][%#v][%#v] => completed", mne, mode, op.String())
 		}
 	}()
 

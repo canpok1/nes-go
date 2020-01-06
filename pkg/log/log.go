@@ -9,8 +9,10 @@ import (
 type Level int
 
 const (
+	// LevelTrace ...
+	LevelTrace Level = iota
 	// LevelDebug ...
-	LevelDebug Level = iota
+	LevelDebug
 	// LevelInfo ...
 	LevelInfo
 	// LevelWarn ...
@@ -75,4 +77,12 @@ func Debug(format string, v ...interface{}) {
 		return
 	}
 	print("D", format, v...)
+}
+
+// Trace ...
+func Trace(format string, v ...interface{}) {
+	if config.logLevel > LevelTrace {
+		return
+	}
+	print("T", format, v...)
 }
