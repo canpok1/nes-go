@@ -465,12 +465,15 @@ func (c *CPU) interruptIRQ() {
 func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
 	log.Debug("CPU.exec[%#v][%#v] ...", mne, addr)
 	defer func() {
+		addrStr := ""
+		if addr != nil {
+			addrStr = fmt.Sprintf("%#v", *addr)
+		}
+
 		if err != nil {
-			log.Warn("CPU.exec[%#v][%#v] => failed", mne, addr)
-		} else if addr == nil {
-			log.Info("CPU.exec[%#v][%#v] => completed", mne, addr)
+			log.Warn("CPU.exec[%v][%#v] => %v", mne, addrStr, err)
 		} else {
-			log.Info("CPU.exec[%#v][%#v] => completed", mne, *addr)
+			log.Info("CPU.exec[%v][%#v] => completed", mne, addrStr)
 		}
 	}()
 
