@@ -57,19 +57,19 @@ func main() {
 
 	go func() {
 		for {
-			// cycle, err := cpu.Run()
-			// if err != nil {
-			// 	log.Fatal("error: %v", err)
-			// 	break
-			// }
+			cycle, err := cpu.Run()
+			if err != nil {
+				log.Fatal("error: %v", err)
+				break
+			}
 
-			// imgs, err := ppu.Run(cycle * 3)
-			// if err != nil {
-			// 	log.Fatal("error: %v", err)
-			// 	break
-			// }
+			imgs, err := ppu.Run(cycle * 3)
+			if err != nil {
+				log.Fatal("error: %v", err)
+				break
+			}
 
-			imgs := makeTestImage()
+			// imgs := makeTestImage()
 
 			if imgs != nil {
 				err = m.Render(imgs)
@@ -95,31 +95,53 @@ func makeTestImage() [][]model.SpriteImage {
 	for y := 0; y < (model.ResolutionHeight / model.SpriteHeight); y++ {
 		imgs[y] = make([]model.SpriteImage, (model.ResolutionWidth / model.SpriteWidth))
 		for x := 0; x < (model.ResolutionWidth / model.SpriteWidth); x++ {
-			r := make([][]byte, model.SpriteHeight)
-			g := make([][]byte, model.SpriteHeight)
-			b := make([][]byte, model.SpriteHeight)
+			sprite := model.Sprite([]byte{
+				0x66, // 0b 0110 0110
+				0x7F, // 0b 0111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0xFF, // 0b 1111 1111
+				0x7E, // 0b 0111 1110
+				0x3C, // 0b 0011 1100
+				0x18, // 0b 0001 1000
 
-			for sy := 0; sy < model.SpriteHeight; sy++ {
-				r[sy] = make([]byte, model.SpriteWidth)
-				g[sy] = make([]byte, model.SpriteWidth)
-				b[sy] = make([]byte, model.SpriteWidth)
-				for sx := 0; sx < model.SpriteWidth; sx++ {
-					switch ci {
-					case 0:
-						r[sy][sx] = 0xFF
-					case 1:
-						g[sy][sx] = 0xFF
-					case 2:
-						b[sy][sx] = 0xFF
-					}
-				}
-			}
+				0x66, // 0b 0110 0110
+				0x5F, // 0b 0101 1111
+				0xBF, // 0b 1011 1111
+				0xBF, // 0b 1011 1111
+				0xFF, // 0b 1111 1111
+				0x7E, // 0b 0111 1110
+				0x3C, // 0b 0011 1100
+				0x18, // 0b 0001 1000
+			})
+			palette := model.Palette([]byte{0x00, 0x01, 0x02, 0x03})
+			img := *sprite.ToSpriteImage(&palette)
 
-			img := model.SpriteImage{
-				R: r,
-				G: g,
-				B: b,
-			}
+			// r := make([][]byte, model.SpriteHeight)
+			// g := make([][]byte, model.SpriteHeight)
+			// b := make([][]byte, model.SpriteHeight)
+
+			// for sy := 0; sy < model.SpriteHeight; sy++ {
+			// 	r[sy] = make([]byte, model.SpriteWidth)
+			// 	g[sy] = make([]byte, model.SpriteWidth)
+			// 	b[sy] = make([]byte, model.SpriteWidth)
+			// 	for sx := 0; sx < model.SpriteWidth; sx++ {
+			// 		switch ci {
+			// 		case 0:
+			// 			r[sy][sx] = 0xFF
+			// 		case 1:
+			// 			g[sy][sx] = 0xFF
+			// 		case 2:
+			// 			b[sy][sx] = 0xFF
+			// 		}
+			// 	}
+			// }
+
+			// img := model.SpriteImage{
+			// 	R: r,
+			// 	G: g,
+			// 	B: b,
+			// }
 
 			imgs[y][x] = img
 
