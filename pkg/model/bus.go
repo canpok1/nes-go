@@ -506,7 +506,7 @@ func (b *Bus) GetSpriteNo(x MonitorX, y MonitorY) (no uint8, err error) {
 		if err != nil {
 			log.Warn("Bus.GetSpriteNo[(x,y)=(%v,%v)] => %#v", x, y, err)
 		} else {
-			log.Warn("Bus.GetSpriteNo[(x,y)=(%v,%v)] => %#v", x, y, no)
+			log.Debug("Bus.GetSpriteNo[(x,y)=(%v,%v)] => %#v", x, y, no)
 		}
 	}()
 
