@@ -200,12 +200,12 @@ func (p *PPU) WriteRegisters(addr Address, data byte) error {
 		case 0, 2:
 			p.ppuaddrBuf = Address(p.registers.ppuaddr) << 8
 			p.ppuaddrWriteCount = 1
-			target = "PPUADDR(for high 8 bits)"
+			target = fmt.Sprintf("PPUADDR(for high 8 bits(ppuaddr:%#v))", p.ppuaddrBuf)
 		case 1:
 			p.ppuaddrBuf = p.ppuaddrBuf + Address(p.registers.ppuaddr)
 			p.ppuaddrFull = p.ppuaddrBuf
 			p.ppuaddrWriteCount = 2
-			target = "PPUADDR(for low 8 bits)"
+			target = fmt.Sprintf("PPUADDR(for low 8 bits(ppuaddr:%#v))", p.ppuaddrBuf)
 		}
 	case 7:
 		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.ppuaddrFull)
