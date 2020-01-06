@@ -290,60 +290,70 @@ func (b *Bus) readByPPU(addr Address) (data byte, err error) {
 	// 0x0000～0x0FFF	0x1000	パターンテーブル0
 	if addrTmp >= 0x0000 && addrTmp <= 0x0FFF {
 		data = (*b.charactorROM)[addrTmp]
+		target = "PatternTable0"
 		return
 	}
 
 	// 0x1000～0x1FFF	0x1000	パターンテーブル1
 	if addrTmp >= 0x1000 && addrTmp <= 0x1FFF {
 		data = (*b.charactorROM)[addrTmp]
+		target = "PatternTable1"
 		return
 	}
 
 	// 0x2000～0x23BF	0x03C0	ネームテーブル0
 	if addrTmp >= 0x2000 && addrTmp <= 0x23BF {
 		data = b.nameTable0[addrTmp-0x2000]
+		target = "NameTable0"
 		return
 	}
 
 	// 0x23C0～0x23FF	0x0040	属性テーブル0
 	if addrTmp >= 0x23C0 && addrTmp <= 0x23FF {
 		data = b.attributeTable0[addrTmp-0x23C0]
+		target = "AttributeTable0"
 		return
 	}
 
 	// 0x2400～0x27BF	0x03C0	ネームテーブル1
 	if addrTmp >= 0x2400 && addrTmp <= 0x03C0 {
 		data = b.nameTable1[addrTmp-0x2400]
+		target = "NameTable1"
 		return
 	}
 
 	// 0x27C0～0x27FF	0x0040	属性テーブル1
 	if addrTmp >= 0x27C0 && addrTmp <= 0x27FF {
 		data = b.attributeTable1[addrTmp-0x27C0]
+		target = "AttributeTable1"
 		return
 	}
 
 	// 0x2800～0x2BBF	0x03C0	ネームテーブル2
 	if addrTmp >= 0x2800 && addrTmp <= 0x2BBF {
 		data = b.nameTable2[addrTmp-0x2800]
+		target = "NameTable2"
 		return
 	}
 
 	// 0x2BC0～0x2BFF	0x0040	属性テーブル2
 	if addrTmp >= 0x2BC0 && addrTmp <= 0x0040 {
 		data = b.attributeTable2[addrTmp-0x2BC0]
+		target = "AttributeTable2"
 		return
 	}
 
 	// 0x2C00～0x2FBF	0x03C0	ネームテーブル3
 	if addrTmp >= 0x2C00 && addrTmp <= 0x2FBF {
 		data = b.nameTable3[addrTmp-0x2C00]
+		target = "NameTable3"
 		return
 	}
 
 	// 0x2FC0～0x2FFF	0x0040	属性テーブル3
 	if addrTmp >= 0x2FC0 && addrTmp <= 0x2FFF {
 		data = b.attributeTable3[addrTmp-0x2FC0]
+		target = "AttributeTable3"
 		return
 	}
 
@@ -352,6 +362,7 @@ func (b *Bus) readByPPU(addr Address) (data byte, err error) {
 		pIdx := (addrTmp - 0x3F00) / 4
 		bitIdx := (addrTmp - 0x3F00) % 4
 		data = b.backgroundPalette[pIdx][bitIdx]
+		target = "BackgroundPalette"
 		return
 	}
 	// 0x3F10～0x3F1F	0x0010	スプライトパレット
@@ -359,6 +370,7 @@ func (b *Bus) readByPPU(addr Address) (data byte, err error) {
 		pIdx := (addrTmp - 0x3F10) / 4
 		bitIdx := (addrTmp - 0x3F10) % 4
 		data = b.spritePalette[pIdx][bitIdx]
+		target = "SpritePalette"
 		return
 	}
 
@@ -398,61 +410,71 @@ func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
 
 	// 0x0000～0x0FFF	0x1000	パターンテーブル0
 	if addrTmp >= 0x0000 && addrTmp <= 0x0FFF {
-		(*b.charactorROM)[addrTmp] = data
+		err = fmt.Errorf("failed write, PatternTable0(CHR-ROM) is read only; addr: %#v", addr)
+		target = "PatternTable0"
 		return
 	}
 
 	// 0x1000～0x1FFF	0x1000	パターンテーブル1
 	if addrTmp >= 0x1000 && addrTmp <= 0x1FFF {
-		(*b.charactorROM)[addrTmp] = data
+		err = fmt.Errorf("failed write, PatternTable1(CHR-ROM) is read only; addr: %#v", addr)
+		target = "PatternTable1"
 		return
 	}
 
 	// 0x2000～0x23BF	0x03C0	ネームテーブル0
 	if addrTmp >= 0x2000 && addrTmp <= 0x23BF {
 		b.nameTable0[addrTmp-0x2000] = data
+		target = "NameTable0"
 		return
 	}
 
 	// 0x23C0～0x23FF	0x0040	属性テーブル0
 	if addrTmp >= 0x23C0 && addrTmp <= 0x23FF {
 		b.attributeTable0[addrTmp-0x23C0] = data
+		target = "AttributeTable0"
 		return
 	}
 
 	// 0x2400～0x27BF	0x03C0	ネームテーブル1
 	if addrTmp >= 0x2400 && addrTmp <= 0x03C0 {
 		b.nameTable1[addrTmp-0x2400] = data
+		target = "NameTable1"
 		return
 	}
 
 	// 0x27C0～0x27FF	0x0040	属性テーブル1
 	if addrTmp >= 0x27C0 && addrTmp <= 0x27FF {
 		b.attributeTable1[addrTmp-0x27C0] = data
+		target = "AttributeTable1"
 		return
 	}
 
 	// 0x2800～0x2BBF	0x03C0	ネームテーブル2
 	if addrTmp >= 0x2800 && addrTmp <= 0x2BBF {
 		b.nameTable2[addrTmp-0x2800] = data
+		target = "NameTable2"
 		return
 	}
 
 	// 0x2BC0～0x2BFF	0x0040	属性テーブル2
 	if addrTmp >= 0x2BC0 && addrTmp <= 0x0040 {
 		b.attributeTable2[addrTmp-0x2BC0] = data
+		target = "AttributeTable2"
 		return
 	}
 
 	// 0x2C00～0x2FBF	0x03C0	ネームテーブル3
 	if addrTmp >= 0x2C00 && addrTmp <= 0x2FBF {
 		b.nameTable3[addrTmp-0x2C00] = data
+		target = "NameTable3"
 		return
 	}
 
 	// 0x2FC0～0x2FFF	0x0040	属性テーブル3
 	if addrTmp >= 0x2FC0 && addrTmp <= 0x2FFF {
 		b.attributeTable3[addrTmp-0x2FC0] = data
+		target = "AttributeTable3"
 		return
 	}
 
@@ -461,6 +483,7 @@ func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
 		pIdx := (addrTmp - 0x3F00) / 4
 		bitIdx := (addrTmp - 0x3F00) % 4
 		b.backgroundPalette[pIdx][bitIdx] = data
+		target = "BackgroundPalette"
 		return
 	}
 	// 0x3F10～0x3F1F	0x0010	スプライトパレット
@@ -468,6 +491,7 @@ func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
 		pIdx := (addrTmp - 0x3F10) / 4
 		bitIdx := (addrTmp - 0x3F10) % 4
 		b.spritePalette[pIdx][bitIdx] = data
+		target = "SpritePalette"
 		return
 	}
 
