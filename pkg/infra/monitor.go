@@ -44,7 +44,7 @@ func (m *Monitor) update(screen *ebiten.Image) error {
 	}
 
 	screen.DrawImage(m.imageBuf, nil)
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %v", m.fps))
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %.2f", m.fps))
 
 	return nil
 }
