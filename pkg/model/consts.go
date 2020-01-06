@@ -1,11 +1,36 @@
 package model
 
+import (
+	"fmt"
+)
+
 // Opcode ...
 type Opcode uint8
 
 const (
 	ErrorOpcode Opcode = 0
 )
+
+// Operand ...
+type Operand struct {
+	Data    *byte
+	Address *Address
+}
+
+// String ...
+func (o *Operand) String() string {
+	d := ""
+	if o.Data != nil {
+		d = fmt.Sprintf("%#v", *o.Data)
+	}
+
+	a := ""
+	if o.Address != nil {
+		a = fmt.Sprintf("%#v", *o.Address)
+	}
+
+	return fmt.Sprintf("{Data:%#v, Address:%#v}", d, a)
+}
 
 // Address ...
 type Address uint16

@@ -204,13 +204,13 @@ func (c *CPU) Run() (int, error) {
 	}
 
 	// （必要であれば）オペランドをフェッチ（PCをインクリメント）
-	addr, err := c.makeAddress(ocp.AddressingMode)
+	op, err := c.makeOperand(ocp.AddressingMode)
 	if err != nil {
 		return 0, fmt.Errorf("%w", err)
 	}
 
 	// 命令を実行
-	if err := c.exec(ocp.Mnemonic, addr); err != nil {
+	if err := c.exec(ocp.Mnemonic, ocp.AddressingMode, op); err != nil {
 		return 0, fmt.Errorf("%w", err)
 	}
 
@@ -262,161 +262,204 @@ func (c *CPU) fetchOpcode() (Opcode, error) {
 	return Opcode(v), nil
 }
 
-// makeAddress ...
-func (c *CPU) makeAddress(mode AddressingMode) (*Address, error) {
+// makeOperand ...
+// if mode is Accumulator or Implied, return (nil, nil, nil)
+// if mode is Immediate, return (byte, nil, nil)
+// if mode is other, return (nil, addr, nil)
+func (c *CPU) makeOperand(mode AddressingMode) (op *Operand, err error) {
+	log.Debug("CPU.makeAddress[%#v] ...", mode)
+	defer func() {
+		if err != nil {
+			log.Warn("CPU.makeAddress[%#v] => %#v", mode, err)
+		} else {
+			log.Debug("CPU.makeAddress[%#v] => %#v", mode, op.String())
+		}
+	}()
+
 	switch mode {
 	case Accumulator:
-		return nil, nil
+		op = &Operand{}
+		return
 	case Immediate:
-		b, err := c.fetch()
+		var b byte
+		b, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
-		addr := Address(b)
-		return &addr, nil
+		op = &Operand{Data: &b}
+		return
 	case Absolute:
-		l, err := c.fetch()
+		var l byte
+		l, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
-		h, err := c.fetch()
+		var h byte
+		h, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address((uint16(h) << 8) | uint16(l))
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case ZeroPage:
-		l, err := c.fetch()
+		var l byte
+		l, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address(l)
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case IndexedZeroPageX:
-		l, err := c.fetch()
+		var l byte
+		l, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address(uint8(l) + uint8(c.registers.x))
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case IndexedZeroPageY:
-		l, err := c.fetch()
+		var l byte
+		l, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address(uint8(l) + uint8(c.registers.y))
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case IndexedAbsoluteX:
-		l, err := c.fetch()
+		var l byte
+		l, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
-		h, err := c.fetch()
+		var h byte
+		h, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.x))
-
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case IndexedAbsoluteY:
-		l, err := c.fetch()
+		var l byte
+		l, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
-		h, err := c.fetch()
+		var h byte
+		h, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.y))
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case Implied:
-		return nil, nil
+		op = &Operand{}
+		return
 	case Relative:
-		b, err := c.fetch()
+		var b byte
+		b, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address(c.registers.pc + uint16(int8(b)))
-
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case IndexedIndirect:
-		b, err := c.fetch()
+		var b byte
+		b, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 		dest := Address(uint8(b) + c.registers.x)
 
-		l, err := c.bus.readByCPU(dest)
+		var l byte
+		l, err = c.bus.readByCPU(dest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
-		h, err := c.fetch()
+		var h byte
+		h, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address((uint16(h) << 8) | uint16(l))
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case IndirectIndexed:
-		b, err := c.fetch()
+		var b byte
+		b, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 		dest := Address(uint8(b) + c.registers.x)
 
-		h, err := c.bus.readByCPU(dest)
+		var h byte
+		h, err = c.bus.readByCPU(dest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
-		l, err := c.fetch()
+		var l byte
+		l, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.y))
-
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	case AbsoluteIndirect:
-		f1, err := c.fetch()
+		var f1 byte
+		f1, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
-		f2, err := c.fetch()
+		var f2 byte
+		f2, err = c.fetch()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		dest := Address((uint16(f2) << 8) + uint16(f1))
 		nextDest := dest + 1
 
-		addrL, err := c.bus.readByCPU(dest)
+		var addrL byte
+		addrL, err = c.bus.readByCPU(dest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
-		addrH, err := c.bus.readByCPU(nextDest)
+		var addrH byte
+		addrH, err = c.bus.readByCPU(nextDest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch operands; %w", err)
+			return
 		}
 
 		addr := Address((uint16(addrH) << 8) + uint16(addrL))
-		return &addr, nil
+		op = &Operand{Address: &addr}
+		return
 	}
 
-	return nil, fmt.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", mode)
+	err = fmt.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", mode)
+	return
 }
 
 // interruptNMI ...
@@ -462,18 +505,14 @@ func (c *CPU) interruptIRQ() {
 }
 
 // exec ...
-func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
-	log.Debug("CPU.exec[%#v][%#v] ...", mne, addr)
-	defer func() {
-		addrStr := ""
-		if addr != nil {
-			addrStr = fmt.Sprintf("%#v", *addr)
-		}
+func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
+	log.Debug("CPU.exec[%#v][%#v][%#v] ...", mne, mode, op.String())
 
+	defer func() {
 		if err != nil {
-			log.Warn("CPU.exec[%v][%#v] => %v", mne, addrStr, err)
+			log.Warn("CPU.exec[%#v][%#v][%#v] => %v", mne, mode, op.String(), err)
 		} else {
-			log.Info("CPU.exec[%v][%#v] => completed", mne, addrStr)
+			log.Debug("CPU.exec[%#v][%#v][%#v] => completed", mne, mode, op.String())
 		}
 	}()
 
@@ -492,12 +531,12 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
 	// TODO 実装 BEQ Mnemonic = "BEQ"
 	// TODO 実装 BNE Mnemonic = "BNE"
 	case BNE:
-		if addr == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
+		if op.Address == nil {
+			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
 			return
 		}
 		if !c.registers.p.zero {
-			c.registers.updatePC(uint16(*addr))
+			c.registers.updatePC(uint16(*op.Address))
 		}
 		return
 	// TODO 実装 BVC Mnemonic = "BVC"
@@ -506,11 +545,11 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
 	// TODO 実装 BMI Mnemonic = "BMI"
 	// TODO 実装 BIT Mnemonic = "BIT"
 	case JMP:
-		if addr == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
+		if op.Address == nil {
+			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
 			return
 		}
-		c.registers.updatePC(uint16(*addr))
+		c.registers.updatePC(uint16(*op.Address))
 		return
 	// TODO 実装 JSR Mnemonic = "JSR"
 	// TODO 実装 RTS Mnemonic = "RTS"
@@ -551,15 +590,23 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
 	// TODO 実装 SED Mnemonic = "SED"
 	// TODO 実装 CLV Mnemonic = "CLV"
 	case LDA:
-		if addr == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			return
-		}
-
 		var b byte
-		b, err = c.bus.readByCPU(*addr)
-		if err != nil {
-			return
+		if mode == Immediate {
+			if op.Data == nil {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op.String())
+				return
+			}
+			b = *op.Data
+		} else {
+			if op.Address == nil {
+				err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+				return
+			}
+
+			b, err = c.bus.readByCPU(*op.Address)
+			if err != nil {
+				return
+			}
 		}
 
 		c.registers.updateA(b)
@@ -567,15 +614,23 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
 		c.registers.p.updateZ(c.registers.a)
 		return
 	case LDX:
-		if addr == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			return
-		}
-
 		var b byte
-		b, err = c.bus.readByCPU(*addr)
-		if err != nil {
-			return
+		if mode == Immediate {
+			if op.Data == nil {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op.String())
+				return
+			}
+			b = *op.Data
+		} else {
+			if op.Address == nil {
+				err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+				return
+			}
+
+			b, err = c.bus.readByCPU(*op.Address)
+			if err != nil {
+				return
+			}
 		}
 
 		c.registers.updateX(b)
@@ -583,15 +638,23 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
 		c.registers.p.updateZ(c.registers.x)
 		return
 	case LDY:
-		if addr == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
-			return
-		}
-
 		var b byte
-		b, err = c.bus.readByCPU(*addr)
-		if err != nil {
-			return
+		if mode == Immediate {
+			if op.Data == nil {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op.String())
+				return
+			}
+			b = *op.Data
+		} else {
+			if op.Address == nil {
+				err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+				return
+			}
+
+			b, err = c.bus.readByCPU(*op.Address)
+			if err != nil {
+				return
+			}
 		}
 
 		c.registers.updateY(b)
@@ -599,12 +662,12 @@ func (c *CPU) exec(mne Mnemonic, addr *Address) (err error) {
 		c.registers.p.updateZ(c.registers.y)
 		return
 	case STA:
-		if addr == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, address: %#v", mne, addr)
+		if op.Address == nil {
+			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
 			return
 		}
 
-		err = c.bus.writeByCPU(*addr, c.registers.a)
+		err = c.bus.writeByCPU(*op.Address, c.registers.a)
 		if err != nil {
 			return
 		}
