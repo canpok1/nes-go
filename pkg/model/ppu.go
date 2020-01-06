@@ -281,9 +281,16 @@ func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
 		}
 	}
 
-	if p.drawingPoint.X == ResolutionWidth-1 && p.drawingPoint.Y == ResolutionHeight-1 {
-		return p.spriteImages, nil
-	} else {
+	// 1ライン分の書き込み完了直後以外は描画しない
+	if p.drawingPoint.X != ResolutionWidth-1 {
 		return nil, nil
 	}
+
+	// TODO この判定を入れると急激に遅くなるためコメントアウト
+	// 1画面分の書き込み完了直後以外は描画しない
+	// if p.drawingPoint.Y != ResolutionHeight-1 {
+	// 	return nil, nil
+	// }
+
+	return p.spriteImages, nil
 }
