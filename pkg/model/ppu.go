@@ -259,14 +259,15 @@ func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
 	// 8ライン単位で書き込む
 	shouldDrawline := (p.drawingPoint.X == ResolutionWidth-1) && (p.drawingPoint.Y%8 == 7)
 	if shouldDrawline {
-		y := p.drawingPoint.Y
-		for x := 0; x < ResolutionWidth; x = x + SpriteWidth {
-			spriteNo, err := p.bus.GetSpriteNo(MonitorX(x), MonitorY(y))
+		y := p.drawingPoint.Y / SpriteHeight
+		for x := 0; x < 0x20; x++ {
+			np := NameTablePoint{X: uint8(x), Y: uint8(y)}
+			spriteNo, err := p.bus.GetSpriteNo(np)
 			if err != nil {
 				return nil, err
 			}
 
-			paletteNo, err := p.bus.GetPaletteNo(MonitorX(x), MonitorY(y))
+			paletteNo, err := p.bus.GetPaletteNo(np)
 			if err != nil {
 				return nil, err
 			}
@@ -275,10 +276,8 @@ func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
 			palette := p.bus.GetBackgroundPalette(paletteNo)
 
 			// 書き込む
-			ix := x / SpriteWidth
-			iy := y / SpriteHeight
 			si := sprite.ToSpriteImage(palette)
-			p.spriteImages[iy][ix] = *si
+			p.spriteImages[y][x] = *si
 		}
 	}
 

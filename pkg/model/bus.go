@@ -500,28 +500,21 @@ func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
 }
 
 // GetSpriteNo ...
-func (b *Bus) GetSpriteNo(x MonitorX, y MonitorY) (no uint8, err error) {
-	log.Debug("Bus.GetSpriteNo[(x,y)=(%v,%v)] ...", x, y)
+func (b *Bus) GetSpriteNo(p NameTablePoint) (no uint8, err error) {
+	log.Debug("Bus.GetSpriteNo[%#v] ...", p)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.GetSpriteNo[(x,y)=(%v,%v)] => %#v", x, y, err)
+			log.Warn("Bus.GetSpriteNo[%#v] => %#v", p, err)
 		} else {
-			log.Debug("Bus.GetSpriteNo[(x,y)=(%v,%v)] => %#v", x, y, no)
+			log.Debug("Bus.GetSpriteNo[%#v] => %#v", p, no)
 		}
 	}()
 
-	if err = x.Validate(); err != nil {
-		return
-	}
-	if err = y.Validate(); err != nil {
+	if err = p.Validate(); err != nil {
 		return
 	}
 
-	nameTblX := x / SpriteWidth
-	nameTblY := y / SpriteHeight
-	nameTblIndex := uint32(nameTblY)*0x20 + uint32(nameTblX)
-
-	no = b.nameTable0[nameTblIndex]
+	no = b.nameTable0[p.ToIndex()]
 
 	return
 }
@@ -531,44 +524,24 @@ func (b *Bus) GetSprite(no uint8) *Sprite {
 	return b.charactorROM.GetSprite(no)
 }
 
-// toAttributeTableIndex ...
-func toAttributeTableIndex(x MonitorX, y MonitorY) (i int, err error) {
-	if err = x.Validate(); err != nil {
-		return
-	}
-	if err = y.Validate(); err != nil {
-		return
-	}
-
-	attrTblX := int(x) / (SpriteWidth * 4)
-	attrTblY := int(y) / (SpriteHeight * 4)
-	width := ResolutionWidth / (SpriteWidth * 4)
-	i = attrTblY*width + attrTblX
-	return
-}
-
 // GetPaletteNo ...
-func (b *Bus) GetPaletteNo(x MonitorX, y MonitorY) (no uint8, err error) {
-	log.Debug("Bus.GetPaletteNo[(x,y)=(%v,%v)] ...", x, y)
+func (b *Bus) GetPaletteNo(p NameTablePoint) (no uint8, err error) {
+	log.Debug("Bus.GetPaletteNo[%#v] ...", p)
 	defer func() {
 		if err != nil {
-			log.Debug("Bus.GetPaletteNo[(x,y)=(%v,%v)] => %#v", x, y, err)
+			log.Debug("Bus.GetPaletteNo[%#v] => %#v", p, err)
 		} else {
-			log.Debug("Bus.GetPaletteNo[(x,y)=(%v,%v)] => %#v", x, y, no)
+			log.Debug("Bus.GetPaletteNo[%#v] => %#v", p, no)
 		}
 	}()
 
-	attrTblIndex, err := toAttributeTableIndex(x, y)
+	err = p.Validate()
 	if err != nil {
 		return
 	}
 
-	attribute := b.attributeTable0[attrTblIndex]
-
-	attributeX := (x % (SpriteWidth * 2)) / SpriteWidth
-	attributeY := (y % (SpriteHeight * 2)) / SpriteHeight
-	attributeIndex := uint32(attributeY)*0x02 + uint32(attributeX)
-
+	attribute := b.attributeTable0[p.ToAttributeTableIndex()]
+	attributeIndex := p.ToAttributeIndex()
 	no = (attribute & (0x03 << attributeIndex)) >> attributeIndex
 
 	return
