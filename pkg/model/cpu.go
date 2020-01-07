@@ -204,7 +204,7 @@ func (c *CPU) Run() (int, error) {
 	}
 
 	// （必要であれば）オペランドをフェッチ（PCをインクリメント）
-	op, err := c.makeOperand(ocp.AddressingMode)
+	op, err := c.fetchAsOperand(ocp.AddressingMode)
 	if err != nil {
 		return 0, fmt.Errorf("%w", err)
 	}
@@ -262,129 +262,115 @@ func (c *CPU) fetchOpcode() (Opcode, error) {
 	return Opcode(v), nil
 }
 
-// makeOperand ...
-// if mode is Accumulator or Implied, return (nil, nil, nil)
-// if mode is Immediate, return (byte, nil, nil)
-// if mode is other, return (nil, addr, nil)
-func (c *CPU) makeOperand(mode AddressingMode) (op *Operand, err error) {
-	log.Trace("CPU.makeAddress[%#v] ...", mode)
+// fetchAsOperand ...
+func (c *CPU) fetchAsOperand(mode AddressingMode) (op []byte, err error) {
+	log.Trace("CPU.fetchAsOperand[%#v] ...", mode)
 	defer func() {
 		if err != nil {
-			log.Warn("CPU.makeAddress[%#v] => %#v", mode, err)
+			log.Warn("CPU.fetchAsOperand[%#v] => %#v", mode, err)
 		} else {
-			log.Trace("CPU.makeAddress[%#v] => %#v", mode, op.String())
+			log.Trace("CPU.fetchAsOperand[%#v] => %#v", mode, op)
 		}
 	}()
 
 	switch mode {
 	case Accumulator:
-		op = &Operand{}
+		fallthrough
+	case Implied:
+		op = []byte{}
 		return
 	case Immediate:
-		var b byte
-		b, err = c.fetch()
-		if err != nil {
-			return
-		}
-		op = &Operand{Data: &b}
-		return
-	case Absolute:
-		var l byte
-		l, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		var h byte
-		h, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		addr := Address((uint16(h) << 8) | uint16(l))
-		op = &Operand{Address: &addr}
-		return
+		fallthrough
 	case ZeroPage:
-		var l byte
-		l, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		addr := Address(l)
-		op = &Operand{Address: &addr}
-		return
+		fallthrough
 	case IndexedZeroPageX:
-		var l byte
-		l, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		addr := Address(uint8(l) + uint8(c.registers.x))
-		op = &Operand{Address: &addr}
-		return
+		fallthrough
 	case IndexedZeroPageY:
-		var l byte
-		l, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		addr := Address(uint8(l) + uint8(c.registers.y))
-		op = &Operand{Address: &addr}
-		return
-	case IndexedAbsoluteX:
-		var l byte
-		l, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		var h byte
-		h, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		addr := Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.x))
-		op = &Operand{Address: &addr}
-		return
-	case IndexedAbsoluteY:
-		var l byte
-		l, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		var h byte
-		h, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		addr := Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.y))
-		op = &Operand{Address: &addr}
-		return
-	case Implied:
-		op = &Operand{}
-		return
+		fallthrough
 	case Relative:
 		var b byte
 		b, err = c.fetch()
 		if err != nil {
 			return
 		}
-
-		addr := Address(c.registers.pc + uint16(int8(b)))
-		op = &Operand{Address: &addr}
+		op = []byte{b}
 		return
+	case Absolute:
+		fallthrough
+	case IndexedAbsoluteX:
+		fallthrough
+	case IndexedAbsoluteY:
+		fallthrough
 	case IndexedIndirect:
-		var b byte
-		b, err = c.fetch()
+		fallthrough
+	case IndirectIndexed:
+		fallthrough
+	case AbsoluteIndirect:
+		var l byte
+		l, err = c.fetch()
 		if err != nil {
 			return
 		}
+
+		var h byte
+		h, err = c.fetch()
+		if err != nil {
+			return
+		}
+
+		op = []byte{l, h}
+		return
+	default:
+		err = fmt.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", mode)
+		return
+	}
+}
+
+// makeAddress ...
+func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr Address, err error) {
+	log.Trace("CPU.makeAddress[%#v][%#v] ...", mode, op)
+	defer func() {
+		if err != nil {
+			log.Warn("CPU.makeAddress[%#v][%#v] => %#v", mode, op, err)
+		} else {
+			log.Trace("CPU.makeAddress[%#v][%#v] => %#v", mode, op, addr)
+		}
+	}()
+
+	switch mode {
+	case Absolute:
+		l := op[0]
+		h := op[1]
+		addr = Address((uint16(h) << 8) | uint16(l))
+		return
+	case ZeroPage:
+		l := op[0]
+		addr = Address(l)
+		return
+	case IndexedZeroPageX:
+		l := op[0]
+		addr = Address(uint8(l) + uint8(c.registers.x))
+		return
+	case IndexedZeroPageY:
+		l := op[0]
+		addr = Address(uint8(l) + uint8(c.registers.y))
+		return
+	case IndexedAbsoluteX:
+		l := op[0]
+		h := op[1]
+		addr = Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.x))
+		return
+	case IndexedAbsoluteY:
+		l := op[0]
+		h := op[1]
+		addr = Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.y))
+		return
+	case Relative:
+		b := op[0]
+		addr = Address(c.registers.pc + uint16(int8(b)))
+		return
+	case IndexedIndirect:
+		b := op[0]
 		dest := Address(uint8(b) + c.registers.x)
 
 		var l byte
@@ -393,21 +379,12 @@ func (c *CPU) makeOperand(mode AddressingMode) (op *Operand, err error) {
 			return
 		}
 
-		var h byte
-		h, err = c.fetch()
-		if err != nil {
-			return
-		}
+		h := op[1]
 
-		addr := Address((uint16(h) << 8) | uint16(l))
-		op = &Operand{Address: &addr}
+		addr = Address((uint16(h) << 8) | uint16(l))
 		return
 	case IndirectIndexed:
-		var b byte
-		b, err = c.fetch()
-		if err != nil {
-			return
-		}
+		b := op[0]
 		dest := Address(uint8(b) + c.registers.x)
 
 		var h byte
@@ -416,27 +393,13 @@ func (c *CPU) makeOperand(mode AddressingMode) (op *Operand, err error) {
 			return
 		}
 
-		var l byte
-		l, err = c.fetch()
-		if err != nil {
-			return
-		}
+		l := op[1]
 
-		addr := Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.y))
-		op = &Operand{Address: &addr}
+		addr = Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.y))
 		return
 	case AbsoluteIndirect:
-		var f1 byte
-		f1, err = c.fetch()
-		if err != nil {
-			return
-		}
-
-		var f2 byte
-		f2, err = c.fetch()
-		if err != nil {
-			return
-		}
+		f1 := op[0]
+		f2 := op[1]
 
 		dest := Address((uint16(f2) << 8) + uint16(f1))
 		nextDest := dest + 1
@@ -453,13 +416,12 @@ func (c *CPU) makeOperand(mode AddressingMode) (op *Operand, err error) {
 			return
 		}
 
-		addr := Address((uint16(addrH) << 8) + uint16(addrL))
-		op = &Operand{Address: &addr}
+		addr = Address((uint16(addrH) << 8) + uint16(addrL))
+		return
+	default:
+		err = fmt.Errorf("failed to make address, AddressingMode is not supported; mode: %#v", mode)
 		return
 	}
-
-	err = fmt.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", mode)
-	return
 }
 
 // interruptNMI ...
@@ -505,14 +467,14 @@ func (c *CPU) interruptIRQ() {
 }
 
 // exec ...
-func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
-	log.Debug("CPU.exec[%#v][%#v][%#v] ...", mne, mode, op.String())
+func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
+	log.Debug("CPU.exec[%v][%v][%#v] ...", mne, mode, op)
 
 	defer func() {
 		if err != nil {
-			log.Warn("CPU.exec[%#v][%#v][%#v] => %v", mne, mode, op.String(), err)
+			log.Warn("CPU.exec[%v][%v][%#v] => %v", mne, mode, op, err)
 		} else {
-			log.Trace("CPU.exec[%#v][%#v][%#v] => completed", mne, mode, op.String())
+			log.Trace("CPU.exec[%v][%v][%#v] => completed", mne, mode, op)
 		}
 	}()
 
@@ -531,12 +493,12 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
 	// TODO 実装 BEQ Mnemonic = "BEQ"
 	// TODO 実装 BNE Mnemonic = "BNE"
 	case BNE:
-		if op.Address == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
 		if !c.registers.p.zero {
-			c.registers.updatePC(uint16(*op.Address))
+			c.registers.updatePC(uint16(addr))
 		}
 		return
 	// TODO 実装 BVC Mnemonic = "BVC"
@@ -545,11 +507,11 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
 	// TODO 実装 BMI Mnemonic = "BMI"
 	// TODO 実装 BIT Mnemonic = "BIT"
 	case JMP:
-		if op.Address == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.registers.updatePC(uint16(*op.Address))
+		c.registers.updatePC(uint16(addr))
 		return
 	// TODO 実装 JSR Mnemonic = "JSR"
 	// TODO 実装 RTS Mnemonic = "RTS"
@@ -592,18 +554,18 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
 	case LDA:
 		var b byte
 		if mode == Immediate {
-			if op.Data == nil {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op.String())
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
-			b = *op.Data
+			b = op[0]
 		} else {
-			if op.Address == nil {
-				err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
 
-			b, err = c.bus.readByCPU(*op.Address)
+			b, err = c.bus.readByCPU(addr)
 			if err != nil {
 				return
 			}
@@ -616,18 +578,18 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
 	case LDX:
 		var b byte
 		if mode == Immediate {
-			if op.Data == nil {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op.String())
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
-			b = *op.Data
+			b = op[0]
 		} else {
-			if op.Address == nil {
-				err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
 
-			b, err = c.bus.readByCPU(*op.Address)
+			b, err = c.bus.readByCPU(addr)
 			if err != nil {
 				return
 			}
@@ -640,18 +602,18 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
 	case LDY:
 		var b byte
 		if mode == Immediate {
-			if op.Data == nil {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op.String())
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
-			b = *op.Data
+			b = op[0]
 		} else {
-			if op.Address == nil {
-				err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
 
-			b, err = c.bus.readByCPU(*op.Address)
+			b, err = c.bus.readByCPU(addr)
 			if err != nil {
 				return
 			}
@@ -662,12 +624,13 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op *Operand) (err error) {
 		c.registers.p.updateZ(c.registers.y)
 		return
 	case STA:
-		if op.Address == nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op.String())
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
 		}
 
-		err = c.bus.writeByCPU(*op.Address, c.registers.a)
+		err = c.bus.writeByCPU(addr, c.registers.a)
 		if err != nil {
 			return
 		}
