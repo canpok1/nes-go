@@ -500,7 +500,7 @@ func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
 }
 
 // GetSpriteNo ...
-func (b *Bus) GetSpriteNo(p NameTablePoint) (no uint8, err error) {
+func (b *Bus) GetSpriteNo(nameTblIdx uint8, p NameTablePoint) (no uint8, err error) {
 	log.Trace("Bus.GetSpriteNo[%#v] ...", p)
 	defer func() {
 		if err != nil {
@@ -514,7 +514,16 @@ func (b *Bus) GetSpriteNo(p NameTablePoint) (no uint8, err error) {
 		return
 	}
 
-	no = b.nameTable0[p.ToIndex()]
+	switch nameTblIdx {
+	case 0:
+		no = b.nameTable0[p.ToIndex()]
+	case 1:
+		no = b.nameTable1[p.ToIndex()]
+	case 2:
+		no = b.nameTable2[p.ToIndex()]
+	case 3:
+		no = b.nameTable3[p.ToIndex()]
+	}
 
 	return
 }

@@ -262,7 +262,8 @@ func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
 		y := p.drawingPoint.Y / SpriteHeight
 		for x := 0; x < 0x20; x++ {
 			np := NameTablePoint{X: uint8(x), Y: uint8(y)}
-			spriteNo, err := p.bus.GetSpriteNo(np)
+			nameTblIdx := p.registers.ppuctrl & 0x03
+			spriteNo, err := p.bus.GetSpriteNo(nameTblIdx, np)
 			if err != nil {
 				return nil, err
 			}
