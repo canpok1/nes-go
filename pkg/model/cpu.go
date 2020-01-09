@@ -4,203 +4,8 @@ import (
 	"fmt"
 
 	"github.com/canpok1/nes-go/pkg/log"
+	"github.com/canpok1/nes-go/pkg/model/cpu"
 )
-
-// CPURegisters ...
-type CPURegisters struct {
-	a  byte
-	x  byte
-	y  byte
-	s  byte
-	p  *CPUStatusRegister
-	pc uint16
-}
-
-// NewCPURegisters ...
-func NewCPURegisters() *CPURegisters {
-	// initialize as CPU power up state
-	// https://wiki.nesdev.com/w/index.php/CPU_power_up_state
-	return &CPURegisters{
-		a:  0,
-		x:  0,
-		y:  0,
-		s:  0xFD,
-		p:  NewCPUStatusRegister(),
-		pc: 0,
-	}
-}
-
-// String ...
-func (r *CPURegisters) String() string {
-	return fmt.Sprintf(
-		"{A:%#v, X:%#v, Y:%#v, S:%#v, P:%v, PC:%#v}",
-		r.a,
-		r.x,
-		r.y,
-		r.s,
-		r.p.String(),
-		r.pc,
-	)
-}
-
-// updateA ...
-func (r *CPURegisters) updateA(a byte) {
-	old := r.a
-	r.a = a
-	log.Trace("CPU.update[A] %#v => %#v", old, r.a)
-}
-
-// updateX ...
-func (r *CPURegisters) updateX(x byte) {
-	old := r.x
-	r.x = x
-	log.Trace("CPU.update[X] %#v => %#v", old, r.x)
-}
-
-// updateY ...
-func (r *CPURegisters) updateY(y byte) {
-	old := r.y
-	r.y = y
-	log.Trace("CPU.update[Y] %#v => %#v", old, r.y)
-}
-
-// updateS ...
-func (r *CPURegisters) updateS(s byte) {
-	old := r.s
-	r.s = s
-	log.Trace("CPU.update[S] %#v => %#v", old, r.s)
-}
-
-// incrementPC ...
-func (r *CPURegisters) incrementPC() {
-	r.updatePC(r.pc + 1)
-}
-
-// updatePC ...
-func (r *CPURegisters) updatePC(pc uint16) {
-	old := r.pc
-	r.pc = pc
-	log.Trace("CPU.update[PC] %#v => %#v", old, r.pc)
-}
-
-// CPUStatusRegister ...
-// https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9%E3%83%AC%E3%82%B8%E3%82%B9%E3%82%BF
-type CPUStatusRegister struct {
-	negative    bool // bit7	N	ネガティブ	演算結果のbit7が1の時にセット
-	overflow    bool // bit6	V	オーバーフロー	P演算結果がオーバーフローを起こした時にセット
-	reserved    bool // bit5	R	予約済み	常にセットされている
-	breakMode   bool // bit4	B	ブレークモード	BRK発生時にセット、IRQ発生時にクリア
-	decimalMode bool // bit3	D	デシマルモード	0:デフォルト、1:BCDモード (未実装)
-	interrupt   bool // bit2	I	IRQ禁止	0:IRQ許可、1:IRQ禁止
-	zero        bool // bit1	Z	ゼロ	演算結果が0の時にセット
-	carry       bool // bit0	C	キャリー	キャリー発生時にセット
-}
-
-// NewCPUStatusRegister ...
-func NewCPUStatusRegister() *CPUStatusRegister {
-	return &CPUStatusRegister{
-		negative:    false,
-		overflow:    false,
-		reserved:    true,
-		breakMode:   true,
-		decimalMode: false,
-		interrupt:   true,
-		zero:        false,
-		carry:       false,
-	}
-}
-
-// String ...
-func (s *CPUStatusRegister) String() string {
-	return fmt.Sprintf(
-		"{N:%#v, V:%#v, R:%#v, B:%#v, D:%#v, I:%#v, Z:%#v, C:%#v}",
-		s.negative,
-		s.overflow,
-		s.reserved,
-		s.breakMode,
-		s.decimalMode,
-		s.interrupt,
-		s.zero,
-		s.carry,
-	)
-}
-
-// ToByte ...
-func (s *CPUStatusRegister) ToByte() byte {
-	var b byte = 0
-	if s.negative {
-		b = b + 0x80
-	}
-	if s.overflow {
-		b = b + 0x40
-	}
-	if s.reserved {
-		b = b + 0x20
-	}
-	if s.breakMode {
-		b = b + 0x10
-	}
-	if s.decimalMode {
-		b = b + 0x08
-	}
-	if s.interrupt {
-		b = b + 0x04
-	}
-	if s.zero {
-		b = b + 0x02
-	}
-	if s.carry {
-		b = b + 0x01
-	}
-	return b
-}
-
-// updateAll ...
-func (s *CPUStatusRegister) updateAll(b byte) {
-	s.negative = (b & 0x80) == 0x80
-	s.overflow = (b & 0x40) == 0x40
-	s.reserved = (b & 0x20) == 0x20
-	s.breakMode = (b & 0x10) == 0x10
-	s.decimalMode = (b & 0x08) == 0x08
-	s.interrupt = (b & 0x04) == 0x04
-	s.zero = (b & 0x02) == 0x02
-	s.carry = (b & 0x01) == 0x01
-}
-
-// updateN ...
-func (s *CPUStatusRegister) updateN(result byte) {
-	old := s.negative
-	s.negative = ((result & 0x80) == 0x80)
-	log.Trace("CPU.update[N] %#v => %#v", old, s.negative)
-}
-
-// updateV
-func (s *CPUStatusRegister) updateV(result int16) {
-	old := s.overflow
-	s.overflow = (result < 0x7F) || (result > 0x80)
-	log.Trace("CPU.update[V] %#v => %#v", old, s.overflow)
-}
-
-// updateI ...
-func (s *CPUStatusRegister) updateI(i bool) {
-	old := s.interrupt
-	s.interrupt = i
-	log.Trace("CPU.update[I] %#v => %#v", old, s.interrupt)
-}
-
-// updateZ ...
-func (s *CPUStatusRegister) updateZ(result byte) {
-	old := s.zero
-	s.zero = (result == 0x00)
-	log.Trace("CPU.update[Z] %#v => %#v", old, s.zero)
-}
-
-// updateC ...
-func (s *CPUStatusRegister) updateC(result int16) {
-	old := s.carry
-	s.carry = result > 0xFF
-	log.Trace("CPU.update[C] %#v => %#v", old, s.carry)
-}
 
 // CPUStack ...
 type CPUStack struct {
@@ -226,7 +31,7 @@ func (s *CPUStack) Pop() byte {
 
 // CPU ...
 type CPU struct {
-	registers   *CPURegisters
+	registers   *cpu.CPURegisters
 	bus         *Bus
 	shouldReset bool
 	stack       *CPUStack
@@ -235,7 +40,7 @@ type CPU struct {
 // NewCPU ...
 func NewCPU() *CPU {
 	return &CPU{
-		registers:   NewCPURegisters(),
+		registers:   cpu.NewCPURegisters(),
 		shouldReset: true,
 		stack:       NewCPUStack(),
 	}
@@ -265,7 +70,7 @@ func (c *CPU) Run() (int, error) {
 	}
 
 	if c.shouldReset {
-		if err := c.interruptRESET(); err != nil {
+		if err := c.InterruptRESET(); err != nil {
 			return 0, fmt.Errorf("%w", err)
 		}
 		return 0, nil
@@ -322,13 +127,13 @@ func (c *CPU) fetch() (byte, error) {
 		}
 	}()
 
-	addr = Address(c.registers.pc)
+	addr = Address(c.registers.PC)
 	data, err = c.bus.readByCPU(addr)
 	if err != nil {
 		return data, fmt.Errorf("failed to fetch; %w", err)
 	}
 
-	c.registers.incrementPC()
+	c.registers.IncrementPC()
 
 	return data, nil
 }
@@ -429,29 +234,29 @@ func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr Address, err err
 		return
 	case IndexedZeroPageX:
 		l := op[0]
-		addr = Address(uint8(l) + uint8(c.registers.x))
+		addr = Address(uint8(l) + uint8(c.registers.X))
 		return
 	case IndexedZeroPageY:
 		l := op[0]
-		addr = Address(uint8(l) + uint8(c.registers.y))
+		addr = Address(uint8(l) + uint8(c.registers.Y))
 		return
 	case IndexedAbsoluteX:
 		l := op[0]
 		h := op[1]
-		addr = Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.x))
+		addr = Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.X))
 		return
 	case IndexedAbsoluteY:
 		l := op[0]
 		h := op[1]
-		addr = Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.y))
+		addr = Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.Y))
 		return
 	case Relative:
 		b := op[0]
-		addr = Address(c.registers.pc + uint16(int8(b)))
+		addr = Address(c.registers.PC + uint16(int8(b)))
 		return
 	case IndexedIndirect:
 		b := op[0]
-		dest := Address(uint8(b) + c.registers.x)
+		dest := Address(uint8(b) + c.registers.X)
 
 		var l byte
 		l, err = c.bus.readByCPU(dest)
@@ -465,7 +270,7 @@ func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr Address, err err
 		return
 	case IndirectIndexed:
 		b := op[0]
-		dest := Address(uint8(b) + c.registers.x)
+		dest := Address(uint8(b) + c.registers.X)
 
 		var h byte
 		h, err = c.bus.readByCPU(dest)
@@ -475,7 +280,7 @@ func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr Address, err err
 
 		l := op[1]
 
-		addr = Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.y))
+		addr = Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.Y))
 		return
 	case AbsoluteIndirect:
 		f1 := op[0]
@@ -504,17 +309,17 @@ func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr Address, err err
 	}
 }
 
-// interruptNMI ...
-func (c *CPU) interruptNMI() {
+// InterruptNMI ...
+func (c *CPU) InterruptNMI() {
 	// TODO 実装
-	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#interrupt
+	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#Interrupt
 }
 
-// interruptRESET ...
-func (c *CPU) interruptRESET() error {
-	log.Info("CPU.interrupt[RESET] ...")
+// InterruptRESET ...
+func (c *CPU) InterruptRESET() error {
+	log.Info("CPU.Interrupt[RESET] ...")
 
-	c.registers.p.updateI(true)
+	c.registers.P.UpdateI(true)
 
 	l, err := c.bus.readByCPU(0xFFFC)
 	if err != nil {
@@ -526,24 +331,24 @@ func (c *CPU) interruptRESET() error {
 		return fmt.Errorf("failed to reset; %w", err)
 	}
 
-	c.registers.updatePC((uint16(h) << 8) | uint16(l))
+	c.registers.UpdatePC((uint16(h) << 8) | uint16(l))
 
 	c.shouldReset = false
 	return nil
 }
 
-// interruptBRK ...
-func (c *CPU) interruptBRK() {
-	log.Info("CPU.interrupt[BRK] ...")
+// InterruptBRK ...
+func (c *CPU) InterruptBRK() {
+	log.Info("CPU.Interrupt[BRK] ...")
 	// TODO 実装
-	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#interrupt
+	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#Interrupt
 }
 
-// interruptIRQ ...
-func (c *CPU) interruptIRQ() {
-	log.Info("CPU.interrupt[IRQ] ...")
+// InterruptIRQ ...
+func (c *CPU) InterruptIRQ() {
+	log.Info("CPU.Interrupt[IRQ] ...")
 	// TODO 実装
-	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#interrupt
+	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#Interrupt
 }
 
 // exec ...
@@ -578,16 +383,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		ans := int16(int8(c.registers.a)) + int16(int8(b))
-		if c.registers.p.carry {
+		ans := int16(int8(c.registers.A)) + int16(int8(b))
+		if c.registers.P.Carry {
 			ans = ans + 1
 		}
 
-		c.registers.a = byte(ans & 0xFF)
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateV(ans)
-		c.registers.p.updateZ(c.registers.a)
-		c.registers.p.updateC(ans)
+		c.registers.A = byte(ans & 0xFF)
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateV(ans)
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.UpdateC(ans)
 		return
 	case SBC:
 		var b byte
@@ -608,16 +413,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		ans := int16(int8(c.registers.a)) - int16(int8(b))
-		if !c.registers.p.carry {
+		ans := int16(int8(c.registers.A)) - int16(int8(b))
+		if !c.registers.P.Carry {
 			ans = ans - 1
 		}
 
-		c.registers.a = byte(ans & 0xFF)
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateV(ans)
-		c.registers.p.updateZ(c.registers.a)
-		c.registers.p.updateC(ans)
+		c.registers.A = byte(ans & 0xFF)
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateV(ans)
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.UpdateC(ans)
 		return
 	case AND:
 		var b byte
@@ -638,9 +443,9 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		c.registers.a = c.registers.a & b
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
+		c.registers.A = c.registers.A & b
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
 		return
 	case ORA:
 		var b byte
@@ -661,9 +466,9 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		c.registers.a = c.registers.a | b
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
+		c.registers.A = c.registers.A | b
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
 		return
 	case EOR:
 		var b byte
@@ -684,14 +489,14 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		c.registers.a = c.registers.a ^ b
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
+		c.registers.A = c.registers.A ^ b
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
 		return
 	case ASL:
 		var b byte
 		if mode == Accumulator {
-			b = c.registers.a
+			b = c.registers.A
 		} else {
 			var addr Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
@@ -703,14 +508,14 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		c.registers.a = b << 1
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.carry = (b & 0x80) == 0x80
+		c.registers.A = b << 1
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.Carry = (b & 0x80) == 0x80
 		return
 	case LSR:
 		var b byte
 		if mode == Accumulator {
-			b = c.registers.a
+			b = c.registers.A
 		} else {
 			var addr Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
@@ -722,15 +527,15 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		c.registers.a = b >> 1
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
-		c.registers.p.carry = (b & 0x01) == 0x01
+		c.registers.A = b >> 1
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.Carry = (b & 0x01) == 0x01
 		return
 	case ROL:
 		var b byte
 		if mode == Accumulator {
-			b = c.registers.a
+			b = c.registers.A
 		} else {
 			var addr Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
@@ -742,19 +547,19 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		c.registers.a = b << 1
-		if c.registers.p.carry {
-			c.registers.a = c.registers.a + 1
+		c.registers.A = b << 1
+		if c.registers.P.Carry {
+			c.registers.A = c.registers.A + 1
 		}
 
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
-		c.registers.p.carry = (b & 0x80) == 0x80
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.Carry = (b & 0x80) == 0x80
 		return
 	case ROR:
 		var b byte
 		if mode == Accumulator {
-			b = c.registers.a
+			b = c.registers.A
 		} else {
 			var addr Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
@@ -766,22 +571,22 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		c.registers.a = b >> 1
-		if c.registers.p.carry {
-			c.registers.a = c.registers.a + 0x80
+		c.registers.A = b >> 1
+		if c.registers.P.Carry {
+			c.registers.A = c.registers.A + 0x80
 		}
 
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
-		c.registers.p.carry = (b & 0x01) == 0x01
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.Carry = (b & 0x01) == 0x01
 		return
 	case BCC:
 		var addr Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		if !c.registers.p.carry {
-			c.registers.updatePC(uint16(addr))
+		if !c.registers.P.Carry {
+			c.registers.UpdatePC(uint16(addr))
 		}
 		return
 	case BCS:
@@ -789,8 +594,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		if c.registers.p.carry {
-			c.registers.updatePC(uint16(addr))
+		if c.registers.P.Carry {
+			c.registers.UpdatePC(uint16(addr))
 		}
 		return
 	case BEQ:
@@ -798,8 +603,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		if c.registers.p.zero {
-			c.registers.updatePC(uint16(addr))
+		if c.registers.P.Zero {
+			c.registers.UpdatePC(uint16(addr))
 		}
 		return
 	case BNE:
@@ -807,8 +612,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		if !c.registers.p.zero {
-			c.registers.updatePC(uint16(addr))
+		if !c.registers.P.Zero {
+			c.registers.UpdatePC(uint16(addr))
 		}
 		return
 	case BVC:
@@ -816,8 +621,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		if !c.registers.p.carry {
-			c.registers.updatePC(uint16(addr))
+		if !c.registers.P.Carry {
+			c.registers.UpdatePC(uint16(addr))
 		}
 		return
 	case BVS:
@@ -825,8 +630,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		if c.registers.p.carry {
-			c.registers.updatePC(uint16(addr))
+		if c.registers.P.Carry {
+			c.registers.UpdatePC(uint16(addr))
 		}
 		return
 	case BPL:
@@ -834,8 +639,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		if !c.registers.p.negative {
-			c.registers.updatePC(uint16(addr))
+		if !c.registers.P.Negative {
+			c.registers.UpdatePC(uint16(addr))
 		}
 		return
 	case BMI:
@@ -843,8 +648,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		if c.registers.p.negative {
-			c.registers.updatePC(uint16(addr))
+		if c.registers.P.Negative {
+			c.registers.UpdatePC(uint16(addr))
 		}
 		return
 	case BIT:
@@ -859,16 +664,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 
-		c.registers.p.zero = (c.registers.a & b) == 0
-		c.registers.p.negative = (b & 0x80) == 0x80
-		c.registers.p.overflow = (b & 0x40) == 0x40
+		c.registers.P.Zero = (c.registers.A & b) == 0
+		c.registers.P.Negative = (b & 0x80) == 0x80
+		c.registers.P.Overflow = (b & 0x40) == 0x40
 		return
 	case JMP:
 		var addr Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.registers.updatePC(uint16(addr))
+		c.registers.UpdatePC(uint16(addr))
 		return
 	case JSR:
 		var addr Address
@@ -882,22 +687,22 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 
-		c.stack.Push(byte((c.registers.pc & 0xFF00) >> 8))
-		c.stack.Push(byte(c.registers.pc & 0x00FF))
-		c.registers.pc = uint16(b)
+		c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
+		c.stack.Push(byte(c.registers.PC & 0x00FF))
+		c.registers.PC = uint16(b)
 		return
 	case RTS:
 		l := c.stack.Pop()
 		h := c.stack.Pop()
-		c.registers.pc = (uint16(h) << 8) + uint16(l) + 1
+		c.registers.PC = (uint16(h) << 8) + uint16(l) + 1
 		return
 	case BRK:
-		c.registers.p.breakMode = true
-		c.registers.incrementPC()
-		c.stack.Push(byte((c.registers.pc & 0xFF00) >> 8))
-		c.stack.Push(byte(c.registers.pc & 0x00FF))
-		c.stack.Push(c.registers.p.ToByte())
-		c.registers.p.interrupt = true
+		c.registers.P.BreakMode = true
+		c.registers.IncrementPC()
+		c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
+		c.stack.Push(byte(c.registers.PC & 0x00FF))
+		c.stack.Push(c.registers.P.ToByte())
+		c.registers.P.Interrupt = true
 
 		var l, h byte
 		l, err = c.bus.readByCPU(0xFFFE)
@@ -908,13 +713,13 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		if err != nil {
 			return
 		}
-		c.registers.pc = (uint16(h) << 8) + uint16(l)
+		c.registers.PC = (uint16(h) << 8) + uint16(l)
 		return
 	case RTI:
-		c.registers.p.updateAll(c.stack.Pop())
+		c.registers.P.UpdateAll(c.stack.Pop())
 		l := c.stack.Pop()
 		h := c.stack.Pop()
-		c.registers.pc = (uint16(h) << 8) + uint16(l)
+		c.registers.PC = (uint16(h) << 8) + uint16(l)
 		return
 	case CMP:
 		var b byte
@@ -935,10 +740,10 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		ans := c.registers.a - b
-		c.registers.p.updateN(ans)
-		c.registers.p.updateZ(ans)
-		c.registers.p.carry = ans >= 0
+		ans := c.registers.A - b
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
+		c.registers.P.Carry = ans >= 0
 		return
 	case CPX:
 		var b byte
@@ -959,10 +764,10 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		ans := c.registers.x - b
-		c.registers.p.updateN(ans)
-		c.registers.p.updateZ(ans)
-		c.registers.p.carry = ans >= 0
+		ans := c.registers.X - b
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
+		c.registers.P.Carry = ans >= 0
 		return
 	case CPY:
 		var b byte
@@ -983,10 +788,10 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 				return
 			}
 		}
-		ans := c.registers.y - b
-		c.registers.p.updateN(ans)
-		c.registers.p.updateZ(ans)
-		c.registers.p.carry = ans >= 0
+		ans := c.registers.Y - b
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
+		c.registers.P.Carry = ans >= 0
 		return
 	case INC:
 		var addr Address
@@ -1006,8 +811,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 
-		c.registers.p.updateN(ans)
-		c.registers.p.updateZ(ans)
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
 		return
 	case DEC:
 		var addr Address
@@ -1027,49 +832,49 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 
-		c.registers.p.updateN(ans)
-		c.registers.p.updateZ(ans)
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
 		return
 	case INX:
-		c.registers.updateX(c.registers.x + 1)
-		c.registers.p.updateN(c.registers.x)
-		c.registers.p.updateZ(c.registers.x)
+		c.registers.UpdateX(c.registers.X + 1)
+		c.registers.P.UpdateN(c.registers.X)
+		c.registers.P.UpdateZ(c.registers.X)
 		return
 	case DEX:
-		c.registers.updateX(c.registers.x - 1)
-		c.registers.p.updateN(c.registers.x)
-		c.registers.p.updateZ(c.registers.x)
+		c.registers.UpdateX(c.registers.X - 1)
+		c.registers.P.UpdateN(c.registers.X)
+		c.registers.P.UpdateZ(c.registers.X)
 		return
 	case INY:
-		c.registers.updateY(c.registers.y + 1)
-		c.registers.p.updateN(c.registers.y)
-		c.registers.p.updateZ(c.registers.y)
+		c.registers.UpdateY(c.registers.Y + 1)
+		c.registers.P.UpdateN(c.registers.Y)
+		c.registers.P.UpdateZ(c.registers.Y)
 		return
 	case DEY:
-		c.registers.updateY(c.registers.y - 1)
-		c.registers.p.updateN(c.registers.y)
-		c.registers.p.updateZ(c.registers.y)
+		c.registers.UpdateY(c.registers.Y - 1)
+		c.registers.P.UpdateN(c.registers.Y)
+		c.registers.P.UpdateZ(c.registers.Y)
 		return
 	case CLC:
-		c.registers.p.carry = false
+		c.registers.P.Carry = false
 		return
 	case SEC:
-		c.registers.p.carry = true
+		c.registers.P.Carry = true
 		return
 	case CLI:
-		c.registers.p.updateI(false)
+		c.registers.P.UpdateI(false)
 		return
 	case SEI:
-		c.registers.p.updateI(true)
+		c.registers.P.UpdateI(true)
 		return
 	case CLD:
-		c.registers.p.decimalMode = false
+		c.registers.P.DecimalMode = false
 		return
 	case SED:
-		c.registers.p.decimalMode = true
+		c.registers.P.DecimalMode = true
 		return
 	case CLV:
-		c.registers.p.overflow = false
+		c.registers.P.Overflow = false
 		return
 	case LDA:
 		var b byte
@@ -1091,9 +896,9 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			}
 		}
 
-		c.registers.updateA(b)
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
+		c.registers.UpdateA(b)
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
 		return
 	case LDX:
 		var b byte
@@ -1115,9 +920,9 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			}
 		}
 
-		c.registers.updateX(b)
-		c.registers.p.updateN(c.registers.x)
-		c.registers.p.updateZ(c.registers.x)
+		c.registers.UpdateX(b)
+		c.registers.P.UpdateN(c.registers.X)
+		c.registers.P.UpdateZ(c.registers.X)
 		return
 	case LDY:
 		var b byte
@@ -1139,9 +944,9 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			}
 		}
 
-		c.registers.updateY(b)
-		c.registers.p.updateN(c.registers.y)
-		c.registers.p.updateZ(c.registers.y)
+		c.registers.UpdateY(b)
+		c.registers.P.UpdateN(c.registers.Y)
+		c.registers.P.UpdateZ(c.registers.Y)
 		return
 	case STA:
 		var addr Address
@@ -1150,7 +955,7 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 
-		err = c.bus.writeByCPU(addr, c.registers.a)
+		err = c.bus.writeByCPU(addr, c.registers.A)
 		if err != nil {
 			return
 		}
@@ -1162,7 +967,7 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 
-		err = c.bus.writeByCPU(addr, c.registers.x)
+		err = c.bus.writeByCPU(addr, c.registers.X)
 		if err != nil {
 			return
 		}
@@ -1174,50 +979,50 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 
-		err = c.bus.writeByCPU(addr, c.registers.y)
+		err = c.bus.writeByCPU(addr, c.registers.Y)
 		if err != nil {
 			return
 		}
 		return
 	case TAX:
-		c.registers.x = c.registers.a
-		c.registers.p.updateN(c.registers.x)
-		c.registers.p.updateZ(c.registers.x)
+		c.registers.X = c.registers.A
+		c.registers.P.UpdateN(c.registers.X)
+		c.registers.P.UpdateZ(c.registers.X)
 		return
 	case TXA:
-		c.registers.a = c.registers.x
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
+		c.registers.A = c.registers.X
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
 		return
 	case TAY:
-		c.registers.y = c.registers.a
-		c.registers.p.updateN(c.registers.y)
-		c.registers.p.updateZ(c.registers.y)
+		c.registers.Y = c.registers.A
+		c.registers.P.UpdateN(c.registers.Y)
+		c.registers.P.UpdateZ(c.registers.Y)
 		return
 	case TYA:
-		c.registers.a = c.registers.y
-		c.registers.p.updateN(c.registers.a)
-		c.registers.p.updateZ(c.registers.a)
+		c.registers.A = c.registers.Y
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
 		return
 	case TSX:
-		c.registers.x = c.registers.s
-		c.registers.p.updateN(c.registers.x)
-		c.registers.p.updateZ(c.registers.x)
+		c.registers.X = c.registers.S
+		c.registers.P.UpdateN(c.registers.X)
+		c.registers.P.UpdateZ(c.registers.X)
 		return
 	case TXS:
-		c.registers.updateS(c.registers.x)
+		c.registers.UpdateS(c.registers.X)
 		return
 	case PHA:
-		c.stack.Push(c.registers.a)
+		c.stack.Push(c.registers.A)
 		return
 	case PLA:
-		c.registers.a = c.stack.Pop()
+		c.registers.A = c.stack.Pop()
 		return
 	case PHP:
-		c.stack.Push(c.registers.p.ToByte())
+		c.stack.Push(c.registers.P.ToByte())
 		return
 	case PLP:
-		c.registers.p.updateAll(c.stack.Pop())
+		c.registers.P.UpdateAll(c.stack.Pop())
 		return
 	case NOP:
 		return
