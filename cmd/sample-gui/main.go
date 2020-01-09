@@ -2,15 +2,15 @@ package main
 
 import (
 	"nes-go/pkg/infra"
+	"nes-go/pkg/log"
 	"nes-go/pkg/model"
+	"nes-go/pkg/model/cpu"
 	"os"
-
-	"github.com/canpok1/nes-go/pkg/log"
 )
 
 func main() {
 	log.SetOutput(os.Stdout)
-	log.SetLogLevel(log.LevelDebug)
+	log.SetLogLevel(log.LevelWarn)
 
 	log.Debug("========================================")
 	log.Debug("program start")
@@ -34,7 +34,7 @@ func main() {
 	}
 
 	bus := model.NewBus()
-	cpu := model.NewCPU()
+	cpu := cpu.NewCPU()
 	ppu, err := model.NewPPU()
 	if err != nil {
 		return

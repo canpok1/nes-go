@@ -3,7 +3,7 @@ package cpu
 import (
 	"fmt"
 
-	"github.com/canpok1/nes-go/pkg/log"
+	"nes-go/pkg/log"
 )
 
 // Registers ...

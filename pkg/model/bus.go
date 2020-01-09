@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/canpok1/nes-go/pkg/log"
+	"nes-go/pkg/log"
 )
 
 // Palette ...
@@ -91,7 +91,7 @@ func (b *Bus) Setup(rom *ROM, ppu *PPU) {
 }
 
 // readByCPU ...
-func (b *Bus) readByCPU(addr Address) (byte, error) {
+func (b *Bus) ReadByCPU(addr Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
@@ -179,7 +179,7 @@ func (b *Bus) readByCPU(addr Address) (byte, error) {
 }
 
 // writeByCPU ...
-func (b *Bus) writeByCPU(addr Address, data byte) error {
+func (b *Bus) WriteByCPU(addr Address, data byte) error {
 	var err error
 	var target string
 	log.Trace("Bus.writeByCPU[addr=%#v] (<=%#v) ...", addr, data)

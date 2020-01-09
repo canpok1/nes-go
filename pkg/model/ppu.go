@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"image"
 
-	"github.com/canpok1/nes-go/pkg/log"
+	"nes-go/pkg/log"
 )
 
 // PPURegisters ...

@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/canpok1/nes-go/pkg/log"
+	"nes-go/pkg/log"
 )
 
 // INESHeader ...
