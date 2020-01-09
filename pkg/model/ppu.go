@@ -119,7 +119,7 @@ func (p *PPU) ReadRegisters(addr Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
-	log.Warn("PPU.ReadRegisters[%#v] ...", addr)
+	log.Trace("PPU.ReadRegisters[%#v] ...", addr)
 	defer func() {
 		if err != nil {
 			log.Warn("PPU.ReadRegisters[%#v][%#v] => %#v", addr, target, err)
