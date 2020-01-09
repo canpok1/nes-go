@@ -76,6 +76,20 @@ func (c *CPU) Run() (int, error) {
 		return 0, nil
 	}
 
+	if !c.registers.P.InterruptDisable && c.registers.P.BreakMode {
+		if err := c.InterruptBRK(); err != nil {
+			return 0, fmt.Errorf("%w", err)
+		}
+		return 0, nil
+	}
+
+	if !c.registers.P.InterruptDisable && !c.registers.P.BreakMode {
+		if err := c.InterruptIRQ(); err != nil {
+			return 0, fmt.Errorf("%w", err)
+		}
+		return 0, nil
+	}
+
 	// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
 	oc, err := c.fetchOpcode()
 	if err != nil {
@@ -338,17 +352,45 @@ func (c *CPU) InterruptRESET() error {
 }
 
 // InterruptBRK ...
-func (c *CPU) InterruptBRK() {
+func (c *CPU) InterruptBRK() error {
 	log.Info("CPU.Interrupt[BRK] ...")
-	// TODO 実装
-	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#Interrupt
+
+	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
+	c.stack.Push(byte(c.registers.PC & 0x00FF))
+	c.stack.Push(c.registers.P.ToByte())
+	c.registers.P.InterruptDisable = true
+
+	l, err := c.bus.ReadByCPU(0xFFFE)
+	if err != nil {
+		return fmt.Errorf("failed to interrupt[BRK]; %w", err)
+	}
+	h, err := c.bus.ReadByCPU(0xFFFF)
+	if err != nil {
+		return fmt.Errorf("failed to interrupt[BRK]; %w", err)
+	}
+	c.registers.PC = (uint16(h) << 8) + uint16(l)
+	return nil
 }
 
 // InterruptIRQ ...
-func (c *CPU) InterruptIRQ() {
+func (c *CPU) InterruptIRQ() error {
 	log.Info("CPU.Interrupt[IRQ] ...")
-	// TODO 実装
-	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#Interrupt
+
+	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
+	c.stack.Push(byte(c.registers.PC & 0x00FF))
+	c.stack.Push(c.registers.P.ToByte())
+	c.registers.P.InterruptDisable = true
+
+	l, err := c.bus.ReadByCPU(0xFFFE)
+	if err != nil {
+		return fmt.Errorf("failed to interrupt[IRQ]; %w", err)
+	}
+	h, err := c.bus.ReadByCPU(0xFFFF)
+	if err != nil {
+		return fmt.Errorf("failed to interrupt[IRQ]; %w", err)
+	}
+	c.registers.PC = (uint16(h) << 8) + uint16(l)
+	return nil
 }
 
 // exec ...
@@ -699,21 +741,6 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 	case BRK:
 		c.registers.P.BreakMode = true
 		c.registers.IncrementPC()
-		c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
-		c.stack.Push(byte(c.registers.PC & 0x00FF))
-		c.stack.Push(c.registers.P.ToByte())
-		c.registers.P.Interrupt = true
-
-		var l, h byte
-		l, err = c.bus.ReadByCPU(0xFFFE)
-		if err != nil {
-			return
-		}
-		h, err = c.bus.ReadByCPU(0xFFFF)
-		if err != nil {
-			return
-		}
-		c.registers.PC = (uint16(h) << 8) + uint16(l)
 		return
 	case RTI:
 		c.registers.P.UpdateAll(c.stack.Pop())
