@@ -31,7 +31,7 @@ func (s *CPUStack) Pop() byte {
 
 // CPU ...
 type CPU struct {
-	registers   *cpu.CPURegisters
+	registers   *cpu.Registers
 	bus         *Bus
 	shouldReset bool
 	stack       *CPUStack
@@ -40,7 +40,7 @@ type CPU struct {
 // NewCPU ...
 func NewCPU() *CPU {
 	return &CPU{
-		registers:   cpu.NewCPURegisters(),
+		registers:   cpu.NewRegisters(),
 		shouldReset: true,
 		stack:       NewCPUStack(),
 	}
