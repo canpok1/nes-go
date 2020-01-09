@@ -86,27 +86,27 @@ func (r *Registers) UpdatePC(pc uint16) {
 // StatusRegister ...
 // https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9%E3%83%AC%E3%82%B8%E3%82%B9%E3%82%BF
 type StatusRegister struct {
-	Negative    bool // bit7	N	ネガティブ	演算結果のbit7が1の時にセット
-	Overflow    bool // bit6	V	オーバーフロー	P演算結果がオーバーフローを起こした時にセット
-	Reserved    bool // bit5	R	予約済み	常にセットされている
-	BreakMode   bool // bit4	B	ブレークモード	BRK発生時にセット、IRQ発生時にクリア
-	DecimalMode bool // bit3	D	デシマルモード	0:デフォルト、1:BCDモード (未実装)
-	Interrupt   bool // bit2	I	IRQ禁止	0:IRQ許可、1:IRQ禁止
-	Zero        bool // bit1	Z	ゼロ	演算結果が0の時にセット
-	Carry       bool // bit0	C	キャリー	キャリー発生時にセット
+	Negative         bool // bit7	N	ネガティブ	演算結果のbit7が1の時にセット
+	Overflow         bool // bit6	V	オーバーフロー	P演算結果がオーバーフローを起こした時にセット
+	Reserved         bool // bit5	R	予約済み	常にセットされている
+	BreakMode        bool // bit4	B	ブレークモード	BRK発生時にセット、IRQ発生時にクリア
+	DecimalMode      bool // bit3	D	デシマルモード	0:デフォルト、1:BCDモード (未実装)
+	InterruptDisable bool // bit2	I	IRQ禁止	0:IRQ許可、1:IRQ禁止
+	Zero             bool // bit1	Z	ゼロ	演算結果が0の時にセット
+	Carry            bool // bit0	C	キャリー	キャリー発生時にセット
 }
 
 // NewStatusRegister ...
 func NewStatusRegister() *StatusRegister {
 	return &StatusRegister{
-		Negative:    false,
-		Overflow:    false,
-		Reserved:    true,
-		BreakMode:   true,
-		DecimalMode: false,
-		Interrupt:   true,
-		Zero:        false,
-		Carry:       false,
+		Negative:         false,
+		Overflow:         false,
+		Reserved:         true,
+		BreakMode:        true,
+		DecimalMode:      false,
+		InterruptDisable: true,
+		Zero:             false,
+		Carry:            false,
 	}
 }
 
@@ -119,7 +119,7 @@ func (s *StatusRegister) String() string {
 		s.Reserved,
 		s.BreakMode,
 		s.DecimalMode,
-		s.Interrupt,
+		s.InterruptDisable,
 		s.Zero,
 		s.Carry,
 	)
@@ -143,7 +143,7 @@ func (s *StatusRegister) ToByte() byte {
 	if s.DecimalMode {
 		b = b + 0x08
 	}
-	if s.Interrupt {
+	if s.InterruptDisable {
 		b = b + 0x04
 	}
 	if s.Zero {
@@ -162,7 +162,7 @@ func (s *StatusRegister) UpdateAll(b byte) {
 	s.Reserved = (b & 0x20) == 0x20
 	s.BreakMode = (b & 0x10) == 0x10
 	s.DecimalMode = (b & 0x08) == 0x08
-	s.Interrupt = (b & 0x04) == 0x04
+	s.InterruptDisable = (b & 0x04) == 0x04
 	s.Zero = (b & 0x02) == 0x02
 	s.Carry = (b & 0x01) == 0x01
 }
@@ -183,9 +183,9 @@ func (s *StatusRegister) UpdateV(result int16) {
 
 // UpdateI ...
 func (s *StatusRegister) UpdateI(i bool) {
-	old := s.Interrupt
-	s.Interrupt = i
-	log.Trace("CPU.update[I] %#v => %#v", old, s.Interrupt)
+	old := s.InterruptDisable
+	s.InterruptDisable = i
+	log.Trace("CPU.update[I] %#v => %#v", old, s.InterruptDisable)
 }
 
 // UpdateZ ...
