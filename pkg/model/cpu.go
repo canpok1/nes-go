@@ -125,11 +125,60 @@ func (s *CPUStatusRegister) String() string {
 	)
 }
 
+// ToByte ...
+func (s *CPUStatusRegister) ToByte() byte {
+	var b byte = 0
+	if s.negative {
+		b = b + 0x80
+	}
+	if s.overflow {
+		b = b + 0x40
+	}
+	if s.reserved {
+		b = b + 0x20
+	}
+	if s.breakMode {
+		b = b + 0x10
+	}
+	if s.decimalMode {
+		b = b + 0x08
+	}
+	if s.interrupt {
+		b = b + 0x04
+	}
+	if s.zero {
+		b = b + 0x02
+	}
+	if s.carry {
+		b = b + 0x01
+	}
+	return b
+}
+
+// updateAll ...
+func (s *CPUStatusRegister) updateAll(b byte) {
+	s.negative = (b & 0x80) == 0x80
+	s.overflow = (b & 0x40) == 0x40
+	s.reserved = (b & 0x20) == 0x20
+	s.breakMode = (b & 0x10) == 0x10
+	s.decimalMode = (b & 0x08) == 0x08
+	s.interrupt = (b & 0x04) == 0x04
+	s.zero = (b & 0x02) == 0x02
+	s.carry = (b & 0x01) == 0x01
+}
+
 // updateN ...
 func (s *CPUStatusRegister) updateN(result byte) {
 	old := s.negative
 	s.negative = ((result & 0x80) == 0x80)
 	log.Trace("CPU.update[N] %#v => %#v", old, s.negative)
+}
+
+// updateV
+func (s *CPUStatusRegister) updateV(result int16) {
+	old := s.overflow
+	s.overflow = (result < 0x7F) || (result > 0x80)
+	log.Trace("CPU.update[V] %#v => %#v", old, s.overflow)
 }
 
 // updateI ...
@@ -146,11 +195,41 @@ func (s *CPUStatusRegister) updateZ(result byte) {
 	log.Trace("CPU.update[Z] %#v => %#v", old, s.zero)
 }
 
+// updateC ...
+func (s *CPUStatusRegister) updateC(result int16) {
+	old := s.carry
+	s.carry = result > 0xFF
+	log.Trace("CPU.update[C] %#v => %#v", old, s.carry)
+}
+
+// CPUStack ...
+type CPUStack struct {
+	stack []byte
+}
+
+// NewCPUStack ...
+func NewCPUStack() *CPUStack {
+	return &CPUStack{[]byte{}}
+}
+
+// Push ...
+func (s *CPUStack) Push(b byte) {
+	s.stack = append(s.stack, b)
+}
+
+// Pop ...
+func (s *CPUStack) Pop() byte {
+	b := s.stack[len(s.stack)-1]
+	s.stack = s.stack[0 : len(s.stack)-2]
+	return b
+}
+
 // CPU ...
 type CPU struct {
 	registers   *CPURegisters
 	bus         *Bus
 	shouldReset bool
+	stack       *CPUStack
 }
 
 // NewCPU ...
@@ -158,6 +237,7 @@ func NewCPU() *CPU {
 	return &CPU{
 		registers:   NewCPURegisters(),
 		shouldReset: true,
+		stack:       NewCPUStack(),
 	}
 }
 
@@ -479,19 +559,249 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 	}()
 
 	switch mne {
-	// TODO 実装 ADC Mnemonic = "ADC"
-	// TODO 実装 SBC Mnemonic = "SBC"
-	// TODO 実装 AND Mnemonic = "AND"
-	// TODO 実装 ORA Mnemonic = "ORA"
-	// TODO 実装 EOR Mnemonic = "EOR"
-	// TODO 実装 ASL Mnemonic = "ASL"
-	// TODO 実装 LSR Mnemonic = "LSR"
-	// TODO 実装 ROL Mnemonic = "ROL"
-	// TODO 実装 ROR Mnemonic = "ROR"
-	// TODO 実装 BCC Mnemonic = "BCC"
-	// TODO 実装 BCS Mnemonic = "BCS"
-	// TODO 実装 BEQ Mnemonic = "BEQ"
-	// TODO 実装 BNE Mnemonic = "BNE"
+	case ADC:
+		var b byte
+		if mode == Immediate {
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		ans := int16(int8(c.registers.a)) + int16(int8(b))
+		if c.registers.p.carry {
+			ans = ans + 1
+		}
+
+		c.registers.a = byte(ans & 0xFF)
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateV(ans)
+		c.registers.p.updateZ(c.registers.a)
+		c.registers.p.updateC(ans)
+		return
+	case SBC:
+		var b byte
+		if mode == Immediate {
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		ans := int16(int8(c.registers.a)) - int16(int8(b))
+		if !c.registers.p.carry {
+			ans = ans - 1
+		}
+
+		c.registers.a = byte(ans & 0xFF)
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateV(ans)
+		c.registers.p.updateZ(c.registers.a)
+		c.registers.p.updateC(ans)
+		return
+	case AND:
+		var b byte
+		if mode == Immediate {
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		c.registers.a = c.registers.a & b
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
+		return
+	case ORA:
+		var b byte
+		if mode == Immediate {
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		c.registers.a = c.registers.a | b
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
+		return
+	case EOR:
+		var b byte
+		if mode == Immediate {
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		c.registers.a = c.registers.a ^ b
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
+		return
+	case ASL:
+		var b byte
+		if mode == Accumulator {
+			b = c.registers.a
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		c.registers.a = b << 1
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.carry = (b & 0x80) == 0x80
+		return
+	case LSR:
+		var b byte
+		if mode == Accumulator {
+			b = c.registers.a
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		c.registers.a = b >> 1
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
+		c.registers.p.carry = (b & 0x01) == 0x01
+		return
+	case ROL:
+		var b byte
+		if mode == Accumulator {
+			b = c.registers.a
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		c.registers.a = b << 1
+		if c.registers.p.carry {
+			c.registers.a = c.registers.a + 1
+		}
+
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
+		c.registers.p.carry = (b & 0x80) == 0x80
+		return
+	case ROR:
+		var b byte
+		if mode == Accumulator {
+			b = c.registers.a
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		c.registers.a = b >> 1
+		if c.registers.p.carry {
+			c.registers.a = c.registers.a + 0x80
+		}
+
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
+		c.registers.p.carry = (b & 0x01) == 0x01
+		return
+	case BCC:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+		if !c.registers.p.carry {
+			c.registers.updatePC(uint16(addr))
+		}
+		return
+	case BCS:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+		if c.registers.p.carry {
+			c.registers.updatePC(uint16(addr))
+		}
+		return
+	case BEQ:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+		if c.registers.p.zero {
+			c.registers.updatePC(uint16(addr))
+		}
+		return
 	case BNE:
 		var addr Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
@@ -501,11 +811,58 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.updatePC(uint16(addr))
 		}
 		return
-	// TODO 実装 BVC Mnemonic = "BVC"
-	// TODO 実装 BVS Mnemonic = "BVS"
-	// TODO 実装 BPL Mnemonic = "BPL"
-	// TODO 実装 BMI Mnemonic = "BMI"
-	// TODO 実装 BIT Mnemonic = "BIT"
+	case BVC:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+		if !c.registers.p.carry {
+			c.registers.updatePC(uint16(addr))
+		}
+		return
+	case BVS:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+		if c.registers.p.carry {
+			c.registers.updatePC(uint16(addr))
+		}
+		return
+	case BPL:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+		if !c.registers.p.negative {
+			c.registers.updatePC(uint16(addr))
+		}
+		return
+	case BMI:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+		if c.registers.p.negative {
+			c.registers.updatePC(uint16(addr))
+		}
+		return
+	case BIT:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+
+		var b byte
+		b, err = c.bus.readByCPU(addr)
+		if err != nil {
+			return
+		}
+
+		c.registers.p.zero = (c.registers.a & b) == 0
+		c.registers.p.negative = (b & 0x80) == 0x80
+		c.registers.p.overflow = (b & 0x40) == 0x40
+		return
 	case JMP:
 		var addr Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
@@ -513,15 +870,166 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		}
 		c.registers.updatePC(uint16(addr))
 		return
-	// TODO 実装 JSR Mnemonic = "JSR"
-	// TODO 実装 RTS Mnemonic = "RTS"
-	// TODO 実装 BRK Mnemonic = "BRK"
-	// TODO 実装 RTI Mnemonic = "RTI"
-	// TODO 実装 CMP Mnemonic = "CMP"
-	// TODO 実装 CPX Mnemonic = "CPX"
-	// TODO 実装 CPY Mnemonic = "CPY"
-	// TODO 実装 INC Mnemonic = "INC"
-	// TODO 実装 DEC Mnemonic = "DEC"
+	case JSR:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+
+		var b byte
+		b, err = c.bus.readByCPU(addr)
+		if err != nil {
+			return
+		}
+
+		c.stack.Push(byte((c.registers.pc & 0xFF00) >> 8))
+		c.stack.Push(byte(c.registers.pc & 0x00FF))
+		c.registers.pc = uint16(b)
+		return
+	case RTS:
+		l := c.stack.Pop()
+		h := c.stack.Pop()
+		c.registers.pc = (uint16(h) << 8) + uint16(l) + 1
+		return
+	case BRK:
+		c.registers.p.breakMode = true
+		c.registers.incrementPC()
+		c.stack.Push(byte((c.registers.pc & 0xFF00) >> 8))
+		c.stack.Push(byte(c.registers.pc & 0x00FF))
+		c.stack.Push(c.registers.p.ToByte())
+		c.registers.p.interrupt = true
+
+		var l, h byte
+		l, err = c.bus.readByCPU(0xFFFE)
+		if err != nil {
+			return
+		}
+		h, err = c.bus.readByCPU(0xFFFF)
+		if err != nil {
+			return
+		}
+		c.registers.pc = (uint16(h) << 8) + uint16(l)
+		return
+	case RTI:
+		c.registers.p.updateAll(c.stack.Pop())
+		l := c.stack.Pop()
+		h := c.stack.Pop()
+		c.registers.pc = (uint16(h) << 8) + uint16(l)
+		return
+	case CMP:
+		var b byte
+		if mode == Immediate {
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		ans := c.registers.a - b
+		c.registers.p.updateN(ans)
+		c.registers.p.updateZ(ans)
+		c.registers.p.carry = ans >= 0
+		return
+	case CPX:
+		var b byte
+		if mode == Immediate {
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		ans := c.registers.x - b
+		c.registers.p.updateN(ans)
+		c.registers.p.updateZ(ans)
+		c.registers.p.carry = ans >= 0
+		return
+	case CPY:
+		var b byte
+		if mode == Immediate {
+			if len(op) < 1 {
+				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
+			var addr Address
+			if addr, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.readByCPU(addr)
+			if err != nil {
+				return
+			}
+		}
+		ans := c.registers.y - b
+		c.registers.p.updateN(ans)
+		c.registers.p.updateZ(ans)
+		c.registers.p.carry = ans >= 0
+		return
+	case INC:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+
+		var b byte
+		b, err = c.bus.readByCPU(addr)
+		if err != nil {
+			return
+		}
+
+		ans := b + 1
+		err = c.bus.writeByCPU(addr, ans)
+		if err != nil {
+			return
+		}
+
+		c.registers.p.updateN(ans)
+		c.registers.p.updateZ(ans)
+		return
+	case DEC:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+
+		var b byte
+		b, err = c.bus.readByCPU(addr)
+		if err != nil {
+			return
+		}
+
+		ans := b - 1
+		err = c.bus.writeByCPU(addr, ans)
+		if err != nil {
+			return
+		}
+
+		c.registers.p.updateN(ans)
+		c.registers.p.updateZ(ans)
+		return
 	case INX:
 		c.registers.updateX(c.registers.x + 1)
 		c.registers.p.updateN(c.registers.x)
@@ -542,15 +1050,27 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.p.updateN(c.registers.y)
 		c.registers.p.updateZ(c.registers.y)
 		return
-	// TODO 実装 CLC Mnemonic = "CLC"
-	// TODO 実装 SEC Mnemonic = "SEC"
-	// TODO 実装 CLI Mnemonic = "CLI"
+	case CLC:
+		c.registers.p.carry = false
+		return
+	case SEC:
+		c.registers.p.carry = true
+		return
+	case CLI:
+		c.registers.p.updateI(false)
+		return
 	case SEI:
 		c.registers.p.updateI(true)
 		return
-	// TODO 実装 CLD Mnemonic = "CLD"
-	// TODO 実装 SED Mnemonic = "SED"
-	// TODO 実装 CLV Mnemonic = "CLV"
+	case CLD:
+		c.registers.p.decimalMode = false
+		return
+	case SED:
+		c.registers.p.decimalMode = true
+		return
+	case CLV:
+		c.registers.p.overflow = false
+		return
 	case LDA:
 		var b byte
 		if mode == Immediate {
@@ -635,21 +1155,72 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 		return
-	// TODO 実装 STX Mnemonic = "STX"
-	// TODO 実装 STY Mnemonic = "STY"
-	// TODO 実装 TAX Mnemonic = "TAX"
-	// TODO 実装 TXA Mnemonic = "TXA"
-	// TODO 実装 TAY Mnemonic = "TAY"
-	// TODO 実装 TYA Mnemonic = "TYA"
-	// TODO 実装 TSX Mnemonic = "TSX"
+	case STX:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
+			return
+		}
+
+		err = c.bus.writeByCPU(addr, c.registers.x)
+		if err != nil {
+			return
+		}
+		return
+	case STY:
+		var addr Address
+		if addr, err = c.makeAddress(mode, op); err != nil {
+			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
+			return
+		}
+
+		err = c.bus.writeByCPU(addr, c.registers.y)
+		if err != nil {
+			return
+		}
+		return
+	case TAX:
+		c.registers.x = c.registers.a
+		c.registers.p.updateN(c.registers.x)
+		c.registers.p.updateZ(c.registers.x)
+		return
+	case TXA:
+		c.registers.a = c.registers.x
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
+		return
+	case TAY:
+		c.registers.y = c.registers.a
+		c.registers.p.updateN(c.registers.y)
+		c.registers.p.updateZ(c.registers.y)
+		return
+	case TYA:
+		c.registers.a = c.registers.y
+		c.registers.p.updateN(c.registers.a)
+		c.registers.p.updateZ(c.registers.a)
+		return
+	case TSX:
+		c.registers.x = c.registers.s
+		c.registers.p.updateN(c.registers.x)
+		c.registers.p.updateZ(c.registers.x)
+		return
 	case TXS:
 		c.registers.updateS(c.registers.x)
 		return
-	// TODO 実装 PHA Mnemonic = "PHA"
-	// TODO 実装 PLA Mnemonic = "PLA"
-	// TODO 実装 PHP Mnemonic = "PHP"
-	// TODO 実装 PLP Mnemonic = "PLP"
-	// TODO 実装 NOP Mnemonic = "NOP"
+	case PHA:
+		c.stack.Push(c.registers.a)
+		return
+	case PLA:
+		c.registers.a = c.stack.Pop()
+		return
+	case PHP:
+		c.stack.Push(c.registers.p.ToByte())
+		return
+	case PLP:
+		c.registers.p.updateAll(c.stack.Pop())
+		return
+	case NOP:
+		return
 	default:
 		err = fmt.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", mne)
 		return
