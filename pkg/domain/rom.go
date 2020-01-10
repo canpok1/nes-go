@@ -1,11 +1,10 @@
-package model
+package domain
 
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
-
 	"nes-go/pkg/log"
+	"os"
 )
 
 // INESHeader ...

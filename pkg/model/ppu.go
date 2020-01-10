@@ -3,76 +3,39 @@ package model
 import (
 	"fmt"
 	"image"
-
+	"nes-go/pkg/domain"
 	"nes-go/pkg/log"
+	"nes-go/pkg/model/ppu"
 )
-
-// PPURegisters ...
-type PPURegisters struct {
-	ppuctrl   byte // 0x2000	PPUCTRL	W	コントロールレジスタ1	割り込みなどPPUの設定
-	ppumask   byte // 0x2001	PPUMASK	W	コントロールレジスタ2	背景イネーブルなどのPPU設定
-	ppustatus byte // 0x2002	PPUSTATUS	R	PPUステータス	PPUのステータス
-	oamaddr   byte // 0x2003	OAMADDR	W	スプライトメモリデータ	書き込むスプライト領域のアドレス
-	oamdata   byte // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
-	ppuscroll byte // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
-	ppuaddr   byte // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
-}
-
-// NewPPURegisters ...
-func NewPPURegisters() *PPURegisters {
-	return &PPURegisters{
-		ppuctrl:   0,
-		ppumask:   0,
-		ppustatus: 0,
-		oamaddr:   0,
-		oamdata:   0,
-		ppuscroll: 0,
-		ppuaddr:   0,
-	}
-}
-
-// String ...
-func (r *PPURegisters) String() string {
-	return fmt.Sprintf(
-		"{PPUCTRL:%#v, PPUMASK:%#v, PPUSTATUS:%#v, OAMADDR:%#v, OAMDATA:%v, PPUSCROLL:%#v, PPUADDR:%#v}",
-		r.ppuctrl,
-		r.ppumask,
-		r.ppustatus,
-		r.oamaddr,
-		r.oamdata,
-		r.ppuscroll,
-		r.ppuaddr,
-	)
-}
 
 // PPU ...
 type PPU struct {
-	registers *PPURegisters
+	registers *ppu.PPURegisters
 	bus       *Bus
 
-	ppuaddrWriteCount uint8   // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
-	ppuaddrBuf        Address // 組み立て中のPPUADDR
-	ppuaddrFull       Address // 組み立て済のPPUADDR
+	ppuaddrWriteCount uint8          // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
+	ppuaddrBuf        domain.Address // 組み立て中のPPUADDR
+	ppuaddrFull       domain.Address // 組み立て済のPPUADDR
 
-	spriteImages [][]SpriteImage
+	spriteImages [][]domain.SpriteImage
 
 	drawingPoint *image.Point
 }
 
 // NewPPU ...
 func NewPPU() (*PPU, error) {
-	sizeY := ResolutionHeight / SpriteHeight
-	sizeX := ResolutionWidth / SpriteWidth
-	spriteImages := make([][]SpriteImage, sizeY)
+	sizeY := domain.ResolutionHeight / domain.SpriteHeight
+	sizeX := domain.ResolutionWidth / domain.SpriteWidth
+	spriteImages := make([][]domain.SpriteImage, sizeY)
 	for y := 0; y < sizeY; y++ {
-		spriteImages[y] = make([]SpriteImage, sizeX)
+		spriteImages[y] = make([]domain.SpriteImage, sizeX)
 		for x := 0; x < sizeX; x++ {
-			spriteImages[y][x] = *NewSpriteImage()
+			spriteImages[y][x] = *domain.NewSpriteImage()
 		}
 	}
 
 	return &PPU{
-		registers:         NewPPURegisters(),
+		registers:         ppu.NewPPURegisters(),
 		ppuaddrWriteCount: 0,
 		ppuaddrBuf:        0,
 		ppuaddrFull:       0,
@@ -97,7 +60,7 @@ func (p *PPU) SetBus(b *Bus) {
 // incrementPPUADDR
 func (p *PPU) incrementPPUADDR() {
 	old := p.ppuaddrFull
-	if (p.registers.ppuctrl & 0x04) == 0 {
+	if (p.registers.PPUCtrl & 0x04) == 0 {
 		p.ppuaddrFull = p.ppuaddrFull + 1
 	} else {
 		p.ppuaddrFull = p.ppuaddrFull + 32
@@ -115,7 +78,7 @@ func flatten(org [][]byte) []byte {
 }
 
 // ReadRegisters ...
-func (p *PPU) ReadRegisters(addr Address) (byte, error) {
+func (p *PPU) ReadRegisters(addr domain.Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
@@ -137,13 +100,13 @@ func (p *PPU) ReadRegisters(addr Address) (byte, error) {
 		err = fmt.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
 	case 2:
 		target = "PPUSTATUS"
-		data = p.registers.ppustatus
+		data = p.registers.PPUStatus
 	case 3:
 		target = "OAMADDR"
 		err = fmt.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
 	case 4:
 		target = "OAMDATA"
-		data = p.registers.oamdata
+		data = p.registers.OAMData
 	case 5:
 		target = "PPUSCROLL"
 		err = fmt.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
@@ -163,7 +126,7 @@ func (p *PPU) ReadRegisters(addr Address) (byte, error) {
 }
 
 // WriteRegisters ...
-func (p *PPU) WriteRegisters(addr Address, data byte) error {
+func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 	var err error
 	var target string
 	log.Trace("PPU.WriteRegisters[%#v] ...", addr)
@@ -177,32 +140,32 @@ func (p *PPU) WriteRegisters(addr Address, data byte) error {
 
 	switch addr {
 	case 0:
-		p.registers.ppuctrl = data
+		p.registers.PPUCtrl = data
 		target = "PPUCTRL"
 	case 1:
-		p.registers.ppumask = data
+		p.registers.PPUMask = data
 		target = "PPUMASK"
 	case 2:
 		err = fmt.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
 		target = "PPUSTATUS"
 	case 3:
-		p.registers.oamaddr = data
+		p.registers.OAMAddr = data
 		target = "OAMADDR"
 	case 4:
-		p.registers.oamdata = data
+		p.registers.OAMData = data
 		target = "OAMDATA"
 	case 5:
-		p.registers.ppuscroll = data
+		p.registers.PPUScroll = data
 		target = "PPUSCROLL"
 	case 6:
-		p.registers.ppuaddr = data
+		p.registers.PPUAddr = data
 		switch p.ppuaddrWriteCount {
 		case 0, 2:
-			p.ppuaddrBuf = Address(p.registers.ppuaddr) << 8
+			p.ppuaddrBuf = domain.Address(p.registers.PPUAddr) << 8
 			p.ppuaddrWriteCount = 1
 			target = fmt.Sprintf("PPUADDR(for high 8 bits(ppuaddr:%#v))", p.ppuaddrBuf)
 		case 1:
-			p.ppuaddrBuf = p.ppuaddrBuf + Address(p.registers.ppuaddr)
+			p.ppuaddrBuf = p.ppuaddrBuf + domain.Address(p.registers.PPUAddr)
 			p.ppuaddrFull = p.ppuaddrBuf
 			p.ppuaddrWriteCount = 2
 			target = fmt.Sprintf("PPUADDR(for low 8 bits(ppuaddr:%#v))", p.ppuaddrBuf)
@@ -234,7 +197,7 @@ func (p *PPU) updateDrawingPoint() {
 }
 
 // Run ...
-func (p *PPU) Run(cycle int) (si [][]SpriteImage, err error) {
+func (p *PPU) Run(cycle int) (si [][]domain.SpriteImage, err error) {
 	for i := 0; i < cycle; i++ {
 		if si, err = p.Run1Cycle(); err != nil {
 			return
@@ -244,25 +207,25 @@ func (p *PPU) Run(cycle int) (si [][]SpriteImage, err error) {
 }
 
 // Run1Cycle ...
-func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
+func (p *PPU) Run1Cycle() ([][]domain.SpriteImage, error) {
 	log.Trace("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
 
 	defer p.updateDrawingPoint()
 
-	if p.drawingPoint.X >= ResolutionWidth {
+	if p.drawingPoint.X >= domain.ResolutionWidth {
 		return nil, nil
 	}
-	if p.drawingPoint.Y >= ResolutionHeight {
+	if p.drawingPoint.Y >= domain.ResolutionHeight {
 		return nil, nil
 	}
 
 	// 8ライン単位で書き込む
-	shouldDrawline := (p.drawingPoint.X == ResolutionWidth-1) && (p.drawingPoint.Y%8 == 7)
+	shouldDrawline := (p.drawingPoint.X == domain.ResolutionWidth-1) && (p.drawingPoint.Y%8 == 7)
 	if shouldDrawline {
-		y := p.drawingPoint.Y / SpriteHeight
+		y := p.drawingPoint.Y / domain.SpriteHeight
 		for x := 0; x < 0x20; x++ {
-			np := NameTablePoint{X: uint8(x), Y: uint8(y)}
-			nameTblIdx := p.registers.ppuctrl & 0x03
+			np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
+			nameTblIdx := p.registers.PPUCtrl & 0x03
 			spriteNo, err := p.bus.GetSpriteNo(nameTblIdx, np)
 			if err != nil {
 				return nil, err
@@ -283,7 +246,7 @@ func (p *PPU) Run1Cycle() ([][]SpriteImage, error) {
 	}
 
 	// 1ライン分の書き込み完了直後以外は描画しない
-	if p.drawingPoint.X != ResolutionWidth-1 {
+	if p.drawingPoint.X != domain.ResolutionWidth-1 {
 		return nil, nil
 	}
 

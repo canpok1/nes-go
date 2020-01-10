@@ -2,6 +2,7 @@ package infra
 
 import (
 	"fmt"
+	"nes-go/pkg/domain"
 	"nes-go/pkg/model"
 	"time"
 
@@ -23,7 +24,7 @@ type Monitor struct {
 
 // NewMonitor ...
 func NewMonitor(w int, h int, scale float64, title string) (*Monitor, error) {
-	imageBuf, err := ebiten.NewImage(model.ResolutionWidth, model.ResolutionHeight, ebiten.FilterDefault)
+	imageBuf, err := ebiten.NewImage(domain.ResolutionWidth, domain.ResolutionHeight, ebiten.FilterDefault)
 	if err != nil {
 		return nil, fmt.Errorf("failed to NewMonitor; err: %w", err)
 	}
@@ -55,7 +56,7 @@ func (m *Monitor) Run() error {
 }
 
 // Render ...
-func (m *Monitor) Render(sis [][]model.SpriteImage) error {
+func (m *Monitor) Render(sis [][]domain.SpriteImage) error {
 	p := toPixels(sis)
 	m.imageBuf.ReplacePixels(p)
 
@@ -66,12 +67,12 @@ func (m *Monitor) Render(sis [][]model.SpriteImage) error {
 }
 
 // toPixels ...
-func toPixels(sis [][]model.SpriteImage) []byte {
-	pixels := make([]byte, 4*model.ResolutionHeight*model.ResolutionWidth)
+func toPixels(sis [][]domain.SpriteImage) []byte {
+	pixels := make([]byte, 4*domain.ResolutionHeight*domain.ResolutionWidth)
 
 	idx := 0
-	for y := 0; y < model.ResolutionHeight; y++ {
-		for x := 0; x < model.ResolutionWidth; x++ {
+	for y := 0; y < domain.ResolutionHeight; y++ {
+		for x := 0; x < domain.ResolutionWidth; x++ {
 			r, g, b, a := getPixel(sis, model.MonitorX(x), model.MonitorY(y))
 
 			pixels[idx] = r
@@ -91,11 +92,11 @@ func toPixels(sis [][]model.SpriteImage) []byte {
 	return pixels
 }
 
-func getPixel(sis [][]model.SpriteImage, x model.MonitorX, y model.MonitorY) (r, g, b, a byte) {
-	s := sis[y/model.SpriteHeight][x/model.SpriteWidth]
+func getPixel(sis [][]domain.SpriteImage, x model.MonitorX, y model.MonitorY) (r, g, b, a byte) {
+	s := sis[y/domain.SpriteHeight][x/domain.SpriteWidth]
 
-	iy := y % model.SpriteHeight
-	ix := x % model.SpriteWidth
+	iy := y % domain.SpriteHeight
+	ix := x % domain.SpriteWidth
 
 	return s.R[iy][ix], s.G[iy][ix], s.B[iy][ix], 0xFF
 }

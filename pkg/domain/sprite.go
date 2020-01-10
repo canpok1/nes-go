@@ -1,4 +1,4 @@
-package model
+package domain
 
 import "nes-go/pkg/log"
 

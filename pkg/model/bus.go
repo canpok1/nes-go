@@ -3,24 +3,9 @@ package model
 import (
 	"fmt"
 
+	"nes-go/pkg/domain"
 	"nes-go/pkg/log"
 )
-
-// Palette ...
-type Palette []byte
-
-// NewPalette ...
-func NewPalette() *Palette {
-	p := Palette(make([]byte, 4))
-	return &p
-}
-
-// GetColor ...
-func (p *Palette) GetColor(no uint8) (uint8, uint8, uint8) {
-	index := (*p)[no]
-	c := colors[index]
-	return c[0], c[1], c[2]
-}
 
 // Bus ...
 type Bus struct {
@@ -29,11 +14,11 @@ type Bus struct {
 	io         []byte
 	exrom      []byte
 	exram      []byte
-	programROM *PRGROM
+	programROM *domain.PRGROM
 
 	ppu *PPU
 
-	charactorROM      *CHRROM
+	charactorROM      *domain.CHRROM
 	nameTable0        []byte
 	attributeTable0   []byte
 	nameTable1        []byte
@@ -42,19 +27,19 @@ type Bus struct {
 	attributeTable2   []byte
 	nameTable3        []byte
 	attributeTable3   []byte
-	backgroundPalette []Palette
-	spritePalette     []Palette
+	backgroundPalette []domain.Palette
+	spritePalette     []domain.Palette
 
 	setupped bool
 }
 
 // NewBus ...
 func NewBus() *Bus {
-	bp := []Palette{}
-	sp := []Palette{}
+	bp := []domain.Palette{}
+	sp := []domain.Palette{}
 	for i := 0; i < 4; i++ {
-		newBP := NewPalette()
-		newSP := NewPalette()
+		newBP := domain.NewPalette()
+		newSP := domain.NewPalette()
 		bp = append(bp, *newBP)
 		sp = append(sp, *newSP)
 	}
@@ -82,7 +67,7 @@ func NewBus() *Bus {
 }
 
 // Setup ...
-func (b *Bus) Setup(rom *ROM, ppu *PPU) {
+func (b *Bus) Setup(rom *domain.ROM, ppu *PPU) {
 	b.programROM = rom.Prgrom
 	b.charactorROM = rom.Chrrom
 	b.ppu = ppu
@@ -91,7 +76,7 @@ func (b *Bus) Setup(rom *ROM, ppu *PPU) {
 }
 
 // readByCPU ...
-func (b *Bus) ReadByCPU(addr Address) (byte, error) {
+func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
@@ -185,7 +170,7 @@ func (b *Bus) ReadByCPU(addr Address) (byte, error) {
 }
 
 // writeByCPU ...
-func (b *Bus) WriteByCPU(addr Address, data byte) error {
+func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	var err error
 	var target string
 	log.Trace("Bus.writeByCPU[addr=%#v] (<=%#v) ...", addr, data)
@@ -263,7 +248,7 @@ func (b *Bus) WriteByCPU(addr Address, data byte) error {
 }
 
 // readByPPU ...
-func (b *Bus) readByPPU(addr Address) (data byte, err error) {
+func (b *Bus) readByPPU(addr domain.Address) (data byte, err error) {
 	var target string
 	log.Trace("Bus.readByPPU[addr=%#v] ...", addr)
 	defer func() {
@@ -385,7 +370,7 @@ func (b *Bus) readByPPU(addr Address) (data byte, err error) {
 }
 
 // writeByPPU ...
-func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
+func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 	var target string
 	log.Trace("Bus.writeByPPU[addr=%#v] (<=%#v)...", addr, data)
 	defer func() {
@@ -506,7 +491,7 @@ func (b *Bus) writeByPPU(addr Address, data byte) (err error) {
 }
 
 // GetSpriteNo ...
-func (b *Bus) GetSpriteNo(nameTblIdx uint8, p NameTablePoint) (no uint8, err error) {
+func (b *Bus) GetSpriteNo(nameTblIdx uint8, p domain.NameTablePoint) (no uint8, err error) {
 	log.Trace("Bus.GetSpriteNo[%#v] ...", p)
 	defer func() {
 		if err != nil {
@@ -535,12 +520,12 @@ func (b *Bus) GetSpriteNo(nameTblIdx uint8, p NameTablePoint) (no uint8, err err
 }
 
 // GetSprite ...
-func (b *Bus) GetSprite(no uint8) *Sprite {
+func (b *Bus) GetSprite(no uint8) *domain.Sprite {
 	return b.charactorROM.GetSprite(no)
 }
 
 // GetPaletteNo ...
-func (b *Bus) GetPaletteNo(p NameTablePoint) (no uint8, err error) {
+func (b *Bus) GetPaletteNo(p domain.NameTablePoint) (no uint8, err error) {
 	log.Trace("Bus.GetPaletteNo[%#v] ...", p)
 	defer func() {
 		if err != nil {
@@ -563,11 +548,11 @@ func (b *Bus) GetPaletteNo(p NameTablePoint) (no uint8, err error) {
 }
 
 // GetBackgroundPalette ...
-func (b *Bus) GetBackgroundPalette(no uint8) *Palette {
+func (b *Bus) GetBackgroundPalette(no uint8) *domain.Palette {
 	return &b.backgroundPalette[no]
 }
 
 // GetSpritePalette ...
-func (b *Bus) GetSpritePalette(no uint8) *Palette {
+func (b *Bus) GetSpritePalette(no uint8) *domain.Palette {
 	return &b.spritePalette[no]
 }

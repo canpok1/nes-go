@@ -1,11 +1,33 @@
-package cpu
+package model
 
 import (
 	"fmt"
 
+	"nes-go/pkg/domain"
 	"nes-go/pkg/log"
-	"nes-go/pkg/model"
+	"nes-go/pkg/model/cpu"
 )
+
+// Operand ...
+type Operand struct {
+	Data    *byte
+	Address *domain.Address
+}
+
+// String ...
+func (o *Operand) String() string {
+	d := ""
+	if o.Data != nil {
+		d = fmt.Sprintf("%#v", *o.Data)
+	}
+
+	a := ""
+	if o.Address != nil {
+		a = fmt.Sprintf("%#v", *o.Address)
+	}
+
+	return fmt.Sprintf("{Data:%#v, Address:%#v}", d, a)
+}
 
 // CPUStack ...
 type CPUStack struct {
@@ -31,8 +53,8 @@ func (s *CPUStack) Pop() byte {
 
 // CPU ...
 type CPU struct {
-	registers   *Registers
-	bus         *model.Bus
+	registers   *cpu.Registers
+	bus         *Bus
 	shouldReset bool
 	stack       *CPUStack
 }
@@ -40,7 +62,7 @@ type CPU struct {
 // NewCPU ...
 func NewCPU() *CPU {
 	return &CPU{
-		registers:   NewRegisters(),
+		registers:   cpu.NewRegisters(),
 		shouldReset: true,
 		stack:       NewCPUStack(),
 	}
@@ -56,7 +78,7 @@ func (c *CPU) String() string {
 }
 
 // SetBus ...
-func (c *CPU) SetBus(b *model.Bus) {
+func (c *CPU) SetBus(b *Bus) {
 	c.bus = b
 }
 
@@ -117,8 +139,8 @@ func (c *CPU) Run() (int, error) {
 }
 
 // decodeOpcode ...
-func decodeOpcode(o Opcode) (*OpcodeProp, error) {
-	if p, ok := OpcodeProps[o]; ok {
+func decodeOpcode(o domain.Opcode) (*domain.OpcodeProp, error) {
+	if p, ok := domain.OpcodeProps[o]; ok {
 		log.Trace("CPU.decode[opcode=%#v] => %#v", o, p)
 		return &p, nil
 	}
@@ -128,7 +150,7 @@ func decodeOpcode(o Opcode) (*OpcodeProp, error) {
 
 // fetch ...
 func (c *CPU) fetch() (byte, error) {
-	var addr model.Address
+	var addr domain.Address
 	var data byte
 	var err error
 
@@ -141,7 +163,7 @@ func (c *CPU) fetch() (byte, error) {
 		}
 	}()
 
-	addr = model.Address(c.registers.PC)
+	addr = domain.Address(c.registers.PC)
 	data, err = c.bus.ReadByCPU(addr)
 	if err != nil {
 		return data, fmt.Errorf("failed to fetch; %w", err)
@@ -153,16 +175,16 @@ func (c *CPU) fetch() (byte, error) {
 }
 
 // fetchOpcode ...
-func (c *CPU) fetchOpcode() (Opcode, error) {
+func (c *CPU) fetchOpcode() (domain.Opcode, error) {
 	v, err := c.fetch()
 	if err != nil {
-		return ErrorOpcode, fmt.Errorf("%w", err)
+		return domain.ErrorOpcode, fmt.Errorf("%w", err)
 	}
-	return Opcode(v), nil
+	return domain.Opcode(v), nil
 }
 
 // fetchAsOperand ...
-func (c *CPU) fetchAsOperand(mode AddressingMode) (op []byte, err error) {
+func (c *CPU) fetchAsOperand(mode domain.AddressingMode) (op []byte, err error) {
 	log.Trace("CPU.fetchAsOperand[%#v] ...", mode)
 	defer func() {
 		if err != nil {
@@ -173,20 +195,20 @@ func (c *CPU) fetchAsOperand(mode AddressingMode) (op []byte, err error) {
 	}()
 
 	switch mode {
-	case Accumulator:
+	case domain.Accumulator:
 		fallthrough
-	case Implied:
+	case domain.Implied:
 		op = []byte{}
 		return
-	case Immediate:
+	case domain.Immediate:
 		fallthrough
-	case ZeroPage:
+	case domain.ZeroPage:
 		fallthrough
-	case IndexedZeroPageX:
+	case domain.IndexedZeroPageX:
 		fallthrough
-	case IndexedZeroPageY:
+	case domain.IndexedZeroPageY:
 		fallthrough
-	case Relative:
+	case domain.Relative:
 		var b byte
 		b, err = c.fetch()
 		if err != nil {
@@ -194,17 +216,17 @@ func (c *CPU) fetchAsOperand(mode AddressingMode) (op []byte, err error) {
 		}
 		op = []byte{b}
 		return
-	case Absolute:
+	case domain.Absolute:
 		fallthrough
-	case IndexedAbsoluteX:
+	case domain.IndexedAbsoluteX:
 		fallthrough
-	case IndexedAbsoluteY:
+	case domain.IndexedAbsoluteY:
 		fallthrough
-	case IndexedIndirect:
+	case domain.IndexedIndirect:
 		fallthrough
-	case IndirectIndexed:
+	case domain.IndirectIndexed:
 		fallthrough
-	case AbsoluteIndirect:
+	case domain.AbsoluteIndirect:
 		var l byte
 		l, err = c.fetch()
 		if err != nil {
@@ -226,7 +248,7 @@ func (c *CPU) fetchAsOperand(mode AddressingMode) (op []byte, err error) {
 }
 
 // makeAddress ...
-func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr model.Address, err error) {
+func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Address, err error) {
 	log.Trace("CPU.makeAddress[%#v][%#v] ...", mode, op)
 	defer func() {
 		if err != nil {
@@ -237,40 +259,40 @@ func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr model.Address, e
 	}()
 
 	switch mode {
-	case Absolute:
+	case domain.Absolute:
 		l := op[0]
 		h := op[1]
-		addr = model.Address((uint16(h) << 8) | uint16(l))
+		addr = domain.Address((uint16(h) << 8) | uint16(l))
 		return
-	case ZeroPage:
+	case domain.ZeroPage:
 		l := op[0]
-		addr = model.Address(l)
+		addr = domain.Address(l)
 		return
-	case IndexedZeroPageX:
+	case domain.IndexedZeroPageX:
 		l := op[0]
-		addr = model.Address(uint8(l) + uint8(c.registers.X))
+		addr = domain.Address(uint8(l) + uint8(c.registers.X))
 		return
-	case IndexedZeroPageY:
+	case domain.IndexedZeroPageY:
 		l := op[0]
-		addr = model.Address(uint8(l) + uint8(c.registers.Y))
+		addr = domain.Address(uint8(l) + uint8(c.registers.Y))
 		return
-	case IndexedAbsoluteX:
-		l := op[0]
-		h := op[1]
-		addr = model.Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.X))
-		return
-	case IndexedAbsoluteY:
+	case domain.IndexedAbsoluteX:
 		l := op[0]
 		h := op[1]
-		addr = model.Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.Y))
+		addr = domain.Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.X))
 		return
-	case Relative:
+	case domain.IndexedAbsoluteY:
+		l := op[0]
+		h := op[1]
+		addr = domain.Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.Y))
+		return
+	case domain.Relative:
 		b := op[0]
-		addr = model.Address(c.registers.PC + uint16(int8(b)))
+		addr = domain.Address(c.registers.PC + uint16(int8(b)))
 		return
-	case IndexedIndirect:
+	case domain.IndexedIndirect:
 		b := op[0]
-		dest := model.Address(uint8(b) + c.registers.X)
+		dest := domain.Address(uint8(b) + c.registers.X)
 
 		var l byte
 		l, err = c.bus.ReadByCPU(dest)
@@ -280,11 +302,11 @@ func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr model.Address, e
 
 		h := op[1]
 
-		addr = model.Address((uint16(h) << 8) | uint16(l))
+		addr = domain.Address((uint16(h) << 8) | uint16(l))
 		return
-	case IndirectIndexed:
+	case domain.IndirectIndexed:
 		b := op[0]
-		dest := model.Address(uint8(b) + c.registers.X)
+		dest := domain.Address(uint8(b) + c.registers.X)
 
 		var h byte
 		h, err = c.bus.ReadByCPU(dest)
@@ -294,13 +316,13 @@ func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr model.Address, e
 
 		l := op[1]
 
-		addr = model.Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.Y))
+		addr = domain.Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.Y))
 		return
-	case AbsoluteIndirect:
+	case domain.AbsoluteIndirect:
 		f1 := op[0]
 		f2 := op[1]
 
-		dest := model.Address((uint16(f2) << 8) + uint16(f1))
+		dest := domain.Address((uint16(f2) << 8) + uint16(f1))
 		nextDest := dest + 1
 
 		var addrL byte
@@ -315,7 +337,7 @@ func (c *CPU) makeAddress(mode AddressingMode, op []byte) (addr model.Address, e
 			return
 		}
 
-		addr = model.Address((uint16(addrH) << 8) + uint16(addrL))
+		addr = domain.Address((uint16(addrH) << 8) + uint16(addrL))
 		return
 	default:
 		err = fmt.Errorf("failed to make address, AddressingMode is not supported; mode: %#v", mode)
@@ -394,7 +416,7 @@ func (c *CPU) InterruptIRQ() error {
 }
 
 // exec ...
-func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
+func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (err error) {
 	log.Debug("CPU.exec[%v][%v][%#v] ...", mne, mode, op)
 
 	defer func() {
@@ -406,16 +428,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 	}()
 
 	switch mne {
-	case ADC:
+	case domain.ADC:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -436,16 +458,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateZ(c.registers.A)
 		c.registers.P.UpdateC(ans)
 		return
-	case SBC:
+	case domain.SBC:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -466,16 +488,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateZ(c.registers.A)
 		c.registers.P.UpdateC(ans)
 		return
-	case AND:
+	case domain.AND:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -489,16 +511,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
 		return
-	case ORA:
+	case domain.ORA:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -512,16 +534,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
 		return
-	case EOR:
+	case domain.EOR:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -535,12 +557,12 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
 		return
-	case ASL:
+	case domain.ASL:
 		var b byte
-		if mode == Accumulator {
+		if mode == domain.Accumulator {
 			b = c.registers.A
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -554,12 +576,12 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.Carry = (b & 0x80) == 0x80
 		return
-	case LSR:
+	case domain.LSR:
 		var b byte
-		if mode == Accumulator {
+		if mode == domain.Accumulator {
 			b = c.registers.A
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -574,12 +596,12 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateZ(c.registers.A)
 		c.registers.P.Carry = (b & 0x01) == 0x01
 		return
-	case ROL:
+	case domain.ROL:
 		var b byte
-		if mode == Accumulator {
+		if mode == domain.Accumulator {
 			b = c.registers.A
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -598,12 +620,12 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateZ(c.registers.A)
 		c.registers.P.Carry = (b & 0x80) == 0x80
 		return
-	case ROR:
+	case domain.ROR:
 		var b byte
-		if mode == Accumulator {
+		if mode == domain.Accumulator {
 			b = c.registers.A
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -622,8 +644,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateZ(c.registers.A)
 		c.registers.P.Carry = (b & 0x01) == 0x01
 		return
-	case BCC:
-		var addr model.Address
+	case domain.BCC:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -631,8 +653,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.UpdatePC(uint16(addr))
 		}
 		return
-	case BCS:
-		var addr model.Address
+	case domain.BCS:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -640,8 +662,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.UpdatePC(uint16(addr))
 		}
 		return
-	case BEQ:
-		var addr model.Address
+	case domain.BEQ:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -649,8 +671,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.UpdatePC(uint16(addr))
 		}
 		return
-	case BNE:
-		var addr model.Address
+	case domain.BNE:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -658,8 +680,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.UpdatePC(uint16(addr))
 		}
 		return
-	case BVC:
-		var addr model.Address
+	case domain.BVC:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -667,8 +689,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.UpdatePC(uint16(addr))
 		}
 		return
-	case BVS:
-		var addr model.Address
+	case domain.BVS:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -676,8 +698,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.UpdatePC(uint16(addr))
 		}
 		return
-	case BPL:
-		var addr model.Address
+	case domain.BPL:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -685,8 +707,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.UpdatePC(uint16(addr))
 		}
 		return
-	case BMI:
-		var addr model.Address
+	case domain.BMI:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -694,8 +716,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			c.registers.UpdatePC(uint16(addr))
 		}
 		return
-	case BIT:
-		var addr model.Address
+	case domain.BIT:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -710,15 +732,15 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.Negative = (b & 0x80) == 0x80
 		c.registers.P.Overflow = (b & 0x40) == 0x40
 		return
-	case JMP:
-		var addr model.Address
+	case domain.JMP:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
 		c.registers.UpdatePC(uint16(addr))
 		return
-	case JSR:
-		var addr model.Address
+	case domain.JSR:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -733,31 +755,31 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.stack.Push(byte(c.registers.PC & 0x00FF))
 		c.registers.PC = uint16(b)
 		return
-	case RTS:
+	case domain.RTS:
 		l := c.stack.Pop()
 		h := c.stack.Pop()
 		c.registers.PC = (uint16(h) << 8) + uint16(l) + 1
 		return
-	case BRK:
+	case domain.BRK:
 		c.registers.P.BreakMode = true
 		c.registers.IncrementPC()
 		return
-	case RTI:
+	case domain.RTI:
 		c.registers.P.UpdateAll(c.stack.Pop())
 		l := c.stack.Pop()
 		h := c.stack.Pop()
 		c.registers.PC = (uint16(h) << 8) + uint16(l)
 		return
-	case CMP:
+	case domain.CMP:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -772,16 +794,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateZ(ans)
 		c.registers.P.Carry = ans >= 0
 		return
-	case CPX:
+	case domain.CPX:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -796,16 +818,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateZ(ans)
 		c.registers.P.Carry = ans >= 0
 		return
-	case CPY:
+	case domain.CPY:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -820,8 +842,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateZ(ans)
 		c.registers.P.Carry = ans >= 0
 		return
-	case INC:
-		var addr model.Address
+	case domain.INC:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -841,8 +863,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(ans)
 		c.registers.P.UpdateZ(ans)
 		return
-	case DEC:
-		var addr model.Address
+	case domain.DEC:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
@@ -862,57 +884,57 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(ans)
 		c.registers.P.UpdateZ(ans)
 		return
-	case INX:
+	case domain.INX:
 		c.registers.UpdateX(c.registers.X + 1)
 		c.registers.P.UpdateN(c.registers.X)
 		c.registers.P.UpdateZ(c.registers.X)
 		return
-	case DEX:
+	case domain.DEX:
 		c.registers.UpdateX(c.registers.X - 1)
 		c.registers.P.UpdateN(c.registers.X)
 		c.registers.P.UpdateZ(c.registers.X)
 		return
-	case INY:
+	case domain.INY:
 		c.registers.UpdateY(c.registers.Y + 1)
 		c.registers.P.UpdateN(c.registers.Y)
 		c.registers.P.UpdateZ(c.registers.Y)
 		return
-	case DEY:
+	case domain.DEY:
 		c.registers.UpdateY(c.registers.Y - 1)
 		c.registers.P.UpdateN(c.registers.Y)
 		c.registers.P.UpdateZ(c.registers.Y)
 		return
-	case CLC:
+	case domain.CLC:
 		c.registers.P.Carry = false
 		return
-	case SEC:
+	case domain.SEC:
 		c.registers.P.Carry = true
 		return
-	case CLI:
+	case domain.CLI:
 		c.registers.P.UpdateI(false)
 		return
-	case SEI:
+	case domain.SEI:
 		c.registers.P.UpdateI(true)
 		return
-	case CLD:
+	case domain.CLD:
 		c.registers.P.DecimalMode = false
 		return
-	case SED:
+	case domain.SED:
 		c.registers.P.DecimalMode = true
 		return
-	case CLV:
+	case domain.CLV:
 		c.registers.P.Overflow = false
 		return
-	case LDA:
+	case domain.LDA:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -927,16 +949,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
 		return
-	case LDX:
+	case domain.LDX:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -951,16 +973,16 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(c.registers.X)
 		c.registers.P.UpdateZ(c.registers.X)
 		return
-	case LDY:
+	case domain.LDY:
 		var b byte
-		if mode == Immediate {
+		if mode == domain.Immediate {
 			if len(op) < 1 {
 				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
 		} else {
-			var addr model.Address
+			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
@@ -975,8 +997,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 		c.registers.P.UpdateN(c.registers.Y)
 		c.registers.P.UpdateZ(c.registers.Y)
 		return
-	case STA:
-		var addr model.Address
+	case domain.STA:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
@@ -987,8 +1009,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 		return
-	case STX:
-		var addr model.Address
+	case domain.STX:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
@@ -999,8 +1021,8 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 		return
-	case STY:
-		var addr model.Address
+	case domain.STY:
+		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
 			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
@@ -1011,47 +1033,47 @@ func (c *CPU) exec(mne Mnemonic, mode AddressingMode, op []byte) (err error) {
 			return
 		}
 		return
-	case TAX:
+	case domain.TAX:
 		c.registers.X = c.registers.A
 		c.registers.P.UpdateN(c.registers.X)
 		c.registers.P.UpdateZ(c.registers.X)
 		return
-	case TXA:
+	case domain.TXA:
 		c.registers.A = c.registers.X
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
 		return
-	case TAY:
+	case domain.TAY:
 		c.registers.Y = c.registers.A
 		c.registers.P.UpdateN(c.registers.Y)
 		c.registers.P.UpdateZ(c.registers.Y)
 		return
-	case TYA:
+	case domain.TYA:
 		c.registers.A = c.registers.Y
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
 		return
-	case TSX:
+	case domain.TSX:
 		c.registers.X = c.registers.S
 		c.registers.P.UpdateN(c.registers.X)
 		c.registers.P.UpdateZ(c.registers.X)
 		return
-	case TXS:
+	case domain.TXS:
 		c.registers.UpdateS(c.registers.X)
 		return
-	case PHA:
+	case domain.PHA:
 		c.stack.Push(c.registers.A)
 		return
-	case PLA:
+	case domain.PLA:
 		c.registers.A = c.stack.Pop()
 		return
-	case PHP:
+	case domain.PHP:
 		c.stack.Push(c.registers.P.ToByte())
 		return
-	case PLP:
+	case domain.PLP:
 		c.registers.P.UpdateAll(c.stack.Pop())
 		return
-	case NOP:
+	case domain.NOP:
 		return
 	default:
 		err = fmt.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", mne)

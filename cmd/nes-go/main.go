@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"nes-go/pkg/domain"
 	"nes-go/pkg/infra"
 	"nes-go/pkg/log"
 	"nes-go/pkg/model"
-	"nes-go/pkg/model/cpu"
 	"os"
 )
 
@@ -35,14 +35,14 @@ func main() {
 	romPath := os.Args[1]
 	log.Info("rom: %v", romPath)
 
-	var rom *model.ROM
-	rom, err = model.FetchROM(romPath)
+	var rom *domain.ROM
+	rom, err = domain.FetchROM(romPath)
 	if err != nil {
 		return
 	}
 
 	bus := model.NewBus()
-	cpu := cpu.NewCPU()
+	cpu := model.NewCPU()
 	ppu, err := model.NewPPU()
 	if err != nil {
 		return
@@ -54,8 +54,8 @@ func main() {
 	ppu.SetBus(bus)
 
 	m, err := infra.NewMonitor(
-		model.ResolutionWidth,
-		model.ResolutionHeight,
+		domain.ResolutionWidth,
+		domain.ResolutionHeight,
 		2,
 		"nes-go",
 	)
