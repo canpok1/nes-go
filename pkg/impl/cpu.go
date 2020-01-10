@@ -1,11 +1,11 @@
-package model
+package impl
 
 import (
 	"fmt"
 
 	"nes-go/pkg/domain"
 	"nes-go/pkg/log"
-	"nes-go/pkg/model/cpu"
+	"nes-go/pkg/impl/cpu"
 )
 
 // Operand ...

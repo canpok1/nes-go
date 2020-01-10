@@ -1,11 +1,11 @@
-package model
+package impl
 
 import (
 	"fmt"
 	"image"
 	"nes-go/pkg/domain"
 	"nes-go/pkg/log"
-	"nes-go/pkg/model/ppu"
+	"nes-go/pkg/impl/ppu"
 )
 
 // PPU ...

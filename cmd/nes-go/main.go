@@ -3,9 +3,8 @@ package main
 import (
 	"fmt"
 	"nes-go/pkg/domain"
-	"nes-go/pkg/infra"
+	"nes-go/pkg/impl"
 	"nes-go/pkg/log"
-	"nes-go/pkg/model"
 	"os"
 )
 
@@ -41,9 +40,9 @@ func main() {
 		return
 	}
 
-	bus := model.NewBus()
-	cpu := model.NewCPU()
-	ppu, err := model.NewPPU()
+	bus := impl.NewBus()
+	cpu := impl.NewCPU()
+	ppu, err := impl.NewPPU()
 	if err != nil {
 		return
 	}
@@ -53,7 +52,7 @@ func main() {
 	cpu.SetBus(bus)
 	ppu.SetBus(bus)
 
-	m, err := infra.NewMonitor(
+	r, err := impl.NewRenderer(
 		domain.ResolutionWidth,
 		domain.ResolutionHeight,
 		2,
@@ -78,7 +77,7 @@ func main() {
 			}
 
 			if imgs != nil {
-				err = m.Render(imgs)
+				err = r.Render(imgs)
 				if err != nil {
 					log.Fatal("error: %v", err)
 					break
@@ -89,5 +88,5 @@ func main() {
 		return
 	}()
 
-	err = m.Run()
+	err = r.Run()
 }

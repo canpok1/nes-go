@@ -1,17 +1,16 @@
-package infra
+package impl
 
 import (
 	"fmt"
 	"nes-go/pkg/domain"
-	"nes-go/pkg/model"
 	"time"
 
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
 )
 
-// Monitor ...
-type Monitor struct {
+// Renderer ...
+type Renderer struct {
 	width    int
 	height   int
 	scale    float64
@@ -22,14 +21,14 @@ type Monitor struct {
 	fps              float64
 }
 
-// NewMonitor ...
-func NewMonitor(w int, h int, scale float64, title string) (*Monitor, error) {
+// NewRenderer ...
+func NewRenderer(w int, h int, scale float64, title string) (*Renderer, error) {
 	imageBuf, err := ebiten.NewImage(domain.ResolutionWidth, domain.ResolutionHeight, ebiten.FilterDefault)
 	if err != nil {
 		return nil, fmt.Errorf("failed to NewMonitor; err: %w", err)
 	}
 
-	return &Monitor{
+	return &Renderer{
 		width:    w,
 		height:   h,
 		scale:    scale,
@@ -39,7 +38,7 @@ func NewMonitor(w int, h int, scale float64, title string) (*Monitor, error) {
 }
 
 // update ...
-func (m *Monitor) update(screen *ebiten.Image) error {
+func (m *Renderer) update(screen *ebiten.Image) error {
 	if ebiten.IsDrawingSkipped() {
 		return nil
 	}
@@ -51,12 +50,12 @@ func (m *Monitor) update(screen *ebiten.Image) error {
 }
 
 // Run ...
-func (m *Monitor) Run() error {
+func (m *Renderer) Run() error {
 	return ebiten.Run(m.update, m.height, m.width, m.scale, m.title)
 }
 
 // Render ...
-func (m *Monitor) Render(sis [][]domain.SpriteImage) error {
+func (m *Renderer) Render(sis [][]domain.SpriteImage) error {
 	p := toPixels(sis)
 	m.imageBuf.ReplacePixels(p)
 
@@ -73,7 +72,7 @@ func toPixels(sis [][]domain.SpriteImage) []byte {
 	idx := 0
 	for y := 0; y < domain.ResolutionHeight; y++ {
 		for x := 0; x < domain.ResolutionWidth; x++ {
-			r, g, b, a := getPixel(sis, model.MonitorX(x), model.MonitorY(y))
+			r, g, b, a := getPixel(sis, MonitorX(x), MonitorY(y))
 
 			pixels[idx] = r
 			idx++
@@ -92,7 +91,7 @@ func toPixels(sis [][]domain.SpriteImage) []byte {
 	return pixels
 }
 
-func getPixel(sis [][]domain.SpriteImage, x model.MonitorX, y model.MonitorY) (r, g, b, a byte) {
+func getPixel(sis [][]domain.SpriteImage, x MonitorX, y MonitorY) (r, g, b, a byte) {
 	s := sis[y/domain.SpriteHeight][x/domain.SpriteWidth]
 
 	iy := y % domain.SpriteHeight
