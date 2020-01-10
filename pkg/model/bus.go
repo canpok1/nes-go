@@ -163,8 +163,14 @@ func (b *Bus) ReadByCPU(addr Address) (byte, error) {
 	}
 
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
+	if addr >= 0x8000 && addr <= 0xBFFF {
+		target = "PRG-ROM"
+		r := *b.programROM
+		data = r[addr-0x8000]
+		return data, err
+	}
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
-	if addr >= 0x8000 && addr <= 0xFFFF {
+	if addr >= 0xC000 && addr <= 0xFFFF {
 		target = "PRG-ROM"
 		r := *b.programROM
 		if len(r) <= 0x4000 {
