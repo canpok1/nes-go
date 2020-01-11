@@ -430,7 +430,7 @@ func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 	}
 
 	// 0x2400～0x27BF	0x03C0	ネームテーブル1
-	if addrTmp >= 0x2400 && addrTmp <= 0x03C0 {
+	if addrTmp >= 0x2400 && addrTmp <= 0x27BF {
 		b.nameTable1[addrTmp-0x2400] = data
 		target = "NameTable1"
 		return
@@ -451,7 +451,7 @@ func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 	}
 
 	// 0x2BC0～0x2BFF	0x0040	属性テーブル2
-	if addrTmp >= 0x2BC0 && addrTmp <= 0x0040 {
+	if addrTmp >= 0x2BC0 && addrTmp <= 0x2BFF {
 		b.attributeTable2[addrTmp-0x2BC0] = data
 		target = "AttributeTable2"
 		return
@@ -575,14 +575,16 @@ func (b *Bus) GetPaletteNo(p domain.NameTablePoint, attribute byte) (no uint8, e
 	return
 }
 
-// GetBackgroundPalette ...
-func (b *Bus) GetBackgroundPalette(no uint8) *domain.Palette {
-	return &b.backgroundPalette[no]
-}
-
-// GetSpritePalette ...
-func (b *Bus) GetSpritePalette(no uint8) *domain.Palette {
-	return &b.spritePalette[no]
+// GetPalette ...
+func (b *Bus) GetPalette(no uint16) *domain.Palette {
+	// if no == 0 {
+	// 	return nil
+	// }
+	index := no & 0x0F
+	if (no & 0xF0) == 0 {
+		return &b.backgroundPalette[index]
+	}
+	return &b.spritePalette[index]
 }
 
 // SendNMI ...

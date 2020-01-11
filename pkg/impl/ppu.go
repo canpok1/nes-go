@@ -16,20 +16,22 @@ type PPU struct {
 	ppuaddrBuf        domain.Address // 組み立て中のPPUADDR
 	ppuaddrFull       domain.Address // 組み立て済のPPUADDR
 
-	spriteImages [][]domain.TileImage
+	tiles [][]domain.Tile
 
 	drawingPoint *image.Point
+
+	oam *PPUOAM
 }
 
 // NewPPU ...
 func NewPPU() (*PPU, error) {
 	sizeY := domain.ResolutionHeight / domain.SpriteHeight
 	sizeX := domain.ResolutionWidth / domain.SpriteWidth
-	spriteImages := make([][]domain.TileImage, sizeY)
+	tiles := make([][]domain.Tile, sizeY)
 	for y := 0; y < sizeY; y++ {
-		spriteImages[y] = make([]domain.TileImage, sizeX)
+		tiles[y] = make([]domain.Tile, sizeX)
 		for x := 0; x < sizeX; x++ {
-			spriteImages[y][x] = *domain.NewTileImage()
+			tiles[y][x] = *domain.NewTile()
 		}
 	}
 
@@ -38,8 +40,9 @@ func NewPPU() (*PPU, error) {
 		ppuaddrWriteCount: 0,
 		ppuaddrBuf:        0,
 		ppuaddrFull:       0,
-		spriteImages:      spriteImages,
+		tiles:             tiles,
 		drawingPoint:      &image.Point{0, 0},
+		oam:               NewPPUOAM(),
 	}, nil
 }
 
@@ -152,7 +155,8 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		p.registers.OAMAddr = data
 		target = "OAMADDR"
 	case 4:
-		p.registers.OAMData = data
+		p.oam.Write(p.registers.OAMAddr, data)
+		p.registers.OAMAddr = p.registers.OAMAddr + 1
 		target = "OAMDATA"
 	case 5:
 		p.registers.PPUScroll = data
@@ -197,7 +201,7 @@ func (p *PPU) updateDrawingPoint() {
 }
 
 // Run ...
-func (p *PPU) Run(cycle int) (si [][]domain.TileImage, err error) {
+func (p *PPU) Run(cycle int) (si [][]domain.Tile, err error) {
 	for i := 0; i < cycle; i++ {
 		if si, err = p.Run1Cycle(); err != nil {
 			return
@@ -207,7 +211,7 @@ func (p *PPU) Run(cycle int) (si [][]domain.TileImage, err error) {
 }
 
 // Run1Cycle ...
-func (p *PPU) Run1Cycle() ([][]domain.TileImage, error) {
+func (p *PPU) Run1Cycle() ([][]domain.Tile, error) {
 	log.Trace("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
 
 	defer p.updateDrawingPoint()
@@ -235,18 +239,12 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, error) {
 	// 8ライン単位で書き込む
 	shouldDrawline := (p.drawingPoint.X == domain.ResolutionWidth-1) && (p.drawingPoint.Y%8 == 7)
 	if shouldDrawline {
+
 		y := p.drawingPoint.Y / domain.SpriteHeight
-		for x := 0; x < 0x20; x++ {
-
-			np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
-
-			if p.registers.PPUMask.EnableBackground {
-				nameTblIdx := p.registers.PPUCtrl.NameTableIndex
-				spriteNo, err := p.bus.GetTileNo(nameTblIdx, np)
-				if err != nil {
-					return nil, err
-				}
-
+		nameTblIdx := p.registers.PPUCtrl.NameTableIndex
+		if p.registers.PPUMask.EnableBackground {
+			for x := 0; x < 0x20; x++ {
+				np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
 				attribute, err := p.bus.GetAttribute(nameTblIdx, np)
 				if err != nil {
 					return nil, err
@@ -257,13 +255,55 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, error) {
 					return nil, err
 				}
 
+				tileIndex, err := p.bus.GetTileNo(nameTblIdx, np)
+				if err != nil {
+					return nil, err
+				}
+
 				patternTblIdx := p.registers.PPUCtrl.BackgroundPatternTableIndex
-				sprite := p.bus.GetTilePattern(patternTblIdx, spriteNo)
-				palette := p.bus.GetBackgroundPalette(paletteNo)
+				tilePattern := p.bus.GetTilePattern(patternTblIdx, tileIndex)
+				palette := p.bus.GetPalette(uint16(paletteNo))
 
 				// 書き込む
-				si := sprite.ToTileImage(palette)
-				p.spriteImages[y][x] = *si
+				si := tilePattern.ToTileImage(palette)
+				p.tiles[y][x].Background = si
+				p.tiles[y][x].Sprite = nil
+
+			}
+		}
+		if p.registers.PPUMask.EnableSprite {
+			err := p.oam.Each(func(s Sprite) error {
+				sy := int(s.Y) / domain.SpriteHeight
+				sx := int(s.X) / domain.SpriteWidth
+				if y != sy {
+					return nil
+				}
+
+				np := domain.NameTablePoint{X: uint8(sx), Y: uint8(sy)}
+				attribute, err := p.bus.GetAttribute(nameTblIdx, np)
+				if err != nil {
+					return err
+				}
+
+				paletteNo, err := p.bus.GetPaletteNo(np, attribute)
+				if err != nil {
+					return err
+				}
+
+				offset := (uint16(s.Attribute) & 0x03) << 8
+				palette := p.bus.GetPalette(uint16(paletteNo) + offset)
+
+				patternTblIdx := p.registers.PPUCtrl.SpritePatternTableIndex
+				tilePattern := p.bus.GetTilePattern(patternTblIdx, s.TileIndex)
+
+				// 書き込む
+				ti := tilePattern.ToTileImage(palette)
+				p.tiles[sy][sx].Sprite = ti
+
+				return nil
+			})
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -279,5 +319,5 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, error) {
 	// 	return nil, nil
 	// }
 
-	return p.spriteImages, nil
+	return p.tiles, nil
 }

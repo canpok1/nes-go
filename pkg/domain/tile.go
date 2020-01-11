@@ -32,24 +32,30 @@ func (s TilePattern) ToTileImage(p *Palette) *TileImage {
 	r := make([][]byte, SpriteHeight)
 	g := make([][]byte, SpriteHeight)
 	b := make([][]byte, SpriteHeight)
+	a := make([][]byte, SpriteHeight)
 
 	colorMap := s.toColorMap()
 	for y, line := range colorMap {
 		r[y] = make([]byte, SpriteWidth)
 		g[y] = make([]byte, SpriteWidth)
 		b[y] = make([]byte, SpriteWidth)
+		a[y] = make([]byte, SpriteWidth)
 		for x, paletteNo := range line {
-			cIndex := (*p)[paletteNo]
-			c := colors[cIndex]
-			r[y][x] = c[0]
-			g[y][x] = c[1]
-			b[y][x] = c[2]
+			if p != nil {
+				cIndex := (*p)[paletteNo]
+				c := colors[cIndex]
+				r[y][x] = c[0]
+				g[y][x] = c[1]
+				b[y][x] = c[2]
+				a[y][x] = 0xFF
+			}
 		}
 	}
 	return &TileImage{
 		R: r,
 		G: g,
 		B: b,
+		A: a,
 	}
 }
 
@@ -58,6 +64,7 @@ type TileImage struct {
 	R [][]byte
 	G [][]byte
 	B [][]byte
+	A [][]byte
 }
 
 // NewTileImage ...
@@ -65,16 +72,30 @@ func NewTileImage() *TileImage {
 	r := make([][]byte, SpriteHeight)
 	g := make([][]byte, SpriteHeight)
 	b := make([][]byte, SpriteHeight)
+	a := make([][]byte, SpriteHeight)
 
 	for y := 0; y < SpriteHeight; y++ {
 		r[y] = make([]byte, SpriteWidth)
 		g[y] = make([]byte, SpriteWidth)
 		b[y] = make([]byte, SpriteWidth)
+		a[y] = make([]byte, SpriteWidth)
 	}
 
 	return &TileImage{
 		R: r,
 		G: g,
 		B: b,
+		A: a,
 	}
+}
+
+// Tile ...
+type Tile struct {
+	Sprite     *TileImage
+	Background *TileImage
+}
+
+// NewTile ...
+func NewTile() *Tile {
+	return &Tile{}
 }

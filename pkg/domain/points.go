@@ -34,3 +34,25 @@ func (p NameTablePoint) ToAttributeIndex() uint16 {
 	y := (p.Y % 4) / 2
 	return uint16(y)*2 + uint16(x)
 }
+
+// MonitorX ...
+type MonitorX uint8
+
+// Validate ...
+func (x MonitorX) Validate() error {
+	if x < 0 {
+		return fmt.Errorf("x is out of range; x: %v", x)
+	}
+	return nil
+}
+
+// MonitorY ...
+type MonitorY uint8
+
+// Validate ...
+func (y MonitorY) Validate() error {
+	if y < 0 || y >= 240 {
+		return fmt.Errorf("y is out of range; y: %v", y)
+	}
+	return nil
+}
