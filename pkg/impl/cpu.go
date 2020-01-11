@@ -347,8 +347,8 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 
 // InterruptNMI ...
 func (c *CPU) InterruptNMI() error {
-	// TODO 実装
-	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#Interrupt
+	log.Info("CPU.Interrupt[NMI] ...")
+
 	c.registers.P.BreakMode = false
 	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
 	c.stack.Push(byte(c.registers.PC & 0x00FF))
@@ -358,11 +358,11 @@ func (c *CPU) InterruptNMI() error {
 
 	l, err := c.bus.ReadByCPU(0xFFFA)
 	if err != nil {
-		return fmt.Errorf("failed to interrupt[BRK]; %w", err)
+		return fmt.Errorf("failed to interrupt[NMI]; %w", err)
 	}
 	h, err := c.bus.ReadByCPU(0xFFFB)
 	if err != nil {
-		return fmt.Errorf("failed to interrupt[BRK]; %w", err)
+		return fmt.Errorf("failed to interrupt[NMI]; %w", err)
 	}
 	c.registers.PC = (uint16(h) << 8) + uint16(l)
 	return nil
@@ -1100,5 +1100,6 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 // ReceiveNMI ...
 func (c *CPU) ReceiveNMI() error {
+	log.Trace("CPU.ReceiveNMI")
 	return c.InterruptNMI()
 }
