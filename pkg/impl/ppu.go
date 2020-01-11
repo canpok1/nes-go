@@ -59,7 +59,7 @@ func (p *PPU) SetBus(b *Bus) {
 // incrementPPUADDR
 func (p *PPU) incrementPPUADDR() {
 	old := p.ppuaddrFull
-	if !p.registers.PPUCtrl.SpriteTileSelect {
+	if p.registers.PPUCtrl.VRAMAddressIncrementMode == 0 {
 		p.ppuaddrFull = p.ppuaddrFull + 1
 	} else {
 		p.ppuaddrFull = p.ppuaddrFull + 32

@@ -17,9 +17,12 @@ type PPURegisters struct {
 func NewPPURegisters() *PPURegisters {
 	return &PPURegisters{
 		PPUCtrl: PPUCtrl{
-			NMIEnable:        false,
-			SpriteTileSelect: false,
-			NameTableIndex:   0,
+			NMIEnable:                   false,
+			SpriteTileSelect:            false,
+			BackgroundPatternTableIndex: 0,
+			SpritePatternTableIndex:     0,
+			VRAMAddressIncrementMode:    0,
+			NameTableIndex:              0,
 		},
 		PPUMask: 0,
 		PPUStatus: PPUStatus{
@@ -48,9 +51,12 @@ func (r PPURegisters) String() string {
 
 // PPUCtrl ...
 type PPUCtrl struct {
-	NMIEnable        bool
-	SpriteTileSelect bool
-	NameTableIndex   uint8
+	NMIEnable                   bool
+	SpriteTileSelect            bool
+	BackgroundPatternTableIndex uint8
+	SpritePatternTableIndex     uint8
+	VRAMAddressIncrementMode    uint8
+	NameTableIndex              uint8
 }
 
 // String ...
