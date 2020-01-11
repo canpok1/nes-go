@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"image"
 	"nes-go/pkg/domain"
-	"nes-go/pkg/impl/ppu"
 	"nes-go/pkg/log"
 )
 
 // PPU ...
 type PPU struct {
-	registers *ppu.PPURegisters
+	registers *PPURegisters
 	bus       *Bus
 
 	ppuaddrWriteCount uint8          // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
@@ -35,7 +34,7 @@ func NewPPU() (*PPU, error) {
 	}
 
 	return &PPU{
-		registers:         ppu.NewPPURegisters(),
+		registers:         NewPPURegisters(),
 		ppuaddrWriteCount: 0,
 		ppuaddrBuf:        0,
 		ppuaddrFull:       0,

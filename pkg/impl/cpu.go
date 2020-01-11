@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"nes-go/pkg/domain"
-	"nes-go/pkg/impl/cpu"
 	"nes-go/pkg/log"
 )
 
@@ -53,7 +52,7 @@ func (s *CPUStack) Pop() byte {
 
 // CPU ...
 type CPU struct {
-	registers   *cpu.Registers
+	registers   *Registers
 	bus         *Bus
 	shouldReset bool
 	stack       *CPUStack
@@ -62,7 +61,7 @@ type CPU struct {
 // NewCPU ...
 func NewCPU() *CPU {
 	return &CPU{
-		registers:   cpu.NewRegisters(),
+		registers:   NewRegisters(),
 		shouldReset: true,
 		stack:       NewCPUStack(),
 	}

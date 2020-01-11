@@ -1,4 +1,4 @@
-package ppu
+package impl
 
 import "fmt"
 
