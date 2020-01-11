@@ -16,7 +16,7 @@ type PPU struct {
 	ppuaddrBuf        domain.Address // 組み立て中のPPUADDR
 	ppuaddrFull       domain.Address // 組み立て済のPPUADDR
 
-	spriteImages [][]domain.SpriteImage
+	spriteImages [][]domain.TileImage
 
 	drawingPoint *image.Point
 }
@@ -25,11 +25,11 @@ type PPU struct {
 func NewPPU() (*PPU, error) {
 	sizeY := domain.ResolutionHeight / domain.SpriteHeight
 	sizeX := domain.ResolutionWidth / domain.SpriteWidth
-	spriteImages := make([][]domain.SpriteImage, sizeY)
+	spriteImages := make([][]domain.TileImage, sizeY)
 	for y := 0; y < sizeY; y++ {
-		spriteImages[y] = make([]domain.SpriteImage, sizeX)
+		spriteImages[y] = make([]domain.TileImage, sizeX)
 		for x := 0; x < sizeX; x++ {
-			spriteImages[y][x] = *domain.NewSpriteImage()
+			spriteImages[y][x] = *domain.NewTileImage()
 		}
 	}
 
@@ -197,7 +197,7 @@ func (p *PPU) updateDrawingPoint() {
 }
 
 // Run ...
-func (p *PPU) Run(cycle int) (si [][]domain.SpriteImage, err error) {
+func (p *PPU) Run(cycle int) (si [][]domain.TileImage, err error) {
 	for i := 0; i < cycle; i++ {
 		if si, err = p.Run1Cycle(); err != nil {
 			return
@@ -207,7 +207,7 @@ func (p *PPU) Run(cycle int) (si [][]domain.SpriteImage, err error) {
 }
 
 // Run1Cycle ...
-func (p *PPU) Run1Cycle() ([][]domain.SpriteImage, error) {
+func (p *PPU) Run1Cycle() ([][]domain.TileImage, error) {
 	log.Trace("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
 
 	defer p.updateDrawingPoint()
@@ -242,7 +242,7 @@ func (p *PPU) Run1Cycle() ([][]domain.SpriteImage, error) {
 
 			if p.registers.PPUMask.EnableBackground {
 				nameTblIdx := p.registers.PPUCtrl.NameTableIndex
-				spriteNo, err := p.bus.GetSpriteNo(nameTblIdx, np)
+				spriteNo, err := p.bus.GetTileNo(nameTblIdx, np)
 				if err != nil {
 					return nil, err
 				}
@@ -258,11 +258,11 @@ func (p *PPU) Run1Cycle() ([][]domain.SpriteImage, error) {
 				}
 
 				patternTblIdx := p.registers.PPUCtrl.BackgroundPatternTableIndex
-				sprite := p.bus.GetSprite(patternTblIdx, spriteNo)
+				sprite := p.bus.GetTilePattern(patternTblIdx, spriteNo)
 				palette := p.bus.GetBackgroundPalette(paletteNo)
 
 				// 書き込む
-				si := sprite.ToSpriteImage(palette)
+				si := sprite.ToTileImage(palette)
 				p.spriteImages[y][x] = *si
 			}
 		}

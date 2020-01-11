@@ -87,15 +87,15 @@ func TestFetchROM(t *testing.T) {
 	}
 }
 
-func TestSpriteToColorMap(t *testing.T) {
+func TestTilePatternToColorMap(t *testing.T) {
 	tests := []struct {
-		name   string
-		sprite Sprite
-		want   [][]byte
+		name string
+		tile TilePattern
+		want [][]byte
 	}{
 		{
-			name: "when sprite is all 0, return all 0 colorMap",
-			sprite: Sprite([]byte{
+			name: "when tile pattern is all 0, return all 0 colorMap",
+			tile: TilePattern([]byte{
 				0x00, // 0b 0000 0000
 				0x00, // 0b 0000 0000
 				0x00, // 0b 0000 0000
@@ -126,8 +126,8 @@ func TestSpriteToColorMap(t *testing.T) {
 			},
 		},
 		{
-			name: "when sprite is all 0xFF, return all 3 colorMap",
-			sprite: Sprite([]byte{
+			name: "when tile pattern is all 0xFF, return all 3 colorMap",
+			tile: TilePattern([]byte{
 				0xFF, // 0b 1111 1111
 				0xFF, // 0b 1111 1111
 				0xFF, // 0b 1111 1111
@@ -160,8 +160,8 @@ func TestSpriteToColorMap(t *testing.T) {
 		{
 			// このページのパターンでテスト
 			// https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E3%82%AD%E3%83%A3%E3%83%A9%E3%82%AF%E3%82%BF%E3%83%BCrom
-			name: "when sprite is hert pattern, return hert pattern colorMap",
-			sprite: Sprite([]byte{
+			name: "when tile pattern is hert, return hert pattern colorMap",
+			tile: TilePattern([]byte{
 				0x66, // 0b 0110 0110
 				0x7F, // 0b 0111 1111
 				0xFF, // 0b 1111 1111
@@ -195,9 +195,9 @@ func TestSpriteToColorMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.sprite.toColorMap()
+			got := tt.tile.toColorMap()
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("wrong output\nsprite: %#v\ngot: %#v\nwant: %#v", tt.sprite, got, tt.want)
+				t.Errorf("wrong output\ntile: %#v\ngot: %#v\nwant: %#v", tt.tile, got, tt.want)
 			}
 		})
 	}

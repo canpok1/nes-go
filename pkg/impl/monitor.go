@@ -7,7 +7,7 @@ import (
 
 // Monitor ...
 type Monitor interface {
-	Render([][]domain.SpriteImage) error
+	Render([][]domain.TileImage) error
 }
 
 // MonitorX ...

@@ -55,7 +55,7 @@ func (m *Renderer) Run() error {
 }
 
 // Render ...
-func (m *Renderer) Render(sis [][]domain.SpriteImage) error {
+func (m *Renderer) Render(sis [][]domain.TileImage) error {
 	p := toPixels(sis)
 	m.imageBuf.ReplacePixels(p)
 
@@ -66,7 +66,7 @@ func (m *Renderer) Render(sis [][]domain.SpriteImage) error {
 }
 
 // toPixels ...
-func toPixels(sis [][]domain.SpriteImage) []byte {
+func toPixels(sis [][]domain.TileImage) []byte {
 	pixels := make([]byte, 4*domain.ResolutionHeight*domain.ResolutionWidth)
 
 	idx := 0
@@ -91,7 +91,7 @@ func toPixels(sis [][]domain.SpriteImage) []byte {
 	return pixels
 }
 
-func getPixel(sis [][]domain.SpriteImage, x MonitorX, y MonitorY) (r, g, b, a byte) {
+func getPixel(sis [][]domain.TileImage, x MonitorX, y MonitorY) (r, g, b, a byte) {
 	s := sis[y/domain.SpriteHeight][x/domain.SpriteWidth]
 
 	iy := y % domain.SpriteHeight
