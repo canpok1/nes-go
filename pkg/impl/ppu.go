@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"image"
 	"nes-go/pkg/domain"
-	"nes-go/pkg/log"
 	"nes-go/pkg/impl/ppu"
+	"nes-go/pkg/log"
 )
 
 // PPU ...
@@ -60,7 +60,7 @@ func (p *PPU) SetBus(b *Bus) {
 // incrementPPUADDR
 func (p *PPU) incrementPPUADDR() {
 	old := p.ppuaddrFull
-	if (p.registers.PPUCtrl & 0x04) == 0 {
+	if !p.registers.PPUCtrl.SpriteTileSelect {
 		p.ppuaddrFull = p.ppuaddrFull + 1
 	} else {
 		p.ppuaddrFull = p.ppuaddrFull + 32
@@ -100,7 +100,8 @@ func (p *PPU) ReadRegisters(addr domain.Address) (byte, error) {
 		err = fmt.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
 	case 2:
 		target = "PPUSTATUS"
-		data = p.registers.PPUStatus
+		data = p.registers.PPUStatus.ToByte()
+		p.registers.PPUStatus.VBlankHasStarted = false
 	case 3:
 		target = "OAMADDR"
 		err = fmt.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
@@ -140,7 +141,7 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 
 	switch addr {
 	case 0:
-		p.registers.PPUCtrl = data
+		p.registers.PPUCtrl.UpdateAll(data)
 		target = "PPUCTRL"
 	case 1:
 		p.registers.PPUMask = data
@@ -212,6 +213,19 @@ func (p *PPU) Run1Cycle() ([][]domain.SpriteImage, error) {
 
 	defer p.updateDrawingPoint()
 
+	if p.drawingPoint.X == 0 && p.drawingPoint.Y == domain.ResolutionHeight {
+		p.registers.PPUStatus.VBlankHasStarted = true
+	}
+	if p.drawingPoint.X == 0 && p.drawingPoint.Y == 0 {
+		p.registers.PPUStatus.VBlankHasStarted = false
+	}
+
+	if p.registers.PPUCtrl.NMIEnable && p.registers.PPUStatus.VBlankHasStarted {
+		if err := p.bus.SendNMI(); err != nil {
+			return nil, err
+		}
+	}
+
 	if p.drawingPoint.X >= domain.ResolutionWidth {
 		return nil, nil
 	}
@@ -225,7 +239,7 @@ func (p *PPU) Run1Cycle() ([][]domain.SpriteImage, error) {
 		y := p.drawingPoint.Y / domain.SpriteHeight
 		for x := 0; x < 0x20; x++ {
 			np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
-			nameTblIdx := p.registers.PPUCtrl & 0x03
+			nameTblIdx := p.registers.PPUCtrl.NameTableIndex
 			spriteNo, err := p.bus.GetSpriteNo(nameTblIdx, np)
 			if err != nil {
 				return nil, err

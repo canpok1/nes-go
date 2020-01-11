@@ -17,6 +17,7 @@ type Bus struct {
 	programROM *domain.PRGROM
 
 	ppu *PPU
+	cpu *CPU
 
 	charactorROM      *domain.CHRROM
 	nameTable0        []byte
@@ -67,10 +68,11 @@ func NewBus() *Bus {
 }
 
 // Setup ...
-func (b *Bus) Setup(rom *domain.ROM, ppu *PPU) {
+func (b *Bus) Setup(rom *domain.ROM, ppu *PPU, cpu *CPU) {
 	b.programROM = rom.Prgrom
 	b.charactorROM = rom.Chrrom
 	b.ppu = ppu
+	b.cpu = cpu
 
 	b.setupped = true
 }
@@ -555,4 +557,9 @@ func (b *Bus) GetBackgroundPalette(no uint8) *domain.Palette {
 // GetSpritePalette ...
 func (b *Bus) GetSpritePalette(no uint8) *domain.Palette {
 	return &b.spritePalette[no]
+}
+
+// SendNMI ...
+func (b *Bus) SendNMI() error {
+	return b.cpu.ReceiveNMI()
 }

@@ -47,7 +47,7 @@ func main() {
 		return
 	}
 
-	bus.Setup(rom, ppu)
+	bus.Setup(rom, ppu, cpu)
 
 	cpu.SetBus(bus)
 	ppu.SetBus(bus)

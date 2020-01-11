@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"nes-go/pkg/domain"
-	"nes-go/pkg/log"
 	"nes-go/pkg/impl/cpu"
+	"nes-go/pkg/log"
 )
 
 // Operand ...
@@ -346,9 +346,26 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 }
 
 // InterruptNMI ...
-func (c *CPU) InterruptNMI() {
+func (c *CPU) InterruptNMI() error {
 	// TODO 実装
 	// http://pgate1.at-ninja.jp/NES_on_FPGA/nes_cpu.htm#Interrupt
+	c.registers.P.BreakMode = false
+	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
+	c.stack.Push(byte(c.registers.PC & 0x00FF))
+	c.stack.Push(c.registers.P.ToByte())
+
+	c.registers.P.InterruptDisable = true
+
+	l, err := c.bus.ReadByCPU(0xFFFA)
+	if err != nil {
+		return fmt.Errorf("failed to interrupt[BRK]; %w", err)
+	}
+	h, err := c.bus.ReadByCPU(0xFFFB)
+	if err != nil {
+		return fmt.Errorf("failed to interrupt[BRK]; %w", err)
+	}
+	c.registers.PC = (uint16(h) << 8) + uint16(l)
+	return nil
 }
 
 // InterruptRESET ...
@@ -1079,4 +1096,9 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		err = fmt.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", mne)
 		return
 	}
+}
+
+// ReceiveNMI ...
+func (c *CPU) ReceiveNMI() error {
+	return c.InterruptNMI()
 }
