@@ -6,32 +6,32 @@ import (
 	"nes-go/pkg/log"
 )
 
-// Registers ...
-type Registers struct {
+// CPURegisters ...
+type CPURegisters struct {
 	A  byte
 	X  byte
 	Y  byte
 	S  byte
-	P  *StatusRegister
+	P  *CPUStatusRegister
 	PC uint16
 }
 
 // NewRegisters ...
-func NewRegisters() *Registers {
+func NewCPURegisters() *CPURegisters {
 	// initialize as CPU power up state
 	// https://wiki.nesdev.com/w/index.php/CPU_power_up_state
-	return &Registers{
+	return &CPURegisters{
 		A:  0,
 		X:  0,
 		Y:  0,
 		S:  0xFD,
-		P:  NewStatusRegister(),
+		P:  NewCPUStatusRegister(),
 		PC: 0,
 	}
 }
 
 // String ...
-func (r *Registers) String() string {
+func (r *CPURegisters) String() string {
 	return fmt.Sprintf(
 		"{A:%#v, X:%#v, Y:%#v, S:%#v, P:%v, PC:%#v}",
 		r.A,
@@ -44,40 +44,40 @@ func (r *Registers) String() string {
 }
 
 // UpdateA ...
-func (r *Registers) UpdateA(a byte) {
+func (r *CPURegisters) UpdateA(a byte) {
 	old := r.A
 	r.A = a
 	log.Trace("CPU.update[A] %#v => %#v", old, r.A)
 }
 
 // UpdateX ...
-func (r *Registers) UpdateX(x byte) {
+func (r *CPURegisters) UpdateX(x byte) {
 	old := r.X
 	r.X = x
 	log.Trace("CPU.update[X] %#v => %#v", old, r.X)
 }
 
 // UpdateY ...
-func (r *Registers) UpdateY(y byte) {
+func (r *CPURegisters) UpdateY(y byte) {
 	old := r.Y
 	r.Y = y
 	log.Trace("CPU.update[Y] %#v => %#v", old, r.Y)
 }
 
 // UpdateS ...
-func (r *Registers) UpdateS(s byte) {
+func (r *CPURegisters) UpdateS(s byte) {
 	old := r.S
 	r.S = s
 	log.Trace("CPU.update[S] %#v => %#v", old, r.S)
 }
 
 // IncrementPC ...
-func (r *Registers) IncrementPC() {
+func (r *CPURegisters) IncrementPC() {
 	r.UpdatePC(r.PC + 1)
 }
 
 // UpdatePC ...
-func (r *Registers) UpdatePC(pc uint16) {
+func (r *CPURegisters) UpdatePC(pc uint16) {
 	old := r.PC
 	r.PC = pc
 	log.Trace("CPU.update[PC] %#v => %#v", old, r.PC)
@@ -85,7 +85,7 @@ func (r *Registers) UpdatePC(pc uint16) {
 
 // StatusRegister ...
 // https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9%E3%83%AC%E3%82%B8%E3%82%B9%E3%82%BF
-type StatusRegister struct {
+type CPUStatusRegister struct {
 	Negative         bool // bit7	N	ネガティブ	演算結果のbit7が1の時にセット
 	Overflow         bool // bit6	V	オーバーフロー	P演算結果がオーバーフローを起こした時にセット
 	Reserved         bool // bit5	R	予約済み	常にセットされている
@@ -97,8 +97,8 @@ type StatusRegister struct {
 }
 
 // NewStatusRegister ...
-func NewStatusRegister() *StatusRegister {
-	return &StatusRegister{
+func NewCPUStatusRegister() *CPUStatusRegister {
+	return &CPUStatusRegister{
 		Negative:         false,
 		Overflow:         false,
 		Reserved:         true,
@@ -111,7 +111,7 @@ func NewStatusRegister() *StatusRegister {
 }
 
 // String ...
-func (s *StatusRegister) String() string {
+func (s *CPUStatusRegister) String() string {
 	return fmt.Sprintf(
 		"{N:%#v, V:%#v, R:%#v, B:%#v, D:%#v, I:%#v, Z:%#v, C:%#v}",
 		s.Negative,
@@ -126,7 +126,7 @@ func (s *StatusRegister) String() string {
 }
 
 // ToByte ...
-func (s *StatusRegister) ToByte() byte {
+func (s *CPUStatusRegister) ToByte() byte {
 	var b byte = 0
 	if s.Negative {
 		b = b + 0x80
@@ -156,7 +156,7 @@ func (s *StatusRegister) ToByte() byte {
 }
 
 // UpdateAll ...
-func (s *StatusRegister) UpdateAll(b byte) {
+func (s *CPUStatusRegister) UpdateAll(b byte) {
 	s.Negative = (b & 0x80) == 0x80
 	s.Overflow = (b & 0x40) == 0x40
 	s.Reserved = (b & 0x20) == 0x20
@@ -168,35 +168,35 @@ func (s *StatusRegister) UpdateAll(b byte) {
 }
 
 // UpdateN ...
-func (s *StatusRegister) UpdateN(result byte) {
+func (s *CPUStatusRegister) UpdateN(result byte) {
 	old := s.Negative
 	s.Negative = ((result & 0x80) == 0x80)
 	log.Trace("CPU.update[N] %#v => %#v", old, s.Negative)
 }
 
 // UpdateV ...
-func (s *StatusRegister) UpdateV(result int16) {
+func (s *CPUStatusRegister) UpdateV(result int16) {
 	old := s.Overflow
 	s.Overflow = (result < 0x7F) || (result > 0x80)
 	log.Trace("CPU.update[V] %#v => %#v", old, s.Overflow)
 }
 
 // UpdateI ...
-func (s *StatusRegister) UpdateI(i bool) {
+func (s *CPUStatusRegister) UpdateI(i bool) {
 	old := s.InterruptDisable
 	s.InterruptDisable = i
 	log.Trace("CPU.update[I] %#v => %#v", old, s.InterruptDisable)
 }
 
 // UpdateZ ...
-func (s *StatusRegister) UpdateZ(result byte) {
+func (s *CPUStatusRegister) UpdateZ(result byte) {
 	old := s.Zero
 	s.Zero = (result == 0x00)
 	log.Trace("CPU.update[Z] %#v => %#v", old, s.Zero)
 }
 
 // UpdateC ...
-func (s *StatusRegister) UpdateC(result int16) {
+func (s *CPUStatusRegister) UpdateC(result int16) {
 	old := s.Carry
 	s.Carry = result > 0xFF
 	log.Trace("CPU.update[C] %#v => %#v", old, s.Carry)
