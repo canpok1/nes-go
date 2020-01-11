@@ -22,8 +22,11 @@ type PRGROM []byte
 type CHRROM []byte
 
 // GetSprite ...
-func (c *CHRROM) GetSprite(no uint8) *Sprite {
+func (c *CHRROM) GetSprite(patternTblIdx, no uint8) *Sprite {
 	begin := uint16(no) * 0x0010
+	if patternTblIdx == 1 {
+		begin = 0x1000 + begin
+	}
 	end := begin + 0x000F + 1
 	s := Sprite((*c)[begin:end])
 	return &s

@@ -522,18 +522,18 @@ func (b *Bus) GetSpriteNo(nameTblIdx uint8, p domain.NameTablePoint) (no uint8, 
 }
 
 // GetSprite ...
-func (b *Bus) GetSprite(no uint8) *domain.Sprite {
-	return b.charactorROM.GetSprite(no)
+func (b *Bus) GetSprite(patternTblIdx, no uint8) *domain.Sprite {
+	return b.charactorROM.GetSprite(patternTblIdx, no)
 }
 
-// GetPaletteNo ...
-func (b *Bus) GetPaletteNo(p domain.NameTablePoint) (no uint8, err error) {
-	log.Trace("Bus.GetPaletteNo[%#v] ...", p)
+// GetAttribute ...
+func (b *Bus) GetAttribute(tableIndex uint8, p domain.NameTablePoint) (attribute byte, err error) {
+	log.Trace("Bus.GetAttribute[%v][%#v] ...", tableIndex, p)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.GetPaletteNo[%#v] => %#v", p, err)
+			log.Warn("Bus.GetPaletteNo[%v][%#v] => %#v", tableIndex, p, err)
 		} else {
-			log.Trace("Bus.GetPaletteNo[%#v] => %#v", p, no)
+			log.Trace("Bus.GetPaletteNo[%v][%#v] => %#v", tableIndex, p, attribute)
 		}
 	}()
 
@@ -542,7 +542,33 @@ func (b *Bus) GetPaletteNo(p domain.NameTablePoint) (no uint8, err error) {
 		return
 	}
 
-	attribute := b.attributeTable0[p.ToAttributeTableIndex()]
+	var tbl []byte
+	switch tableIndex {
+	case 0:
+		tbl = b.attributeTable0
+	case 1:
+		tbl = b.attributeTable1
+	case 2:
+		tbl = b.attributeTable2
+	case 3:
+		tbl = b.attributeTable3
+	}
+
+	attribute = tbl[p.ToAttributeTableIndex()]
+	return
+}
+
+// GetPaletteNo ...
+func (b *Bus) GetPaletteNo(p domain.NameTablePoint, attribute byte) (no uint8, err error) {
+	log.Trace("Bus.GetPaletteNo[%#v][%#v] ...", p, attribute)
+	defer func() {
+		if err != nil {
+			log.Warn("Bus.GetPaletteNo[%#v][%#v] => %#v", p, attribute, err)
+		} else {
+			log.Trace("Bus.GetPaletteNo[%#v][%#v] => %#v", p, attribute, no)
+		}
+	}()
+
 	attributeIndex := p.ToAttributeIndex()
 	no = (attribute & (0x03 << attributeIndex)) >> attributeIndex
 

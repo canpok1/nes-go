@@ -143,7 +143,7 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		p.registers.PPUCtrl.UpdateAll(data)
 		target = "PPUCTRL"
 	case 1:
-		p.registers.PPUMask = data
+		p.registers.PPUMask.UpdateAll(data)
 		target = "PPUMASK"
 	case 2:
 		err = fmt.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
@@ -237,24 +237,34 @@ func (p *PPU) Run1Cycle() ([][]domain.SpriteImage, error) {
 	if shouldDrawline {
 		y := p.drawingPoint.Y / domain.SpriteHeight
 		for x := 0; x < 0x20; x++ {
+
 			np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
-			nameTblIdx := p.registers.PPUCtrl.NameTableIndex
-			spriteNo, err := p.bus.GetSpriteNo(nameTblIdx, np)
-			if err != nil {
-				return nil, err
+
+			if p.registers.PPUMask.EnableBackground {
+				nameTblIdx := p.registers.PPUCtrl.NameTableIndex
+				spriteNo, err := p.bus.GetSpriteNo(nameTblIdx, np)
+				if err != nil {
+					return nil, err
+				}
+
+				attribute, err := p.bus.GetAttribute(nameTblIdx, np)
+				if err != nil {
+					return nil, err
+				}
+
+				paletteNo, err := p.bus.GetPaletteNo(np, attribute)
+				if err != nil {
+					return nil, err
+				}
+
+				patternTblIdx := p.registers.PPUCtrl.BackgroundPatternTableIndex
+				sprite := p.bus.GetSprite(patternTblIdx, spriteNo)
+				palette := p.bus.GetBackgroundPalette(paletteNo)
+
+				// 書き込む
+				si := sprite.ToSpriteImage(palette)
+				p.spriteImages[y][x] = *si
 			}
-
-			paletteNo, err := p.bus.GetPaletteNo(np)
-			if err != nil {
-				return nil, err
-			}
-
-			sprite := p.bus.GetSprite(spriteNo)
-			palette := p.bus.GetBackgroundPalette(paletteNo)
-
-			// 書き込む
-			si := sprite.ToSpriteImage(palette)
-			p.spriteImages[y][x] = *si
 		}
 	}
 

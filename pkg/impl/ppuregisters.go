@@ -5,7 +5,7 @@ import "fmt"
 // PPURegisters ...
 type PPURegisters struct {
 	PPUCtrl   PPUCtrl   // 0x2000	PPUCTRL	W	コントロールレジスタ1	割り込みなどPPUの設定
-	PPUMask   byte      // 0x2001	PPUMASK	W	コントロールレジスタ2	背景イネーブルなどのPPU設定
+	PPUMask   PPUMask   // 0x2001	PPUMASK	W	コントロールレジスタ2	背景イネーブルなどのPPU設定
 	PPUStatus PPUStatus // 0x2002	PPUSTATUS	R	PPUステータス	PPUのステータス
 	OAMAddr   byte      // 0x2003	OAMADDR	W	スプライトメモリデータ	書き込むスプライト領域のアドレス
 	OAMData   byte      // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
@@ -24,7 +24,16 @@ func NewPPURegisters() *PPURegisters {
 			VRAMAddressIncrementMode:    0,
 			NameTableIndex:              0,
 		},
-		PPUMask: 0,
+		PPUMask: PPUMask{
+			EmphasizeB:           false,
+			EmphasizeG:           false,
+			EmphasizeR:           false,
+			EnableSprite:         false,
+			EnableBackground:     false,
+			EnableSpriteMask:     false,
+			EnableBackgroundMask: false,
+			DisplayType:          0,
+		},
 		PPUStatus: PPUStatus{
 			VBlankHasStarted: false,
 		},
@@ -39,9 +48,9 @@ func NewPPURegisters() *PPURegisters {
 func (r PPURegisters) String() string {
 	return fmt.Sprintf(
 		"{PPUCTRL:%#v, PPUMASK:%#v, PPUSTATUS:%#v, OAMADDR:%#v, OAMDATA:%v, PPUSCROLL:%#v, PPUADDR:%#v}",
-		r.PPUCtrl.String(),
+		r.PPUCtrl,
 		r.PPUMask,
-		r.PPUStatus.String(),
+		r.PPUStatus,
 		r.OAMAddr,
 		r.OAMData,
 		r.PPUScroll,
@@ -59,19 +68,34 @@ type PPUCtrl struct {
 	NameTableIndex              uint8
 }
 
-// String ...
-func (p PPUCtrl) String() string {
-	return fmt.Sprintf(
-		"{NMIEnable: %v, SpriteTileSelect: %v}",
-		p.NMIEnable,
-		p.SpriteTileSelect,
-	)
+// UpdateAll ...
+func (p *PPUCtrl) UpdateAll(b byte) {
+	p.SpriteTileSelect = (b % 0x04) == 0x04
+	p.NMIEnable = (b % 0x80) == 0x80
+}
+
+// PPUMask ...
+type PPUMask struct {
+	EmphasizeB           bool
+	EmphasizeG           bool
+	EmphasizeR           bool
+	EnableSprite         bool
+	EnableBackground     bool
+	EnableSpriteMask     bool
+	EnableBackgroundMask bool
+	DisplayType          uint8
 }
 
 // UpdateAll ...
-func (p PPUCtrl) UpdateAll(b byte) {
-	p.SpriteTileSelect = (b % 0x04) == 0x04
-	p.NMIEnable = (b % 0x80) == 0x80
+func (p *PPUMask) UpdateAll(b byte) {
+	p.EmphasizeB = (b & 0x80) == 0x80
+	p.EmphasizeG = (b & 0x40) == 0x40
+	p.EmphasizeR = (b & 0x20) == 0x20
+	p.EnableSprite = (b & 0x10) == 0x10
+	p.EnableBackground = (b & 0x08) == 0x08
+	p.EnableSpriteMask = (b & 0x04) == 0x04
+	p.EnableBackgroundMask = (b & 0x02) == 0x02
+	p.DisplayType = b & 0x01
 }
 
 // PPUStatus ...
@@ -80,18 +104,10 @@ type PPUStatus struct {
 }
 
 // ToByte ...
-func (p PPUStatus) ToByte() byte {
+func (p *PPUStatus) ToByte() byte {
 	var b byte
 	if p.VBlankHasStarted {
 		b = b + 0x80
 	}
 	return b
-}
-
-// String ...
-func (p PPUStatus) String() string {
-	return fmt.Sprintf(
-		"{VBlank: %v}",
-		p.VBlankHasStarted,
-	)
 }
