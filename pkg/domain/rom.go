@@ -21,14 +21,14 @@ type PRGROM []byte
 // CHRROM ...
 type CHRROM []byte
 
-// GetSprite ...
-func (c *CHRROM) GetSprite(patternTblIdx, no uint8) *Sprite {
+// GetTilePattern ...
+func (c *CHRROM) GetTilePattern(patternTblIdx, no uint8) *TilePattern {
 	begin := uint16(no) * 0x0010
 	if patternTblIdx == 1 {
 		begin = 0x1000 + begin
 	}
 	end := begin + 0x000F + 1
-	s := Sprite((*c)[begin:end])
+	s := TilePattern((*c)[begin:end])
 	return &s
 }
 

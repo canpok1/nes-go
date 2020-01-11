@@ -2,11 +2,11 @@ package domain
 
 import "nes-go/pkg/log"
 
-// Sprite ...
-type Sprite []byte
+// TilePattern ...
+type TilePattern []byte
 
 // toColorMap
-func (s Sprite) toColorMap() [][]byte {
+func (s TilePattern) toColorMap() [][]byte {
 	colorMap := make([][]byte, 8)
 	for y := 0; y < 8; y++ {
 		colorMap[y] = make([]byte, 8)
@@ -27,8 +27,8 @@ func (s Sprite) toColorMap() [][]byte {
 	return colorMap
 }
 
-// ToSpriteImage ...
-func (s Sprite) ToSpriteImage(p *Palette) *SpriteImage {
+// ToTileImage ...
+func (s TilePattern) ToTileImage(p *Palette) *TileImage {
 	r := make([][]byte, SpriteHeight)
 	g := make([][]byte, SpriteHeight)
 	b := make([][]byte, SpriteHeight)
@@ -46,22 +46,22 @@ func (s Sprite) ToSpriteImage(p *Palette) *SpriteImage {
 			b[y][x] = c[2]
 		}
 	}
-	return &SpriteImage{
+	return &TileImage{
 		R: r,
 		G: g,
 		B: b,
 	}
 }
 
-// SpriteImage ...
-type SpriteImage struct {
+// TileImage ...
+type TileImage struct {
 	R [][]byte
 	G [][]byte
 	B [][]byte
 }
 
-// NewSpriteImage ...
-func NewSpriteImage() *SpriteImage {
+// NewTileImage ...
+func NewTileImage() *TileImage {
 	r := make([][]byte, SpriteHeight)
 	g := make([][]byte, SpriteHeight)
 	b := make([][]byte, SpriteHeight)
@@ -72,7 +72,7 @@ func NewSpriteImage() *SpriteImage {
 		b[y] = make([]byte, SpriteWidth)
 	}
 
-	return &SpriteImage{
+	return &TileImage{
 		R: r,
 		G: g,
 		B: b,

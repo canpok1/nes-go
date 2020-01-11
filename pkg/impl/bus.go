@@ -492,14 +492,14 @@ func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 	return
 }
 
-// GetSpriteNo ...
-func (b *Bus) GetSpriteNo(nameTblIdx uint8, p domain.NameTablePoint) (no uint8, err error) {
-	log.Trace("Bus.GetSpriteNo[%#v] ...", p)
+// GetTileNo ...
+func (b *Bus) GetTileNo(nameTblIdx uint8, p domain.NameTablePoint) (no uint8, err error) {
+	log.Trace("Bus.GetTileNo[%#v] ...", p)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.GetSpriteNo[%#v] => %#v", p, err)
+			log.Warn("Bus.GetTileNo[%#v] => %#v", p, err)
 		} else {
-			log.Trace("Bus.GetSpriteNo[%#v] => %#v", p, no)
+			log.Trace("Bus.GetTileNo[%#v] => %#v", p, no)
 		}
 	}()
 
@@ -521,9 +521,9 @@ func (b *Bus) GetSpriteNo(nameTblIdx uint8, p domain.NameTablePoint) (no uint8, 
 	return
 }
 
-// GetSprite ...
-func (b *Bus) GetSprite(patternTblIdx, no uint8) *domain.Sprite {
-	return b.charactorROM.GetSprite(patternTblIdx, no)
+// GetTilePattern ...
+func (b *Bus) GetTilePattern(patternTblIdx, no uint8) *domain.TilePattern {
+	return b.charactorROM.GetTilePattern(patternTblIdx, no)
 }
 
 // GetAttribute ...
