@@ -16,7 +16,8 @@ type PPU struct {
 	ppuaddrBuf        domain.Address // 組み立て中のPPUADDR
 	ppuaddrFull       domain.Address // 組み立て済のPPUADDR
 
-	tiles [][]domain.Tile
+	tileImages   [][]domain.TileImage
+	spriteImages []domain.SpriteImage
 
 	drawingPoint *image.Point
 
@@ -27,11 +28,11 @@ type PPU struct {
 func NewPPU() (*PPU, error) {
 	sizeY := domain.ResolutionHeight / domain.SpriteHeight
 	sizeX := domain.ResolutionWidth / domain.SpriteWidth
-	tiles := make([][]domain.Tile, sizeY)
+	tileImages := make([][]domain.TileImage, sizeY)
 	for y := 0; y < sizeY; y++ {
-		tiles[y] = make([]domain.Tile, sizeX)
+		tileImages[y] = make([]domain.TileImage, sizeX)
 		for x := 0; x < sizeX; x++ {
-			tiles[y][x] = *domain.NewTile()
+			tileImages[y][x] = *domain.NewTileImage()
 		}
 	}
 
@@ -40,7 +41,8 @@ func NewPPU() (*PPU, error) {
 		ppuaddrWriteCount: 0,
 		ppuaddrBuf:        0,
 		ppuaddrFull:       0,
-		tiles:             tiles,
+		tileImages:        tileImages,
+		spriteImages:      []domain.SpriteImage{},
 		drawingPoint:      &image.Point{0, 0},
 		oam:               NewPPUOAM(),
 	}, nil
@@ -201,9 +203,9 @@ func (p *PPU) updateDrawingPoint() {
 }
 
 // Run ...
-func (p *PPU) Run(cycle int) (si [][]domain.Tile, err error) {
+func (p *PPU) Run(cycle int) (tis [][]domain.TileImage, sis []domain.SpriteImage, err error) {
 	for i := 0; i < cycle; i++ {
-		if si, err = p.Run1Cycle(); err != nil {
+		if tis, sis, err = p.Run1Cycle(); err != nil {
 			return
 		}
 	}
@@ -211,7 +213,7 @@ func (p *PPU) Run(cycle int) (si [][]domain.Tile, err error) {
 }
 
 // Run1Cycle ...
-func (p *PPU) Run1Cycle() ([][]domain.Tile, error) {
+func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 	log.Trace("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
 
 	defer p.updateDrawingPoint()
@@ -223,23 +225,26 @@ func (p *PPU) Run1Cycle() ([][]domain.Tile, error) {
 		p.registers.PPUStatus.VBlankHasStarted = false
 	}
 
+	if p.drawingPoint.X == 0 && p.drawingPoint.Y == 0 {
+		p.spriteImages = []domain.SpriteImage{}
+	}
+
 	if p.registers.PPUCtrl.NMIEnable && p.registers.PPUStatus.VBlankHasStarted {
 		if err := p.bus.SendNMI(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	if p.drawingPoint.X >= domain.ResolutionWidth {
-		return nil, nil
+		return nil, nil, nil
 	}
 	if p.drawingPoint.Y >= domain.ResolutionHeight {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// 8ライン単位で書き込む
 	shouldDrawline := (p.drawingPoint.X == domain.ResolutionWidth-1) && (p.drawingPoint.Y%8 == 7)
 	if shouldDrawline {
-
 		y := p.drawingPoint.Y / domain.SpriteHeight
 		nameTblIdx := p.registers.PPUCtrl.NameTableIndex
 		if p.registers.PPUMask.EnableBackground {
@@ -247,17 +252,17 @@ func (p *PPU) Run1Cycle() ([][]domain.Tile, error) {
 				np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
 				attribute, err := p.bus.GetAttribute(nameTblIdx, np)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				paletteNo, err := p.bus.GetPaletteNo(np, attribute)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				tileIndex, err := p.bus.GetTileNo(nameTblIdx, np)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				patternTblIdx := p.registers.PPUCtrl.BackgroundPatternTableIndex
@@ -266,13 +271,13 @@ func (p *PPU) Run1Cycle() ([][]domain.Tile, error) {
 
 				// 書き込む
 				si := tilePattern.ToTileImage(palette)
-				p.tiles[y][x].Background = si
-				p.tiles[y][x].Sprite = nil
+				p.tileImages[y][x] = *si
 
 			}
 		}
+
 		if p.registers.PPUMask.EnableSprite {
-			err := p.oam.Each(func(s Sprite) error {
+			err := p.oam.Each(func(s domain.Sprite) error {
 				sy := int(s.Y) / domain.SpriteHeight
 				sx := int(s.X) / domain.SpriteWidth
 				if y != sy {
@@ -298,19 +303,20 @@ func (p *PPU) Run1Cycle() ([][]domain.Tile, error) {
 
 				// 書き込む
 				ti := tilePattern.ToTileImage(palette)
-				p.tiles[sy][sx].Sprite = ti
+				si := domain.NewSpriteImage(s.X, s.Y, ti)
+				p.spriteImages = append(p.spriteImages, *si)
 
 				return nil
 			})
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 
 	// 1ライン分の書き込み完了直後以外は描画しない
 	if p.drawingPoint.X != domain.ResolutionWidth-1 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// TODO この判定を入れると急激に遅くなるためコメントアウト
@@ -319,5 +325,5 @@ func (p *PPU) Run1Cycle() ([][]domain.Tile, error) {
 	// 	return nil, nil
 	// }
 
-	return p.tiles, nil
+	return p.tileImages, p.spriteImages, nil
 }

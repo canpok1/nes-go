@@ -55,8 +55,8 @@ func (m *Renderer) Run() error {
 }
 
 // Render ...
-func (m *Renderer) Render(sis [][]domain.Tile) error {
-	p := toPixels(sis)
+func (m *Renderer) Render(tis [][]domain.TileImage, sis []domain.SpriteImage) error {
+	p := toPixels(tis)
 	m.imageBuf.ReplacePixels(p)
 
 	m.fps = 1 / time.Since(m.lastRenderedTime).Seconds()
@@ -66,7 +66,7 @@ func (m *Renderer) Render(sis [][]domain.Tile) error {
 }
 
 // toPixels ...
-func toPixels(sis [][]domain.Tile) []byte {
+func toPixels(sis [][]domain.TileImage) []byte {
 	pixels := make([]byte, 4*domain.ResolutionHeight*domain.ResolutionWidth)
 
 	idx := 0
@@ -91,28 +91,16 @@ func toPixels(sis [][]domain.Tile) []byte {
 	return pixels
 }
 
-func getPixel(sis [][]domain.Tile, x domain.MonitorX, y domain.MonitorY) (r, g, b, a byte) {
-	t := sis[y/domain.SpriteHeight][x/domain.SpriteWidth]
+func getPixel(tis [][]domain.TileImage, x domain.MonitorX, y domain.MonitorY) (r, g, b, a byte) {
+	t := tis[y/domain.SpriteHeight][x/domain.SpriteWidth]
 
 	iy := y % domain.SpriteHeight
 	ix := x % domain.SpriteWidth
 
-	if t.Sprite == nil && t.Background == nil {
-		return
-	}
-
-	if t.Sprite != nil && t.Sprite.A[iy][ix] != 0 {
-		r = t.Sprite.R[iy][ix]
-		g = t.Sprite.G[iy][ix]
-		b = t.Sprite.B[iy][ix]
-		a = t.Sprite.A[iy][ix]
-	}
-	if t.Background != nil && t.Background.A[iy][ix] != 0 {
-		r = t.Background.R[iy][ix]
-		g = t.Background.G[iy][ix]
-		b = t.Background.B[iy][ix]
-		a = t.Background.A[iy][ix]
-	}
+	r = t.R[iy][ix]
+	g = t.G[iy][ix]
+	b = t.B[iy][ix]
+	a = t.A[iy][ix]
 
 	return
 }

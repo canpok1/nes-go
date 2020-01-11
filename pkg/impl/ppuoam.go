@@ -1,12 +1,6 @@
 package impl
 
-// Sprite ...
-type Sprite struct {
-	Y         byte
-	TileIndex byte
-	Attribute byte
-	X         byte
-}
+import "nes-go/pkg/domain"
 
 // PPUOAM ...
 type PPUOAM []byte
@@ -23,8 +17,8 @@ func (p *PPUOAM) Write(oamaddr uint8, b byte) {
 }
 
 // Each ...
-func (p *PPUOAM) Each(exec func(Sprite) error) error {
-	s := Sprite{}
+func (p *PPUOAM) Each(exec func(domain.Sprite) error) error {
+	s := domain.Sprite{}
 	for i, b := range *p {
 		offset := i % 4
 		switch offset {

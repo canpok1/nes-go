@@ -88,14 +88,3 @@ func NewTileImage() *TileImage {
 		A: a,
 	}
 }
-
-// Tile ...
-type Tile struct {
-	Sprite     *TileImage
-	Background *TileImage
-}
-
-// NewTile ...
-func NewTile() *Tile {
-	return &Tile{}
-}

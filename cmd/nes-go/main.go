@@ -70,14 +70,14 @@ func main() {
 				break
 			}
 
-			imgs, err := ppu.Run(cycle * 3)
+			tis, sis, err := ppu.Run(cycle * 3)
 			if err != nil {
 				log.Fatal("error: %v", err)
 				break
 			}
 
-			if imgs != nil {
-				err = r.Render(imgs)
+			if tis != nil && sis != nil {
+				err = r.Render(tis, sis)
 				if err != nil {
 					log.Fatal("error: %v", err)
 					break
