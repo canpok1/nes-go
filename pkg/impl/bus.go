@@ -476,6 +476,11 @@ func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 		pIdx := (addrTmp - 0x3F00) / 4
 		bitIdx := (addrTmp - 0x3F00) % 4
 		b.backgroundPalette[pIdx][bitIdx] = data
+
+		if bitIdx == 0 {
+			b.spritePalette[pIdx][bitIdx] = data
+		}
+
 		target = "BackgroundPalette"
 		return
 	}
@@ -484,6 +489,11 @@ func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 		pIdx := (addrTmp - 0x3F10) / 4
 		bitIdx := (addrTmp - 0x3F10) % 4
 		b.spritePalette[pIdx][bitIdx] = data
+
+		if bitIdx == 0 {
+			b.backgroundPalette[pIdx][bitIdx] = data
+		}
+
 		target = "SpritePalette"
 		return
 	}
@@ -576,9 +586,9 @@ func (b *Bus) GetPaletteNo(p domain.NameTablePoint, attribute byte) (no uint8, e
 }
 
 // GetPalette ...
-func (b *Bus) GetPalette(no uint16) *domain.Palette {
-	index := no & 0x0F
-	if (no & 0xF0) == 0 {
+func (b *Bus) GetPalette(no uint8) *domain.Palette {
+	index := no & 0x03
+	if (no & 0x0C) == 0 {
 		return &b.backgroundPalette[index]
 	}
 	return &b.spritePalette[index]

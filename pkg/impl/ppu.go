@@ -262,7 +262,7 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 
 				patternTblIdx := p.registers.PPUCtrl.BackgroundPatternTableIndex
 				tilePattern := p.bus.GetTilePattern(patternTblIdx, tileIndex)
-				palette := p.bus.GetPalette(uint16(paletteNo))
+				palette := p.bus.GetPalette(paletteNo)
 
 				// 書き込む
 				si := tilePattern.ToTileImage(palette)
@@ -286,11 +286,11 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 	sImages := []domain.SpriteImage{}
 	if p.registers.PPUMask.EnableSprite {
 		err := p.oam.Each(func(s domain.Sprite) error {
-			if !s.ContainsY(uint16(s.Y)) {
+			if !s.ContainsY(uint16(s.Y + 1)) {
 				return nil
 			}
 
-			sy := int(s.Y) / domain.SpriteHeight
+			sy := int(s.Y+1) / domain.SpriteHeight
 			sx := int(s.X) / domain.SpriteWidth
 
 			np := domain.NameTablePoint{X: uint8(sx), Y: uint8(sy)}
@@ -304,19 +304,19 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 				return err
 			}
 
-			offset := (uint16(s.Attribute) & 0x03) << 2
-			palette := p.bus.GetPalette(uint16(paletteNo) + offset)
+			// TODO スプライトのAttributeの情報を元にパレット番号を決定
+			// attributeを使うとパレット番号がずれるので一旦固定値を指定
+			// offset := (s.Attribute & 0x3) << 2
+			offset := uint8(0x04)
+			palette := p.bus.GetPalette(paletteNo + offset)
 
 			patternTblIdx := p.registers.PPUCtrl.SpritePatternTableIndex
 			tilePattern := p.bus.GetTilePattern(patternTblIdx, s.TileIndex)
 
 			ti := tilePattern.ToTileImage(palette)
 			isForeground := (s.Attribute & 0x20) == 0x00
-			si := domain.NewSpriteImage(uint16(s.X), uint16(s.Y), ti, isForeground)
+			si := domain.NewSpriteImage(uint16(s.X), uint16(s.Y+1), ti, isForeground)
 			sImages = append(sImages, *si)
-
-			// log.Info("Sprite[(x,y)=(%v,%v)] paletteNo:%v, offset:%v, patternTblIdx:%v, tilePattern:%#v", s.X, s.Y, paletteNo, offset, patternTblIdx, tilePattern)
-			// log.Info("Sprite[(x,y)=(%v,%v)] SpriteImage:%#v", s.X, s.Y, si)
 
 			return nil
 		})

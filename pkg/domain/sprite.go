@@ -2,7 +2,7 @@ package domain
 
 // Sprite ...
 type Sprite struct {
-	Y         byte
+	Y         byte // Y座標-1が格納される
 	TileIndex byte
 	Attribute byte
 	X         byte
@@ -10,10 +10,10 @@ type Sprite struct {
 
 // ContainsY ...
 func (s Sprite) ContainsY(y uint16) bool {
-	if y < uint16(s.Y) {
+	if y < uint16(s.Y+1) {
 		return false
 	}
-	if y >= uint16(s.Y)+ResolutionHeight {
+	if y >= uint16(s.Y+1)+ResolutionHeight {
 		return false
 	}
 
