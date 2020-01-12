@@ -10,7 +10,7 @@ import (
 // PPU ...
 type PPU struct {
 	registers *PPURegisters
-	bus       *Bus
+	bus       domain.Bus
 
 	ppuaddrWriteCount uint8          // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
 	ppuaddrBuf        domain.Address // 組み立て中のPPUADDR
@@ -24,7 +24,7 @@ type PPU struct {
 }
 
 // NewPPU ...
-func NewPPU() (*PPU, error) {
+func NewPPU() (domain.PPU, error) {
 	sizeY := domain.ResolutionHeight / domain.SpriteHeight
 	sizeX := domain.ResolutionWidth / domain.SpriteWidth
 	tileImages := make([][]domain.TileImage, sizeY)
@@ -55,7 +55,7 @@ func (p *PPU) String() string {
 }
 
 // SetBus ...
-func (p *PPU) SetBus(b *Bus) {
+func (p *PPU) SetBus(b domain.Bus) {
 	p.bus = b
 }
 
@@ -118,7 +118,7 @@ func (p *PPU) ReadRegisters(addr domain.Address) (byte, error) {
 		err = fmt.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
 	case 0x2007:
 		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", p.ppuaddrFull)
-		data, err = p.bus.readByPPU(p.ppuaddrFull)
+		data, err = p.bus.ReadByPPU(p.ppuaddrFull)
 		p.incrementPPUADDR()
 	default:
 		target = "-"
@@ -176,7 +176,7 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		}
 	case 0x2007:
 		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.ppuaddrFull)
-		err = p.bus.writeByPPU(p.ppuaddrFull, data)
+		err = p.bus.WriteByPPU(p.ppuaddrFull, data)
 		p.incrementPPUADDR()
 	default:
 		target = "-"
@@ -203,15 +203,15 @@ func (p *PPU) updateDrawingPoint() {
 // Run ...
 func (p *PPU) Run(cycle int) (tis [][]domain.TileImage, sis []domain.SpriteImage, err error) {
 	for i := 0; i < cycle; i++ {
-		if tis, sis, err = p.Run1Cycle(); err != nil {
+		if tis, sis, err = p.run1Cycle(); err != nil {
 			return
 		}
 	}
 	return
 }
 
-// Run1Cycle ...
-func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
+// run1Cycle ...
+func (p *PPU) run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 	log.Trace("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
 
 	defer p.updateDrawingPoint()

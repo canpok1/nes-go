@@ -53,13 +53,13 @@ func (s *CPUStack) Pop() byte {
 // CPU ...
 type CPU struct {
 	registers   *CPURegisters
-	bus         *Bus
+	bus         domain.Bus
 	shouldReset bool
 	stack       *CPUStack
 }
 
 // NewCPU ...
-func NewCPU() *CPU {
+func NewCPU() domain.CPU {
 	return &CPU{
 		registers:   NewCPURegisters(),
 		shouldReset: true,
@@ -77,7 +77,7 @@ func (c *CPU) String() string {
 }
 
 // SetBus ...
-func (c *CPU) SetBus(b *Bus) {
+func (c *CPU) SetBus(b domain.Bus) {
 	c.bus = b
 }
 
@@ -86,26 +86,22 @@ func (c *CPU) Run() (int, error) {
 	log.Trace("===== CPU RUN =====")
 	log.Trace(c.String())
 
-	if c.bus == nil {
-		return 0, fmt.Errorf("failed to run, bus is nil")
-	}
-
 	if c.shouldReset {
-		if err := c.InterruptRESET(); err != nil {
+		if err := c.interruptRESET(); err != nil {
 			return 0, fmt.Errorf("%w", err)
 		}
 		return 0, nil
 	}
 
 	if !c.registers.P.InterruptDisable && c.registers.P.BreakMode {
-		if err := c.InterruptBRK(); err != nil {
+		if err := c.interruptBRK(); err != nil {
 			return 0, fmt.Errorf("%w", err)
 		}
 		return 0, nil
 	}
 
 	if !c.registers.P.InterruptDisable && !c.registers.P.BreakMode {
-		if err := c.InterruptIRQ(); err != nil {
+		if err := c.interruptIRQ(); err != nil {
 			return 0, fmt.Errorf("%w", err)
 		}
 		return 0, nil
@@ -367,8 +363,8 @@ func (c *CPU) InterruptNMI() error {
 	return nil
 }
 
-// InterruptRESET ...
-func (c *CPU) InterruptRESET() error {
+// interruptRESET ...
+func (c *CPU) interruptRESET() error {
 	log.Info("CPU.Interrupt[RESET] ...")
 
 	c.registers.P.UpdateI(true)
@@ -389,8 +385,8 @@ func (c *CPU) InterruptRESET() error {
 	return nil
 }
 
-// InterruptBRK ...
-func (c *CPU) InterruptBRK() error {
+// interruptBRK ...
+func (c *CPU) interruptBRK() error {
 	log.Info("CPU.Interrupt[BRK] ...")
 
 	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
@@ -410,8 +406,8 @@ func (c *CPU) InterruptBRK() error {
 	return nil
 }
 
-// InterruptIRQ ...
-func (c *CPU) InterruptIRQ() error {
+// interruptIRQ ...
+func (c *CPU) interruptIRQ() error {
 	log.Info("CPU.Interrupt[IRQ] ...")
 
 	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))

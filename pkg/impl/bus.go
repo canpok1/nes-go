@@ -16,8 +16,8 @@ type Bus struct {
 	exram      []byte
 	programROM *domain.PRGROM
 
-	ppu  *PPU
-	cpu  *CPU
+	ppu  domain.PPU
+	cpu  domain.CPU
 	pad1 *domain.Pad
 	pad2 *domain.Pad
 
@@ -35,7 +35,7 @@ type Bus struct {
 }
 
 // NewBus ...
-func NewBus() *Bus {
+func NewBus() domain.Bus {
 	return &Bus{
 		wram:  make([]byte, 0x0800),
 		io:    make([]byte, 0x0020),
@@ -50,7 +50,7 @@ func NewBus() *Bus {
 }
 
 // Setup ...
-func (b *Bus) Setup(rom *domain.ROM, ppu *PPU, cpu *CPU, vram *domain.VRAM, pad1 *domain.Pad, pad2 *domain.Pad) {
+func (b *Bus) Setup(rom *domain.ROM, ppu domain.PPU, cpu domain.CPU, vram *domain.VRAM, pad1 *domain.Pad, pad2 *domain.Pad) {
 	b.programROM = rom.Prgrom
 	b.charactorROM = rom.Chrrom
 	b.ppu = ppu
@@ -223,7 +223,7 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 	return 0, fmt.Errorf("failed read, addr out of range; addr: %#v", addr)
 }
 
-// writeByCPU ...
+// WriteByCPU ...
 func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	var err error
 	var target string
@@ -326,8 +326,8 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	return fmt.Errorf("failed write, addr out of range; addr: %#v", addr)
 }
 
-// readByPPU ...
-func (b *Bus) readByPPU(addr domain.Address) (data byte, err error) {
+// ReadByPPU ...
+func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 	var target string
 	log.Trace("Bus.readByPPU[addr=%#v] ...", addr)
 	defer func() {
@@ -448,8 +448,8 @@ func (b *Bus) readByPPU(addr domain.Address) (data byte, err error) {
 	return
 }
 
-// writeByPPU ...
-func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
+// WriteByPPU ...
+func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 	var target string
 	log.Trace("Bus.writeByPPU[addr=%#v] (<=%#v)...", addr, data)
 	defer func() {
