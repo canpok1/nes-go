@@ -99,8 +99,8 @@ func main() {
 	err = r.Run()
 }
 
-func makePad1() *domain.Pad {
-	return domain.NewPad(map[domain.ButtonType]ebiten.Key{
+func makePad1() domain.Pad {
+	return impl.NewPad(map[domain.ButtonType]ebiten.Key{
 		domain.ButtonTypeA:      ebiten.KeyA,
 		domain.ButtonTypeB:      ebiten.KeyB,
 		domain.ButtonTypeSelect: ebiten.KeyShift,
@@ -112,6 +112,6 @@ func makePad1() *domain.Pad {
 	})
 }
 
-func makePad2() *domain.Pad {
-	return domain.NewPad(map[domain.ButtonType]ebiten.Key{})
+func makePad2() domain.Pad {
+	return impl.NewPad(map[domain.ButtonType]ebiten.Key{})
 }

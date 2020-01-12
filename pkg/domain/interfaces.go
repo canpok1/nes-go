@@ -19,7 +19,7 @@ type PPU interface {
 
 // Bus ...
 type Bus interface {
-	Setup(*ROM, PPU, CPU, *VRAM, *Pad, *Pad)
+	Setup(*ROM, PPU, CPU, *VRAM, Pad, Pad)
 	ReadByCPU(Address) (byte, error)
 	WriteByCPU(Address, byte) error
 	ReadByPPU(Address) (byte, error)

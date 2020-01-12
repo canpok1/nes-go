@@ -18,8 +18,8 @@ type Bus struct {
 
 	ppu  domain.PPU
 	cpu  domain.CPU
-	pad1 *domain.Pad
-	pad2 *domain.Pad
+	pad1 domain.Pad
+	pad2 domain.Pad
 
 	charactorROM *domain.CHRROM
 
@@ -50,7 +50,7 @@ func NewBus() domain.Bus {
 }
 
 // Setup ...
-func (b *Bus) Setup(rom *domain.ROM, ppu domain.PPU, cpu domain.CPU, vram *domain.VRAM, pad1 *domain.Pad, pad2 *domain.Pad) {
+func (b *Bus) Setup(rom *domain.ROM, ppu domain.PPU, cpu domain.CPU, vram *domain.VRAM, pad1 domain.Pad, pad2 domain.Pad) {
 	b.programROM = rom.Prgrom
 	b.charactorROM = rom.Chrrom
 	b.ppu = ppu

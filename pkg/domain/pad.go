@@ -1,11 +1,5 @@
 package domain
 
-import (
-	"nes-go/pkg/log"
-
-	"github.com/hajimehoshi/ebiten"
-)
-
 // ButtonType ...
 type ButtonType string
 
@@ -21,33 +15,6 @@ const (
 )
 
 // Pad ...
-type Pad struct {
-	mapping map[ButtonType]ebiten.Key
-}
-
-// NewPad ...
-func NewPad(mapping map[ButtonType]ebiten.Key) *Pad {
-	return &Pad{
-		mapping: mapping,
-	}
-}
-
-// IsPressed ...
-func (p *Pad) IsPressed(nesKey ButtonType) (pressed bool) {
-	defer func() {
-		if pressed {
-			log.Debug("Pad.IsPressed[%v] => %v", nesKey, pressed)
-		} else {
-			log.Debug("Pad.IsPressed[%v] => %v", nesKey, pressed)
-		}
-	}()
-
-	pcKey, ok := p.mapping[nesKey]
-	if !ok {
-		pressed = false
-	} else {
-		pressed = ebiten.IsKeyPressed(pcKey)
-	}
-
-	return
+type Pad interface {
+	IsPressed(ButtonType) bool
 }
