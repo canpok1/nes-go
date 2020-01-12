@@ -130,14 +130,14 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 	// 0x2000～0x2007	0x0008	PPU レジスタ
 	if addr >= 0x2000 && addr <= 0x2007 {
 		target = "PPU Register"
-		data, err = b.ppu.ReadRegisters(addr - 0x2000)
+		data, err = b.ppu.ReadRegisters(addr)
 		return data, err
 	}
 
 	// 0x2008～0x3FFF	-	PPUレジスタのミラー
 	if addr >= 0x2008 && addr <= 0x3FFF {
 		target = "PPU Register Mirror"
-		data, err = b.ppu.ReadRegisters(addr - 0x2008)
+		data, err = b.ppu.ReadRegisters(addr)
 		return data, err
 	}
 
@@ -290,15 +290,22 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	// 0x2000～0x2007	0x0008	PPU レジスタ
 	if addr >= 0x2000 && addr <= 0x2007 {
 		target = "PPU Register"
-		err = b.ppu.WriteRegisters(addr-0x2000, data)
+		err = b.ppu.WriteRegisters(addr, data)
 		return err
 	}
 
 	// 0x2008～0x3FFF	-	PPUレジスタのミラー
 	if addr >= 0x2008 && addr <= 0x3FFF {
 		target = "PPU Register Mirror"
-		err = b.ppu.WriteRegisters(addr-0x2008, data)
+		err = b.ppu.WriteRegisters(addr, data)
 		return err
+	}
+
+	// 0x4014 OAMDMA
+	if addr == 0x4014 {
+		target = "OAMDMA"
+		// TODO 実装
+		return nil
 	}
 
 	// 0x4016 PAD1

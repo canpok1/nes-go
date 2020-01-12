@@ -94,29 +94,29 @@ func (p *PPU) ReadRegisters(addr domain.Address) (byte, error) {
 	}()
 
 	switch addr {
-	case 0:
+	case 0x2000:
 		target = "PPUCTRL"
 		err = fmt.Errorf("failed to read, PPURegister[PPUCTRL] is write only; addr: %#v", addr)
-	case 1:
+	case 0x2001:
 		target = "PPUMASK"
 		err = fmt.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
-	case 2:
+	case 0x2002:
 		target = "PPUSTATUS"
 		data = p.registers.PPUStatus.ToByte()
 		p.registers.PPUStatus.VBlankHasStarted = false
-	case 3:
+	case 0x2003:
 		target = "OAMADDR"
 		err = fmt.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
-	case 4:
+	case 0x2004:
 		target = "OAMDATA"
 		data = p.registers.OAMData
-	case 5:
+	case 0x2005:
 		target = "PPUSCROLL"
 		err = fmt.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
-	case 6:
+	case 0x2006:
 		target = "PPUADDR"
 		err = fmt.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
-	case 7:
+	case 0x2007:
 		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", p.ppuaddrFull)
 		data, err = p.bus.readByPPU(p.ppuaddrFull)
 		p.incrementPPUADDR()
@@ -142,26 +142,26 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 	}()
 
 	switch addr {
-	case 0:
+	case 0x2000:
 		p.registers.PPUCtrl.UpdateAll(data)
 		target = "PPUCTRL"
-	case 1:
+	case 0x2001:
 		p.registers.PPUMask.UpdateAll(data)
 		target = "PPUMASK"
-	case 2:
+	case 0x2002:
 		err = fmt.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
 		target = "PPUSTATUS"
-	case 3:
+	case 0x2003:
 		p.registers.OAMAddr = data
 		target = "OAMADDR"
-	case 4:
+	case 0x2004:
 		p.oam.Write(p.registers.OAMAddr, data)
 		p.registers.OAMAddr = p.registers.OAMAddr + 1
 		target = "OAMDATA"
-	case 5:
+	case 0x2005:
 		p.registers.PPUScroll = data
 		target = "PPUSCROLL"
-	case 6:
+	case 0x2006:
 		p.registers.PPUAddr = data
 		switch p.ppuaddrWriteCount {
 		case 0, 2:
@@ -174,7 +174,7 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 			p.ppuaddrWriteCount = 2
 			target = fmt.Sprintf("PPUADDR(for low 8 bits(ppuaddr:%#v))", p.ppuaddrBuf)
 		}
-	case 7:
+	case 0x2007:
 		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.ppuaddrFull)
 		err = p.bus.writeByPPU(p.ppuaddrFull, data)
 		p.incrementPPUADDR()
