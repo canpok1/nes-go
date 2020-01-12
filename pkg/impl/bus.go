@@ -21,17 +21,9 @@ type Bus struct {
 	pad1 *domain.Pad
 	pad2 *domain.Pad
 
-	charactorROM      *domain.CHRROM
-	nameTable0        []byte
-	attributeTable0   []byte
-	nameTable1        []byte
-	attributeTable1   []byte
-	nameTable2        []byte
-	attributeTable2   []byte
-	nameTable3        []byte
-	attributeTable3   []byte
-	backgroundPalette []domain.Palette
-	spritePalette     []domain.Palette
+	charactorROM *domain.CHRROM
+
+	vram *domain.VRAM
 
 	pad1ReadCount int
 	pad2ReadCount int
@@ -44,32 +36,11 @@ type Bus struct {
 
 // NewBus ...
 func NewBus() *Bus {
-	bp := []domain.Palette{}
-	sp := []domain.Palette{}
-	for i := 0; i < 4; i++ {
-		newBP := domain.NewPalette()
-		newSP := domain.NewPalette()
-		bp = append(bp, *newBP)
-		sp = append(sp, *newSP)
-	}
-
 	return &Bus{
 		wram:  make([]byte, 0x0800),
 		io:    make([]byte, 0x0020),
 		exrom: make([]byte, 0x1FE0),
 		exram: make([]byte, 0x2000),
-
-		nameTable0:      make([]byte, 0x03C0),
-		attributeTable0: make([]byte, 0x0040),
-		nameTable1:      make([]byte, 0x03C0),
-		attributeTable1: make([]byte, 0x0040),
-		nameTable2:      make([]byte, 0x03C0),
-		attributeTable2: make([]byte, 0x0040),
-		nameTable3:      make([]byte, 0x03C0),
-		attributeTable3: make([]byte, 0x0040),
-
-		backgroundPalette: bp,
-		spritePalette:     sp,
 
 		pad1ReadCount: 0,
 		pad2ReadCount: 0,
@@ -79,11 +50,12 @@ func NewBus() *Bus {
 }
 
 // Setup ...
-func (b *Bus) Setup(rom *domain.ROM, ppu *PPU, cpu *CPU, pad1 *domain.Pad, pad2 *domain.Pad) {
+func (b *Bus) Setup(rom *domain.ROM, ppu *PPU, cpu *CPU, vram *domain.VRAM, pad1 *domain.Pad, pad2 *domain.Pad) {
 	b.programROM = rom.Prgrom
 	b.charactorROM = rom.Chrrom
 	b.ppu = ppu
 	b.cpu = cpu
+	b.vram = vram
 	b.pad1 = pad1
 	b.pad2 = pad2
 
@@ -401,56 +373,56 @@ func (b *Bus) readByPPU(addr domain.Address) (data byte, err error) {
 
 	// 0x2000～0x23BF	0x03C0	ネームテーブル0
 	if addrTmp >= 0x2000 && addrTmp <= 0x23BF {
-		data = b.nameTable0[addrTmp-0x2000]
+		data = b.vram.NameTable0[addrTmp-0x2000]
 		target = "NameTable0"
 		return
 	}
 
 	// 0x23C0～0x23FF	0x0040	属性テーブル0
 	if addrTmp >= 0x23C0 && addrTmp <= 0x23FF {
-		data = b.attributeTable0[addrTmp-0x23C0]
+		data = b.vram.AttributeTable0[addrTmp-0x23C0]
 		target = "AttributeTable0"
 		return
 	}
 
 	// 0x2400～0x27BF	0x03C0	ネームテーブル1
 	if addrTmp >= 0x2400 && addrTmp <= 0x03C0 {
-		data = b.nameTable1[addrTmp-0x2400]
+		data = b.vram.NameTable1[addrTmp-0x2400]
 		target = "NameTable1"
 		return
 	}
 
 	// 0x27C0～0x27FF	0x0040	属性テーブル1
 	if addrTmp >= 0x27C0 && addrTmp <= 0x27FF {
-		data = b.attributeTable1[addrTmp-0x27C0]
+		data = b.vram.AttributeTable1[addrTmp-0x27C0]
 		target = "AttributeTable1"
 		return
 	}
 
 	// 0x2800～0x2BBF	0x03C0	ネームテーブル2
 	if addrTmp >= 0x2800 && addrTmp <= 0x2BBF {
-		data = b.nameTable2[addrTmp-0x2800]
+		data = b.vram.NameTable2[addrTmp-0x2800]
 		target = "NameTable2"
 		return
 	}
 
 	// 0x2BC0～0x2BFF	0x0040	属性テーブル2
 	if addrTmp >= 0x2BC0 && addrTmp <= 0x0040 {
-		data = b.attributeTable2[addrTmp-0x2BC0]
+		data = b.vram.AttributeTable2[addrTmp-0x2BC0]
 		target = "AttributeTable2"
 		return
 	}
 
 	// 0x2C00～0x2FBF	0x03C0	ネームテーブル3
 	if addrTmp >= 0x2C00 && addrTmp <= 0x2FBF {
-		data = b.nameTable3[addrTmp-0x2C00]
+		data = b.vram.NameTable3[addrTmp-0x2C00]
 		target = "NameTable3"
 		return
 	}
 
 	// 0x2FC0～0x2FFF	0x0040	属性テーブル3
 	if addrTmp >= 0x2FC0 && addrTmp <= 0x2FFF {
-		data = b.attributeTable3[addrTmp-0x2FC0]
+		data = b.vram.AttributeTable3[addrTmp-0x2FC0]
 		target = "AttributeTable3"
 		return
 	}
@@ -459,7 +431,7 @@ func (b *Bus) readByPPU(addr domain.Address) (data byte, err error) {
 	if addrTmp >= 0x3F00 && addrTmp <= 0x3F0F {
 		pIdx := (addrTmp - 0x3F00) / 4
 		bitIdx := (addrTmp - 0x3F00) % 4
-		data = b.backgroundPalette[pIdx][bitIdx]
+		data = b.vram.BackgroundPalette[pIdx][bitIdx]
 		target = "BackgroundPalette"
 		return
 	}
@@ -467,7 +439,7 @@ func (b *Bus) readByPPU(addr domain.Address) (data byte, err error) {
 	if addrTmp >= 0x3F10 && addrTmp <= 0x3F1F {
 		pIdx := (addrTmp - 0x3F10) / 4
 		bitIdx := (addrTmp - 0x3F10) % 4
-		data = b.spritePalette[pIdx][bitIdx]
+		data = b.vram.SpritePalette[pIdx][bitIdx]
 		target = "SpritePalette"
 		return
 	}
@@ -522,56 +494,56 @@ func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 
 	// 0x2000～0x23BF	0x03C0	ネームテーブル0
 	if addrTmp >= 0x2000 && addrTmp <= 0x23BF {
-		b.nameTable0[addrTmp-0x2000] = data
+		b.vram.NameTable0[addrTmp-0x2000] = data
 		target = "NameTable0"
 		return
 	}
 
 	// 0x23C0～0x23FF	0x0040	属性テーブル0
 	if addrTmp >= 0x23C0 && addrTmp <= 0x23FF {
-		b.attributeTable0[addrTmp-0x23C0] = data
+		b.vram.AttributeTable0[addrTmp-0x23C0] = data
 		target = "AttributeTable0"
 		return
 	}
 
 	// 0x2400～0x27BF	0x03C0	ネームテーブル1
 	if addrTmp >= 0x2400 && addrTmp <= 0x27BF {
-		b.nameTable1[addrTmp-0x2400] = data
+		b.vram.NameTable1[addrTmp-0x2400] = data
 		target = "NameTable1"
 		return
 	}
 
 	// 0x27C0～0x27FF	0x0040	属性テーブル1
 	if addrTmp >= 0x27C0 && addrTmp <= 0x27FF {
-		b.attributeTable1[addrTmp-0x27C0] = data
+		b.vram.AttributeTable1[addrTmp-0x27C0] = data
 		target = "AttributeTable1"
 		return
 	}
 
 	// 0x2800～0x2BBF	0x03C0	ネームテーブル2
 	if addrTmp >= 0x2800 && addrTmp <= 0x2BBF {
-		b.nameTable2[addrTmp-0x2800] = data
+		b.vram.NameTable2[addrTmp-0x2800] = data
 		target = "NameTable2"
 		return
 	}
 
 	// 0x2BC0～0x2BFF	0x0040	属性テーブル2
 	if addrTmp >= 0x2BC0 && addrTmp <= 0x2BFF {
-		b.attributeTable2[addrTmp-0x2BC0] = data
+		b.vram.AttributeTable2[addrTmp-0x2BC0] = data
 		target = "AttributeTable2"
 		return
 	}
 
 	// 0x2C00～0x2FBF	0x03C0	ネームテーブル3
 	if addrTmp >= 0x2C00 && addrTmp <= 0x2FBF {
-		b.nameTable3[addrTmp-0x2C00] = data
+		b.vram.NameTable3[addrTmp-0x2C00] = data
 		target = "NameTable3"
 		return
 	}
 
 	// 0x2FC0～0x2FFF	0x0040	属性テーブル3
 	if addrTmp >= 0x2FC0 && addrTmp <= 0x2FFF {
-		b.attributeTable3[addrTmp-0x2FC0] = data
+		b.vram.AttributeTable3[addrTmp-0x2FC0] = data
 		target = "AttributeTable3"
 		return
 	}
@@ -580,10 +552,10 @@ func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 	if addrTmp >= 0x3F00 && addrTmp <= 0x3F0F {
 		pIdx := (addrTmp - 0x3F00) / 4
 		bitIdx := (addrTmp - 0x3F00) % 4
-		b.backgroundPalette[pIdx][bitIdx] = data
+		b.vram.BackgroundPalette[pIdx][bitIdx] = data
 
 		if bitIdx == 0 {
-			b.spritePalette[pIdx][bitIdx] = data
+			b.vram.SpritePalette[pIdx][bitIdx] = data
 		}
 
 		target = "BackgroundPalette"
@@ -593,10 +565,10 @@ func (b *Bus) writeByPPU(addr domain.Address, data byte) (err error) {
 	if addrTmp >= 0x3F10 && addrTmp <= 0x3F1F {
 		pIdx := (addrTmp - 0x3F10) / 4
 		bitIdx := (addrTmp - 0x3F10) % 4
-		b.spritePalette[pIdx][bitIdx] = data
+		b.vram.SpritePalette[pIdx][bitIdx] = data
 
 		if bitIdx == 0 {
-			b.backgroundPalette[pIdx][bitIdx] = data
+			b.vram.BackgroundPalette[pIdx][bitIdx] = data
 		}
 
 		target = "SpritePalette"
@@ -624,13 +596,13 @@ func (b *Bus) GetTileNo(nameTblIdx uint8, p domain.NameTablePoint) (no uint8, er
 
 	switch nameTblIdx {
 	case 0:
-		no = b.nameTable0[p.ToIndex()]
+		no = b.vram.NameTable0[p.ToIndex()]
 	case 1:
-		no = b.nameTable1[p.ToIndex()]
+		no = b.vram.NameTable1[p.ToIndex()]
 	case 2:
-		no = b.nameTable2[p.ToIndex()]
+		no = b.vram.NameTable2[p.ToIndex()]
 	case 3:
-		no = b.nameTable3[p.ToIndex()]
+		no = b.vram.NameTable3[p.ToIndex()]
 	}
 
 	return
@@ -660,13 +632,13 @@ func (b *Bus) GetAttribute(tableIndex uint8, p domain.NameTablePoint) (attribute
 	var tbl []byte
 	switch tableIndex {
 	case 0:
-		tbl = b.attributeTable0
+		tbl = b.vram.AttributeTable0
 	case 1:
-		tbl = b.attributeTable1
+		tbl = b.vram.AttributeTable1
 	case 2:
-		tbl = b.attributeTable2
+		tbl = b.vram.AttributeTable2
 	case 3:
-		tbl = b.attributeTable3
+		tbl = b.vram.AttributeTable3
 	}
 
 	attribute = tbl[p.ToAttributeTableIndex()]
@@ -694,9 +666,9 @@ func (b *Bus) GetPaletteNo(p domain.NameTablePoint, attribute byte) (no uint8, e
 func (b *Bus) GetPalette(no uint8) *domain.Palette {
 	index := no & 0x03
 	if (no & 0x0C) == 0 {
-		return &b.backgroundPalette[index]
+		return &b.vram.BackgroundPalette[index]
 	}
-	return &b.spritePalette[index]
+	return &b.vram.SpritePalette[index]
 }
 
 // SendNMI ...

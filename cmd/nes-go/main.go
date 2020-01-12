@@ -54,8 +54,9 @@ func main() {
 	if err != nil {
 		return
 	}
+	vram := domain.NewVRAM()
 
-	bus.Setup(rom, ppu, cpu, makePad1(), makePad2())
+	bus.Setup(rom, ppu, cpu, vram, makePad1(), makePad2())
 
 	cpu.SetBus(bus)
 	ppu.SetBus(bus)
