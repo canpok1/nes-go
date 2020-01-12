@@ -40,15 +40,18 @@ func (s TilePattern) ToTileImage(p *Palette) *TileImage {
 		g[y] = make([]byte, SpriteWidth)
 		b[y] = make([]byte, SpriteWidth)
 		a[y] = make([]byte, SpriteWidth)
+
+		if p == nil {
+			continue
+		}
+
 		for x, paletteNo := range line {
-			if p != nil {
-				cIndex := (*p)[paletteNo]
-				c := colors[cIndex]
-				r[y][x] = c[0]
-				g[y][x] = c[1]
-				b[y][x] = c[2]
-				a[y][x] = 0xFF
-			}
+			cIndex := (*p)[paletteNo]
+			c := colors[cIndex]
+			r[y][x] = c[0]
+			g[y][x] = c[1]
+			b[y][x] = c[2]
+			a[y][x] = 0xFF
 		}
 	}
 	return &TileImage{
@@ -56,11 +59,15 @@ func (s TilePattern) ToTileImage(p *Palette) *TileImage {
 		G: g,
 		B: b,
 		A: a,
+		W: SpriteWidth,
+		H: SpriteHeight,
 	}
 }
 
 // TileImage ...
 type TileImage struct {
+	W uint16
+	H uint16
 	R [][]byte
 	G [][]byte
 	B [][]byte
@@ -82,6 +89,8 @@ func NewTileImage() *TileImage {
 	}
 
 	return &TileImage{
+		W: SpriteWidth,
+		H: SpriteHeight,
 		R: r,
 		G: g,
 		B: b,

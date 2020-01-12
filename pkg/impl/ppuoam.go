@@ -3,23 +3,31 @@ package impl
 import "nes-go/pkg/domain"
 
 // PPUOAM ...
-type PPUOAM []byte
+type PPUOAM struct {
+	store            []byte
+	lastWriteAddress uint8
+}
 
 // NewPPUOAM ...
 func NewPPUOAM() *PPUOAM {
-	p := PPUOAM(make([]byte, 256))
+	p := PPUOAM{
+		store:            make([]byte, 256),
+		lastWriteAddress: 0,
+	}
 	return &p
 }
 
 // Write ...
 func (p *PPUOAM) Write(oamaddr uint8, b byte) {
-	(*p)[oamaddr] = b
+	p.store[oamaddr] = b
+	p.lastWriteAddress = oamaddr
 }
 
 // Each ...
 func (p *PPUOAM) Each(exec func(domain.Sprite) error) error {
 	s := domain.Sprite{}
-	for i, b := range *p {
+	for i := uint8(0); i <= p.lastWriteAddress; i++ {
+		b := p.store[i]
 		offset := i % 4
 		switch offset {
 		case 0:

@@ -16,8 +16,7 @@ type PPU struct {
 	ppuaddrBuf        domain.Address // 組み立て中のPPUADDR
 	ppuaddrFull       domain.Address // 組み立て済のPPUADDR
 
-	tileImages   [][]domain.TileImage
-	spriteImages []domain.SpriteImage
+	tileImages [][]domain.TileImage
 
 	drawingPoint *image.Point
 
@@ -42,7 +41,6 @@ func NewPPU() (*PPU, error) {
 		ppuaddrBuf:        0,
 		ppuaddrFull:       0,
 		tileImages:        tileImages,
-		spriteImages:      []domain.SpriteImage{},
 		drawingPoint:      &image.Point{0, 0},
 		oam:               NewPPUOAM(),
 	}, nil
@@ -225,10 +223,6 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 		p.registers.PPUStatus.VBlankHasStarted = false
 	}
 
-	if p.drawingPoint.X == 0 && p.drawingPoint.Y == 0 {
-		p.spriteImages = []domain.SpriteImage{}
-	}
-
 	if p.registers.PPUCtrl.NMIEnable && p.registers.PPUStatus.VBlankHasStarted {
 		if err := p.bus.SendNMI(); err != nil {
 			return nil, nil, err
@@ -242,11 +236,12 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 		return nil, nil, nil
 	}
 
+	nameTblIdx := p.registers.PPUCtrl.NameTableIndex
+
 	// 8ライン単位で書き込む
 	shouldDrawline := (p.drawingPoint.X == domain.ResolutionWidth-1) && (p.drawingPoint.Y%8 == 7)
 	if shouldDrawline {
 		y := p.drawingPoint.Y / domain.SpriteHeight
-		nameTblIdx := p.registers.PPUCtrl.NameTableIndex
 		if p.registers.PPUMask.EnableBackground {
 			for x := 0; x < 0x20; x++ {
 				np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
@@ -272,46 +267,9 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 				// 書き込む
 				si := tilePattern.ToTileImage(palette)
 				p.tileImages[y][x] = *si
-
 			}
 		}
 
-		if p.registers.PPUMask.EnableSprite {
-			err := p.oam.Each(func(s domain.Sprite) error {
-				sy := int(s.Y) / domain.SpriteHeight
-				sx := int(s.X) / domain.SpriteWidth
-				if y != sy {
-					return nil
-				}
-
-				np := domain.NameTablePoint{X: uint8(sx), Y: uint8(sy)}
-				attribute, err := p.bus.GetAttribute(nameTblIdx, np)
-				if err != nil {
-					return err
-				}
-
-				paletteNo, err := p.bus.GetPaletteNo(np, attribute)
-				if err != nil {
-					return err
-				}
-
-				offset := (uint16(s.Attribute) & 0x03) << 8
-				palette := p.bus.GetPalette(uint16(paletteNo) + offset)
-
-				patternTblIdx := p.registers.PPUCtrl.SpritePatternTableIndex
-				tilePattern := p.bus.GetTilePattern(patternTblIdx, s.TileIndex)
-
-				// 書き込む
-				ti := tilePattern.ToTileImage(palette)
-				si := domain.NewSpriteImage(s.X, s.Y, ti)
-				p.spriteImages = append(p.spriteImages, *si)
-
-				return nil
-			})
-			if err != nil {
-				return nil, nil, err
-			}
-		}
 	}
 
 	// 1ライン分の書き込み完了直後以外は描画しない
@@ -325,5 +283,47 @@ func (p *PPU) Run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 	// 	return nil, nil
 	// }
 
-	return p.tileImages, p.spriteImages, nil
+	sImages := []domain.SpriteImage{}
+	if p.registers.PPUMask.EnableSprite {
+		err := p.oam.Each(func(s domain.Sprite) error {
+			if !s.ContainsY(uint16(s.Y)) {
+				return nil
+			}
+
+			sy := int(s.Y) / domain.SpriteHeight
+			sx := int(s.X) / domain.SpriteWidth
+
+			np := domain.NameTablePoint{X: uint8(sx), Y: uint8(sy)}
+			attribute, err := p.bus.GetAttribute(nameTblIdx, np)
+			if err != nil {
+				return err
+			}
+
+			paletteNo, err := p.bus.GetPaletteNo(np, attribute)
+			if err != nil {
+				return err
+			}
+
+			offset := (uint16(s.Attribute) & 0x03) << 2
+			palette := p.bus.GetPalette(uint16(paletteNo) + offset)
+
+			patternTblIdx := p.registers.PPUCtrl.SpritePatternTableIndex
+			tilePattern := p.bus.GetTilePattern(patternTblIdx, s.TileIndex)
+
+			ti := tilePattern.ToTileImage(palette)
+			isForeground := (s.Attribute & 0x20) == 0x00
+			si := domain.NewSpriteImage(uint16(s.X), uint16(s.Y), ti, isForeground)
+			sImages = append(sImages, *si)
+
+			// log.Info("Sprite[(x,y)=(%v,%v)] paletteNo:%v, offset:%v, patternTblIdx:%v, tilePattern:%#v", s.X, s.Y, paletteNo, offset, patternTblIdx, tilePattern)
+			// log.Info("Sprite[(x,y)=(%v,%v)] SpriteImage:%#v", s.X, s.Y, si)
+
+			return nil
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return p.tileImages, sImages, nil
 }

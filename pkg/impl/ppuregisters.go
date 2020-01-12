@@ -4,19 +4,19 @@ import "fmt"
 
 // PPURegisters ...
 type PPURegisters struct {
-	PPUCtrl   PPUCtrl   // 0x2000	PPUCTRL	W	コントロールレジスタ1	割り込みなどPPUの設定
-	PPUMask   PPUMask   // 0x2001	PPUMASK	W	コントロールレジスタ2	背景イネーブルなどのPPU設定
-	PPUStatus PPUStatus // 0x2002	PPUSTATUS	R	PPUステータス	PPUのステータス
-	OAMAddr   byte      // 0x2003	OAMADDR	W	スプライトメモリデータ	書き込むスプライト領域のアドレス
-	OAMData   byte      // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
-	PPUScroll byte      // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
-	PPUAddr   byte      // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
+	PPUCtrl   *PPUCtrl   // 0x2000	PPUCTRL	W	コントロールレジスタ1	割り込みなどPPUの設定
+	PPUMask   *PPUMask   // 0x2001	PPUMASK	W	コントロールレジスタ2	背景イネーブルなどのPPU設定
+	PPUStatus *PPUStatus // 0x2002	PPUSTATUS	R	PPUステータス	PPUのステータス
+	OAMAddr   byte       // 0x2003	OAMADDR	W	スプライトメモリデータ	書き込むスプライト領域のアドレス
+	OAMData   byte       // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
+	PPUScroll byte       // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
+	PPUAddr   byte       // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
 }
 
 // NewPPURegisters ...
 func NewPPURegisters() *PPURegisters {
 	return &PPURegisters{
-		PPUCtrl: PPUCtrl{
+		PPUCtrl: &PPUCtrl{
 			NMIEnable:                   false,
 			SpriteTileSelect:            false,
 			BackgroundPatternTableIndex: 0,
@@ -24,7 +24,7 @@ func NewPPURegisters() *PPURegisters {
 			VRAMAddressIncrementMode:    0,
 			NameTableIndex:              0,
 		},
-		PPUMask: PPUMask{
+		PPUMask: &PPUMask{
 			EmphasizeB:           false,
 			EmphasizeG:           false,
 			EmphasizeR:           false,
@@ -34,7 +34,7 @@ func NewPPURegisters() *PPURegisters {
 			EnableBackgroundMask: false,
 			DisplayType:          0,
 		},
-		PPUStatus: PPUStatus{
+		PPUStatus: &PPUStatus{
 			VBlankHasStarted: false,
 		},
 		OAMAddr:   0,
@@ -70,8 +70,11 @@ type PPUCtrl struct {
 
 // UpdateAll ...
 func (p *PPUCtrl) UpdateAll(b byte) {
-	p.SpriteTileSelect = (b % 0x04) == 0x04
-	p.NMIEnable = (b % 0x80) == 0x80
+	p.NMIEnable = (b & 0x80) == 0x80
+	p.SpriteTileSelect = (b & 0x04) == 0x04
+	p.BackgroundPatternTableIndex = (b & 0x10) >> 4
+	p.SpritePatternTableIndex = (b & 0x08) >> 3
+	p.VRAMAddressIncrementMode = (b & 0x04) >> 2
 }
 
 // PPUMask ...

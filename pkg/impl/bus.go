@@ -577,9 +577,6 @@ func (b *Bus) GetPaletteNo(p domain.NameTablePoint, attribute byte) (no uint8, e
 
 // GetPalette ...
 func (b *Bus) GetPalette(no uint16) *domain.Palette {
-	// if no == 0 {
-	// 	return nil
-	// }
 	index := no & 0x0F
 	if (no & 0xF0) == 0 {
 		return &b.backgroundPalette[index]
