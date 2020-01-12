@@ -16,8 +16,10 @@ type Bus struct {
 	exram      []byte
 	programROM *domain.PRGROM
 
-	ppu *PPU
-	cpu *CPU
+	ppu  *PPU
+	cpu  *CPU
+	pad1 *domain.Pad
+	pad2 *domain.Pad
 
 	charactorROM      *domain.CHRROM
 	nameTable0        []byte
@@ -30,6 +32,12 @@ type Bus struct {
 	attributeTable3   []byte
 	backgroundPalette []domain.Palette
 	spritePalette     []domain.Palette
+
+	pad1ReadCount int
+	pad2ReadCount int
+
+	pad1WriteBuf byte
+	pad2WriteBuf byte
 
 	setupped bool
 }
@@ -63,16 +71,21 @@ func NewBus() *Bus {
 		backgroundPalette: bp,
 		spritePalette:     sp,
 
+		pad1ReadCount: 0,
+		pad2ReadCount: 0,
+
 		setupped: false,
 	}
 }
 
 // Setup ...
-func (b *Bus) Setup(rom *domain.ROM, ppu *PPU, cpu *CPU) {
+func (b *Bus) Setup(rom *domain.ROM, ppu *PPU, cpu *CPU, pad1 *domain.Pad, pad2 *domain.Pad) {
 	b.programROM = rom.Prgrom
 	b.charactorROM = rom.Chrrom
 	b.ppu = ppu
 	b.cpu = cpu
+	b.pad1 = pad1
+	b.pad2 = pad2
 
 	b.setupped = true
 }
@@ -126,6 +139,73 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 		target = "PPU Register Mirror"
 		data, err = b.ppu.ReadRegisters(addr - 0x2008)
 		return data, err
+	}
+
+	// 0x4016 PAD1
+	if addr == 0x4016 {
+		var pressed bool
+		switch b.pad1ReadCount {
+		case 0:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeA)
+		case 1:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeB)
+		case 2:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeSelect)
+		case 3:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeStart)
+		case 4:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeUp)
+		case 5:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeDown)
+		case 6:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeLeft)
+		case 7:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeRight)
+		}
+
+		if pressed {
+			data = 1
+		} else {
+			data = 0
+		}
+
+		if b.pad1ReadCount < 8 {
+			b.pad1ReadCount = b.pad1ReadCount + 1
+		}
+		return data, nil
+	}
+	// 0x4017 PAD2
+	if addr == 0x4017 {
+		var pressed bool
+		switch b.pad2ReadCount {
+		case 0:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeA)
+		case 1:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeB)
+		case 2:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeSelect)
+		case 3:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeStart)
+		case 4:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeUp)
+		case 5:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeDown)
+		case 6:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeLeft)
+		case 7:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeRight)
+		}
+
+		if pressed {
+			data = 1
+		} else {
+			data = 0
+		}
+
+		if b.pad2ReadCount < 8 {
+			b.pad2ReadCount = b.pad2ReadCount + 1
+		}
+		return data, nil
 	}
 
 	// 0x4000～0x401F	0x0020	APU I/O、PAD
@@ -219,6 +299,24 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 		target = "PPU Register Mirror"
 		err = b.ppu.WriteRegisters(addr-0x2008, data)
 		return err
+	}
+
+	// 0x4016 PAD1
+	if addr == 0x4016 {
+		if b.pad1WriteBuf == 0x01 && data == 0x00 {
+			b.pad1ReadCount = 0
+		}
+		b.pad1WriteBuf = data
+		return nil
+	}
+
+	// 0x4017 PAD2
+	if addr == 0x4017 {
+		if b.pad2WriteBuf == 0x01 && data == 0x00 {
+			b.pad2ReadCount = 0
+		}
+		b.pad2WriteBuf = data
+		return nil
 	}
 
 	// 0x4000～0x401F	0x0020	APU I/O、PAD

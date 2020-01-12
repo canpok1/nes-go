@@ -6,6 +6,8 @@ import (
 	"nes-go/pkg/impl"
 	"nes-go/pkg/log"
 	"os"
+
+	"github.com/hajimehoshi/ebiten"
 )
 
 const (
@@ -53,7 +55,7 @@ func main() {
 		return
 	}
 
-	bus.Setup(rom, ppu, cpu)
+	bus.Setup(rom, ppu, cpu, makePad1(), makePad2())
 
 	cpu.SetBus(bus)
 	ppu.SetBus(bus)
@@ -94,4 +96,21 @@ func main() {
 	}()
 
 	err = r.Run()
+}
+
+func makePad1() *domain.Pad {
+	return domain.NewPad(map[domain.ButtonType]ebiten.Key{
+		domain.ButtonTypeA:      ebiten.KeyA,
+		domain.ButtonTypeB:      ebiten.KeyB,
+		domain.ButtonTypeSelect: ebiten.KeyShift,
+		domain.ButtonTypeStart:  ebiten.KeySpace,
+		domain.ButtonTypeUp:     ebiten.KeyUp,
+		domain.ButtonTypeDown:   ebiten.KeyDown,
+		domain.ButtonTypeLeft:   ebiten.KeyLeft,
+		domain.ButtonTypeRight:  ebiten.KeyRight,
+	})
+}
+
+func makePad2() *domain.Pad {
+	return domain.NewPad(map[domain.ButtonType]ebiten.Key{})
 }
