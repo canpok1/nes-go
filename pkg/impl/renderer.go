@@ -19,21 +19,24 @@ type Renderer struct {
 
 	lastRenderedTime time.Time
 	fps              float64
+
+	enableDebugPrint bool
 }
 
 // NewRenderer ...
-func NewRenderer(w int, h int, scale float64, title string) (*Renderer, error) {
+func NewRenderer(scale float64, title string, enableDebugPrint bool) (*Renderer, error) {
 	imageBuf, err := ebiten.NewImage(domain.ResolutionWidth, domain.ResolutionHeight, ebiten.FilterDefault)
 	if err != nil {
 		return nil, fmt.Errorf("failed to NewMonitor; err: %w", err)
 	}
 
 	return &Renderer{
-		width:    w,
-		height:   h,
-		scale:    scale,
-		title:    title,
-		imageBuf: imageBuf,
+		width:            domain.ResolutionWidth,
+		height:           domain.ResolutionHeight,
+		scale:            scale,
+		title:            title,
+		imageBuf:         imageBuf,
+		enableDebugPrint: enableDebugPrint,
 	}, nil
 }
 
@@ -44,7 +47,9 @@ func (m *Renderer) update(screen *ebiten.Image) error {
 	}
 
 	screen.DrawImage(m.imageBuf, nil)
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %.2f", m.fps))
+	if m.enableDebugPrint {
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %.2f", m.fps))
+	}
 
 	return nil
 }

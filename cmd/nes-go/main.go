@@ -8,9 +8,15 @@ import (
 	"os"
 )
 
+const (
+	LOGLEVEL           = log.LevelInfo
+	SCALE              = 2.5
+	ENABLE_DEBUG_PRINT = true
+)
+
 func main() {
 	log.SetOutput(os.Stdout)
-	log.SetLogLevel(log.LevelInfo)
+	log.SetLogLevel(LOGLEVEL)
 
 	log.Debug("========================================")
 	log.Debug("program start")
@@ -53,10 +59,9 @@ func main() {
 	ppu.SetBus(bus)
 
 	r, err := impl.NewRenderer(
-		domain.ResolutionWidth,
-		domain.ResolutionHeight,
-		2,
+		SCALE,
 		"nes-go",
+		ENABLE_DEBUG_PRINT,
 	)
 	if err != nil {
 		return
