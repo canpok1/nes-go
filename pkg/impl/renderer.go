@@ -60,8 +60,8 @@ func (m *Renderer) Run() error {
 }
 
 // Render ...
-func (m *Renderer) Render(tis [][]domain.TileImage, sis []domain.SpriteImage) error {
-	p := toPixels(tis, sis)
+func (m *Renderer) Render(s *domain.Screen) error {
+	p := toPixels(s.TileImages, s.SpriteImages)
 	m.imageBuf.ReplacePixels(p)
 
 	m.fps = 1 / time.Since(m.lastRenderedTime).Seconds()

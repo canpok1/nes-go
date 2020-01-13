@@ -26,7 +26,7 @@ func (p *PPUOAM) Write(oamaddr uint8, b byte) {
 // Each ...
 func (p *PPUOAM) Each(exec func(domain.Sprite) error) error {
 	s := domain.Sprite{}
-	for i := uint8(0); i <= p.lastWriteAddress; i++ {
+	for i := 0; i <= int(p.lastWriteAddress); i++ {
 		b := p.store[i]
 		offset := i % 4
 		switch offset {

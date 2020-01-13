@@ -1,7 +1,5 @@
 package domain
 
-import "nes-go/pkg/log"
-
 // TilePattern ...
 type TilePattern []byte
 
@@ -21,8 +19,6 @@ func (s TilePattern) toColorMap() [][]byte {
 			colorMap[y][x] = colorMap[y][x] + colorIndex
 		}
 	}
-
-	log.Trace("Sprite.toColorMap => %#v", colorMap)
 
 	return colorMap
 }

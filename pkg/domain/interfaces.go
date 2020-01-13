@@ -13,7 +13,7 @@ type PPU interface {
 	SetBus(Bus)
 	ReadRegisters(Address) (byte, error)
 	WriteRegisters(Address, byte) error
-	Run(int) ([][]TileImage, []SpriteImage, error)
+	Run(int) (*Screen, error)
 	String() string
 }
 
@@ -34,5 +34,5 @@ type Bus interface {
 
 // Renderer ...
 type Renderer interface {
-	Render([][]TileImage) error
+	Render(*Screen) error
 }

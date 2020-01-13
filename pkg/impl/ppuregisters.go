@@ -11,6 +11,7 @@ type PPURegisters struct {
 	OAMData   byte       // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
 	PPUScroll byte       // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
 	PPUAddr   byte       // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
+	OAMDMA    byte       // 0x4014  OAMDMA W
 }
 
 // NewPPURegisters ...
@@ -41,13 +42,14 @@ func NewPPURegisters() *PPURegisters {
 		OAMData:   0,
 		PPUScroll: 0,
 		PPUAddr:   0,
+		OAMDMA:    0,
 	}
 }
 
 // String ...
 func (r PPURegisters) String() string {
 	return fmt.Sprintf(
-		"{PPUCTRL:%#v, PPUMASK:%#v, PPUSTATUS:%#v, OAMADDR:%#v, OAMDATA:%v, PPUSCROLL:%#v, PPUADDR:%#v}",
+		"{PPUCTRL:%#v, PPUMASK:%#v, PPUSTATUS:%#v, OAMADDR:%#v, OAMDATA:%v, PPUSCROLL:%#v, PPUADDR:%#v, OAMDMA:%#v}",
 		r.PPUCtrl,
 		r.PPUMask,
 		r.PPUStatus,
@@ -55,6 +57,7 @@ func (r PPURegisters) String() string {
 		r.OAMData,
 		r.PPUScroll,
 		r.PPUAddr,
+		r.OAMDMA,
 	)
 }
 

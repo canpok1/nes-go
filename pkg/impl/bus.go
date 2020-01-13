@@ -70,7 +70,7 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 	log.Trace("Bus.readByCPU[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.readByCPU[addr=%#v] => %#v", addr, err)
+			log.Warn("Bus.readByCPU[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
 			log.Trace("Bus.readByCPU[addr=%#v][%v] => %#v", addr, target, data)
 		}
@@ -230,7 +230,7 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	log.Trace("Bus.writeByCPU[addr=%#v] (<=%#v) ...", addr, data)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.writeByCPU[addr=%#v] => %#v", addr, err)
+			log.Warn("Bus.writeByCPU[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
 			log.Trace("Bus.writeByCPU[addr=%#v][%v] <= %#v", addr, target, data)
 		}
@@ -276,8 +276,8 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	// 0x4014 OAMDMA
 	if addr == 0x4014 {
 		target = "OAMDMA"
-		// TODO 実装
-		return nil
+		err = b.ppu.WriteRegisters(addr, data)
+		return err
 	}
 
 	// 0x4016 PAD1
@@ -332,7 +332,7 @@ func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 	log.Trace("Bus.readByPPU[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Trace("Bus.readByPPU[addr=%#v] => %#v", addr, err)
+			log.Warn("Bus.readByPPU[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
 			log.Trace("Bus.readByPPU[addr=%#v][%v] => %#v", addr, target, data)
 		}
@@ -454,7 +454,7 @@ func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 	log.Trace("Bus.writeByPPU[addr=%#v] (<=%#v)...", addr, data)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.writeByPPU[addr=%#v] => %#v", addr, err)
+			log.Warn("Bus.writeByPPU[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
 			log.Trace("Bus.writeByPPU[addr=%#v][%v] <= %#v", addr, target, data)
 		}

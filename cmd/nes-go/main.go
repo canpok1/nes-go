@@ -24,8 +24,8 @@ func main() {
 	log.Debug("program start")
 	log.Debug("========================================")
 
-	var err error
 	defer func() {
+		err := recover()
 		if err != nil {
 			log.Fatal("error:%#v", err)
 		}
@@ -35,17 +35,15 @@ func main() {
 	}()
 
 	if len(os.Args) < 2 {
-		err = fmt.Errorf("failed to start, rom is nil")
-		return
+		panic(fmt.Errorf("failed to start, rom is nil"))
 	}
 
 	romPath := os.Args[1]
 	log.Info("rom: %v", romPath)
 
-	var rom *domain.ROM
-	rom, err = domain.FetchROM(romPath)
+	rom, err := domain.FetchROM(romPath)
 	if err != nil {
-		return
+		panic(err)
 	}
 
 	bus := impl.NewBus()
@@ -71,29 +69,32 @@ func main() {
 	}
 
 	go func() {
+		defer func() {
+			err := recover()
+			if err != nil {
+				log.Fatal("process error: %v", err)
+			} else {
+				log.Info("process end")
+			}
+		}()
 		for {
 			cycle, err := cpu.Run()
 			if err != nil {
-				log.Fatal("error: %v", err)
-				break
+				panic(err)
 			}
 
-			tis, sis, err := ppu.Run(cycle * 3)
+			screen, err := ppu.Run(cycle * 3)
 			if err != nil {
-				log.Fatal("error: %v", err)
-				break
+				panic(err)
 			}
 
-			if tis != nil && sis != nil {
-				err = r.Render(tis, sis)
+			if screen != nil {
+				err = r.Render(screen)
 				if err != nil {
-					log.Fatal("error: %v", err)
-					break
+					panic(err)
 				}
 			}
 		}
-
-		return
 	}()
 
 	err = r.Run()

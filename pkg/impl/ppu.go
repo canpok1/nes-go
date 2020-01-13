@@ -21,6 +21,8 @@ type PPU struct {
 	drawingPoint *image.Point
 
 	oam *PPUOAM
+
+	enableOAMDMA bool
 }
 
 // NewPPU ...
@@ -43,6 +45,7 @@ func NewPPU() (domain.PPU, error) {
 		tileImages:        tileImages,
 		drawingPoint:      &image.Point{0, 0},
 		oam:               NewPPUOAM(),
+		enableOAMDMA:      false,
 	}, nil
 }
 
@@ -178,6 +181,10 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.ppuaddrFull)
 		err = p.bus.WriteByPPU(p.ppuaddrFull, data)
 		p.incrementPPUADDR()
+	case 0x4014:
+		target = "OAMDMA"
+		p.registers.OAMDMA = data
+		p.enableOAMDMA = true
 	default:
 		target = "-"
 		err = fmt.Errorf("failed to write PPURegisters, address is out of range; addr: %#v", addr)
@@ -201,17 +208,26 @@ func (p *PPU) updateDrawingPoint() {
 }
 
 // Run ...
-func (p *PPU) Run(cycle int) (tis [][]domain.TileImage, sis []domain.SpriteImage, err error) {
+func (p *PPU) Run(cycle int) (*domain.Screen, error) {
+	var s *domain.Screen
+	var err error
 	for i := 0; i < cycle; i++ {
-		if tis, sis, err = p.run1Cycle(); err != nil {
-			return
+		if p.enableOAMDMA {
+			if err = p.execOAMDMA(); err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		if s, err = p.run1Cycle(); err != nil {
+			return nil, err
 		}
 	}
-	return
+	return s, err
 }
 
 // run1Cycle ...
-func (p *PPU) run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
+func (p *PPU) run1Cycle() (*domain.Screen, error) {
 	log.Trace("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
 
 	defer p.updateDrawingPoint()
@@ -225,15 +241,15 @@ func (p *PPU) run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 
 	if p.registers.PPUCtrl.NMIEnable && p.registers.PPUStatus.VBlankHasStarted {
 		if err := p.bus.SendNMI(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
 	if p.drawingPoint.X >= domain.ResolutionWidth {
-		return nil, nil, nil
+		return nil, nil
 	}
 	if p.drawingPoint.Y >= domain.ResolutionHeight {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	nameTblIdx := p.registers.PPUCtrl.NameTableIndex
@@ -247,17 +263,17 @@ func (p *PPU) run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 				np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
 				attribute, err := p.bus.GetAttribute(nameTblIdx, np)
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 
 				paletteNo, err := p.bus.GetPaletteNo(np, attribute)
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 
 				tileIndex, err := p.bus.GetTileNo(nameTblIdx, np)
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 
 				patternTblIdx := p.registers.PPUCtrl.BackgroundPatternTableIndex
@@ -274,7 +290,7 @@ func (p *PPU) run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 
 	// 1ライン分の書き込み完了直後以外は描画しない
 	if p.drawingPoint.X != domain.ResolutionWidth-1 {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// TODO この判定を入れると急激に遅くなるためコメントアウト
@@ -321,9 +337,30 @@ func (p *PPU) run1Cycle() ([][]domain.TileImage, []domain.SpriteImage, error) {
 			return nil
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	return p.tileImages, sImages, nil
+	return &domain.Screen{
+		TileImages:           p.tileImages,
+		SpriteImages:         sImages,
+		EnableSpriteMask:     false,
+		EnableBackgroundMask: false,
+	}, nil
+}
+
+func (p *PPU) execOAMDMA() error {
+	p.enableOAMDMA = false
+	readAddrH := uint16(p.registers.OAMDMA) << 8
+	for readAddrL := 0; readAddrL <= 0xFF; readAddrL++ {
+		readAddr := domain.Address(readAddrH + uint16(readAddrL))
+
+		readData, err := p.bus.ReadByPPU(readAddr)
+		if err != nil {
+			return err
+		}
+
+		p.oam.Write(uint8(readAddrL), readData)
+	}
+	return nil
 }
