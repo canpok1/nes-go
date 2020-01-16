@@ -209,21 +209,24 @@ func (p *PPU) updateDrawingPoint() {
 
 // Run ...
 func (p *PPU) Run(cycle int) (*domain.Screen, error) {
-	var s *domain.Screen
-	var err error
+	var screen *domain.Screen
 	for i := 0; i < cycle; i++ {
 		if p.enableOAMDMA {
-			if err = p.execOAMDMA(); err != nil {
+			if err := p.execOAMDMA(); err != nil {
 				return nil, err
 			}
 			continue
 		}
 
-		if s, err = p.run1Cycle(); err != nil {
+		s, err := p.run1Cycle()
+		if err != nil {
 			return nil, err
 		}
+		if s != nil {
+			screen = s
 	}
-	return s, err
+}
+	return screen, nil
 }
 
 // run1Cycle ...
@@ -288,8 +291,8 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 
 	}
 
-	// 1ライン分の書き込み完了直後以外は描画しない
-	if p.drawingPoint.X != domain.ResolutionWidth-1 {
+	// 1画面分の書き込み完了直後以外は描画しない
+	if p.drawingPoint.X != domain.ResolutionWidth-1 || p.drawingPoint.Y != domain.ResolutionHeight-1 {
 		return nil, nil
 	}
 
@@ -299,6 +302,7 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 	// 	return nil, nil
 	// }
 
+	// スプライトを画像に変換
 	sImages := []domain.SpriteImage{}
 	if p.registers.PPUMask.EnableSprite {
 		err := p.oam.Each(func(s domain.Sprite) error {
