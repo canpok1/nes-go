@@ -314,6 +314,10 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 			sx := int(s.X) / domain.SpriteWidth
 
 			np := domain.NameTablePoint{X: uint8(sx), Y: uint8(sy)}
+			if err := np.Validate(); err != nil {
+				// スプライトが画面外のときは描画不要なのでスキップ
+				return nil
+			}
 			attribute, err := p.bus.GetAttribute(nameTblIdx, np)
 			if err != nil {
 				return err
