@@ -618,9 +618,9 @@ func (b *Bus) GetAttribute(tableIndex uint8, p domain.NameTablePoint) (attribute
 	log.Trace("Bus.GetAttribute[%v][%#v] ...", tableIndex, p)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.GetPaletteNo[%v][%#v] => %#v", tableIndex, p, err)
+			log.Warn("Bus.GetAttribute[%v][%#v] => %#v", tableIndex, p, err)
 		} else {
-			log.Trace("Bus.GetPaletteNo[%v][%#v] => %#v", tableIndex, p, attribute)
+			log.Trace("Bus.GetAttribute[%v][%#v] => %#v", tableIndex, p, attribute)
 		}
 	}()
 
