@@ -26,14 +26,14 @@ func NewPPURegisters() *PPURegisters {
 			NameTableIndex:              0,
 		},
 		PPUMask: &PPUMask{
-			EmphasizeB:           false,
-			EmphasizeG:           false,
-			EmphasizeR:           false,
-			EnableSprite:         false,
-			EnableBackground:     false,
-			EnableSpriteMask:     false,
-			EnableBackgroundMask: false,
-			DisplayType:          0,
+			EmphasizeB:            false,
+			EmphasizeG:            false,
+			EmphasizeR:            false,
+			EnableSprite:          false,
+			EnableBackground:      false,
+			DisableSpriteMask:     false,
+			DisableBackgroundMask: false,
+			DisplayType:           0,
 		},
 		PPUStatus: &PPUStatus{
 			VBlankHasStarted: false,
@@ -82,14 +82,14 @@ func (p *PPUCtrl) UpdateAll(b byte) {
 
 // PPUMask ...
 type PPUMask struct {
-	EmphasizeB           bool
-	EmphasizeG           bool
-	EmphasizeR           bool
-	EnableSprite         bool
-	EnableBackground     bool
-	EnableSpriteMask     bool
-	EnableBackgroundMask bool
-	DisplayType          uint8
+	EmphasizeB            bool
+	EmphasizeG            bool
+	EmphasizeR            bool
+	EnableSprite          bool
+	EnableBackground      bool
+	DisableSpriteMask     bool
+	DisableBackgroundMask bool
+	DisplayType           uint8
 }
 
 // UpdateAll ...
@@ -99,8 +99,8 @@ func (p *PPUMask) UpdateAll(b byte) {
 	p.EmphasizeR = (b & 0x20) == 0x20
 	p.EnableSprite = (b & 0x10) == 0x10
 	p.EnableBackground = (b & 0x08) == 0x08
-	p.EnableSpriteMask = (b & 0x04) == 0x04
-	p.EnableBackgroundMask = (b & 0x02) == 0x02
+	p.DisableSpriteMask = (b & 0x04) == 0x04
+	p.DisableBackgroundMask = (b & 0x02) == 0x02
 	p.DisplayType = b & 0x01
 }
 

@@ -61,7 +61,7 @@ func (m *Renderer) Run() error {
 
 // Render ...
 func (m *Renderer) Render(s *domain.Screen) error {
-	p := toPixels(s.TileImages, s.SpriteImages)
+	p := toPixels(s)
 	m.imageBuf.ReplacePixels(p)
 
 	m.fps = 1 / time.Since(m.lastRenderedTime).Seconds()
@@ -71,13 +71,13 @@ func (m *Renderer) Render(s *domain.Screen) error {
 }
 
 // toPixels ...
-func toPixels(tImages [][]domain.TileImage, sImages []domain.SpriteImage) []byte {
+func toPixels(s *domain.Screen) []byte {
 	pixels := make([]byte, 4*domain.ResolutionHeight*domain.ResolutionWidth)
 
 	idx := 0
 	for y := uint16(0); y < domain.ResolutionHeight; y++ {
 		for x := uint16(0); x <= domain.ResolutionWidth-1; x++ {
-			r, g, b, a := getPixel(tImages, domain.MonitorX(x), domain.MonitorY(y))
+			r, g, b, a := getPixel(s.TileImages, domain.MonitorX(x), domain.MonitorY(y))
 
 			pixels[idx] = r
 			idx++
@@ -93,17 +93,56 @@ func toPixels(tImages [][]domain.TileImage, sImages []domain.SpriteImage) []byte
 		}
 	}
 
-	for _, sImage := range sImages {
+	for _, sImage := range s.SpriteImages {
 		baseIdx := int(sImage.Y)*domain.ResolutionWidth*4 + int(sImage.X)*4
 
 		for offsetY := 0; offsetY < int(sImage.H); offsetY++ {
 			for offsetX := 0; offsetX < int(sImage.W); offsetX++ {
-				idx := baseIdx + (offsetY * domain.ResolutionWidth * 4) + (offsetX * 4)
+				x := int(sImage.X) + offsetX
+				if !s.DisableSpriteMask && x < 8 {
+					continue
+				}
 
-				r := sImage.R[offsetY][offsetX]
-				g := sImage.G[offsetY][offsetX]
-				b := sImage.B[offsetY][offsetX]
-				a := sImage.A[offsetY][offsetX]
+				idx := baseIdx + (offsetY * domain.ResolutionWidth * 4) + (offsetX * 4)
+				if idx >= len(pixels) {
+					// スプライトの一部が画面外のときは描画しないためスキップ
+					continue
+				}
+
+				var r, g, b, a byte
+				if sImage.EnableFlipHorizontal && sImage.EnableFlipVertical {
+					// 左右上下反転
+					iY := (domain.SpriteHeight - 1) - offsetY
+					iX := (domain.SpriteWidth - 1) - offsetX
+					r = sImage.R[iY][iX]
+					g = sImage.G[iY][iX]
+					b = sImage.B[iY][iX]
+					a = sImage.A[iY][iX]
+				} else if sImage.EnableFlipHorizontal && !sImage.EnableFlipVertical {
+					// 左右反転
+					iY := offsetY
+					iX := (domain.SpriteWidth - 1) - offsetX
+					r = sImage.R[iY][iX]
+					g = sImage.G[iY][iX]
+					b = sImage.B[iY][iX]
+					a = sImage.A[iY][iX]
+				} else if !sImage.EnableFlipHorizontal && sImage.EnableFlipVertical {
+					// 上下反転
+					iY := (domain.SpriteHeight - 1) - offsetY
+					iX := offsetX
+					r = sImage.R[iY][iX]
+					g = sImage.G[iY][iX]
+					b = sImage.B[iY][iX]
+					a = sImage.A[iY][iX]
+				} else {
+					// 反転なし
+					iY := offsetY
+					iX := offsetX
+					r = sImage.R[iY][iX]
+					g = sImage.G[iY][iX]
+					b = sImage.B[iY][iX]
+					a = sImage.A[iY][iX]
+				}
 
 				pixels[idx] = r
 				pixels[idx+1] = g

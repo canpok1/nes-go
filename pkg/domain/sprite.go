@@ -22,29 +22,33 @@ func (s Sprite) ContainsY(y uint16) bool {
 
 // SpriteImage ...
 type SpriteImage struct {
-	X            uint16
-	Y            uint16
-	W            uint16
-	H            uint16
-	R            [][]byte
-	G            [][]byte
-	B            [][]byte
-	A            [][]byte
-	IsForeground bool
+	X                    uint16
+	Y                    uint16
+	W                    uint16
+	H                    uint16
+	R                    [][]byte
+	G                    [][]byte
+	B                    [][]byte
+	A                    [][]byte
+	IsForeground         bool
+	EnableFlipHorizontal bool
+	EnableFlipVertical   bool
 }
 
 // NewSpriteImage ...
-func NewSpriteImage(x, y uint16, t *TileImage, IsForeground bool) *SpriteImage {
+func NewSpriteImage(x, y uint16, t *TileImage, isForeground, enableFlipHorizontal, enableFlipVertical bool) *SpriteImage {
 	return &SpriteImage{
-		X:            x,
-		Y:            y,
-		W:            t.W,
-		H:            t.H,
-		R:            t.R,
-		G:            t.G,
-		B:            t.B,
-		A:            t.A,
-		IsForeground: IsForeground,
+		X:                    x,
+		Y:                    y,
+		W:                    t.W,
+		H:                    t.H,
+		R:                    t.R,
+		G:                    t.G,
+		B:                    t.B,
+		A:                    t.A,
+		IsForeground:         isForeground,
+		EnableFlipHorizontal: enableFlipHorizontal,
+		EnableFlipVertical:   enableFlipVertical,
 	}
 }
 

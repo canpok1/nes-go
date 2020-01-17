@@ -224,8 +224,8 @@ func (p *PPU) Run(cycle int) (*domain.Screen, error) {
 		}
 		if s != nil {
 			screen = s
+		}
 	}
-}
 	return screen, nil
 }
 
@@ -328,10 +328,7 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 				return err
 			}
 
-			// TODO スプライトのAttributeの情報を元にパレット番号を決定
-			// attributeを使うとパレット番号がずれるので一旦固定値を指定
-			// offset := (s.Attribute & 0x3) << 2
-			offset := uint8(0x04)
+			offset := (s.Attribute & 0x3) << 2
 			palette := p.bus.GetPalette(paletteNo + offset)
 
 			patternTblIdx := p.registers.PPUCtrl.SpritePatternTableIndex
@@ -339,7 +336,9 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 
 			ti := tilePattern.ToTileImage(palette)
 			isForeground := (s.Attribute & 0x20) == 0x00
-			si := domain.NewSpriteImage(uint16(s.X), uint16(s.Y+1), ti, isForeground)
+			enableFlipH := (s.Attribute & 0x40) == 0x40
+			enableFlipV := (s.Attribute & 0x80) == 0x80
+			si := domain.NewSpriteImage(uint16(s.X), uint16(s.Y+1), ti, isForeground, enableFlipH, enableFlipV)
 			sImages = append(sImages, *si)
 
 			return nil
@@ -350,10 +349,10 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 	}
 
 	return &domain.Screen{
-		TileImages:           p.tileImages,
-		SpriteImages:         sImages,
-		EnableSpriteMask:     false,
-		EnableBackgroundMask: false,
+		TileImages:            p.tileImages,
+		SpriteImages:          sImages,
+		DisableSpriteMask:     p.registers.PPUMask.DisableSpriteMask,
+		DisableBackgroundMask: p.registers.PPUMask.DisableBackgroundMask,
 	}, nil
 }
 
