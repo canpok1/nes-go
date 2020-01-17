@@ -74,6 +74,7 @@ func (m *Renderer) Render(s *domain.Screen) error {
 func toPixels(s *domain.Screen) []byte {
 	pixels := make([]byte, 4*domain.ResolutionHeight*domain.ResolutionWidth)
 
+	// タイルを描画
 	idx := 0
 	for y := uint16(0); y < domain.ResolutionHeight; y++ {
 		for x := uint16(0); x <= domain.ResolutionWidth-1; x++ {
@@ -93,21 +94,33 @@ func toPixels(s *domain.Screen) []byte {
 		}
 	}
 
+	// スプライトを描画
 	for _, sImage := range s.SpriteImages {
+		if sImage.Y <= 0 {
+			// 1行目は表示しない
+			continue
+		}
+
 		baseIdx := int(sImage.Y)*domain.ResolutionWidth*4 + int(sImage.X)*4
 
 		for offsetY := 0; offsetY < int(sImage.H); offsetY++ {
+			y := int(sImage.Y) + offsetY
+			if y < 0 || y > (domain.ResolutionHeight-1) {
+				// スプライトの一部が画面外のときは描画しないためスキップ
+				continue
+			}
+
 			for offsetX := 0; offsetX < int(sImage.W); offsetX++ {
 				x := int(sImage.X) + offsetX
+				if x < 0 || x > (domain.ResolutionWidth-1) {
+					// スプライトの一部が画面外のときは描画しないためスキップ
+					continue
+				}
 				if !s.DisableSpriteMask && x < 8 {
 					continue
 				}
 
 				idx := baseIdx + (offsetY * domain.ResolutionWidth * 4) + (offsetX * 4)
-				if idx >= len(pixels) {
-					// スプライトの一部が画面外のときは描画しないためスキップ
-					continue
-				}
 
 				var r, g, b, a byte
 				if sImage.EnableFlipHorizontal && sImage.EnableFlipVertical {

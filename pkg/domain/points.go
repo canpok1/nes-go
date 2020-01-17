@@ -13,6 +13,9 @@ func (p NameTablePoint) Validate() error {
 	if p.Y < 0 || p.Y >= 30 {
 		return fmt.Errorf("y is out of range; y: %v", p.Y)
 	}
+	if p.X < 0 || p.X >= 32 {
+		return fmt.Errorf("x is out of range; x: %v", p.X)
+	}
 	return nil
 }
 

@@ -306,18 +306,14 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 	sImages := []domain.SpriteImage{}
 	if p.registers.PPUMask.EnableSprite {
 		err := p.oam.Each(func(s domain.Sprite) error {
-			if !s.ContainsY(uint16(s.Y + 1)) {
+			if (s.Y+1) == 0 || (s.Y+1) > (domain.ResolutionHeight-1) || s.X > (domain.ResolutionWidth-1) {
+				// 画面外なのでスキップ
 				return nil
 			}
-
 			sy := int(s.Y+1) / domain.SpriteHeight
 			sx := int(s.X) / domain.SpriteWidth
 
 			np := domain.NameTablePoint{X: uint8(sx), Y: uint8(sy)}
-			if err := np.Validate(); err != nil {
-				// スプライトが画面外のときは描画不要なのでスキップ
-				return nil
-			}
 			attribute, err := p.bus.GetAttribute(nameTblIdx, np)
 			if err != nil {
 				return err
