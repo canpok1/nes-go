@@ -92,10 +92,24 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 		return data, err
 	}
 
-	// 0x0800～0x1FFF	-	WRAMのミラー
-	if addr >= 0x0800 && addr <= 0x1FFF {
-		target = "WRAM Mirror"
+	// 0x0800～0x0FFF	-	WRAMのミラー1
+	if addr >= 0x0800 && addr <= 0x0FFF {
+		target = "WRAM Mirror 1"
 		data = b.wram[addr-0x0800]
+		return data, err
+	}
+
+	// 0x1000～0x17FF	-	WRAMのミラー2
+	if addr >= 0x1000 && addr <= 0x17FF {
+		target = "WRAM Mirror 2"
+		data = b.wram[addr-0x1000]
+		return data, err
+	}
+
+	// 0x1800～0x1FFF	-	WRAMのミラー3
+	if addr >= 0x1800 && addr <= 0x1FFF {
+		target = "WRAM Mirror 3"
+		data = b.wram[addr-0x1800]
 		return data, err
 	}
 
