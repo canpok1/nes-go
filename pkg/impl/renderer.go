@@ -7,6 +7,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
+	"golang.org/x/xerrors"
 )
 
 // Renderer ...
@@ -27,7 +28,7 @@ type Renderer struct {
 func NewRenderer(scale float64, title string, enableDebugPrint bool) (*Renderer, error) {
 	imageBuf, err := ebiten.NewImage(domain.ResolutionWidth, domain.ResolutionHeight, ebiten.FilterDefault)
 	if err != nil {
-		return nil, fmt.Errorf("failed to NewMonitor; err: %w", err)
+		return nil, xerrors.Errorf("failed to NewMonitor; err: %w", err)
 	}
 
 	return &Renderer{

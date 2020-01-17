@@ -1,11 +1,12 @@
 package domain
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
+
+	"golang.org/x/xerrors"
 )
 
 func TestParseINESHeader(t *testing.T) {
@@ -29,7 +30,7 @@ func TestParseINESHeader(t *testing.T) {
 			openRom: func() ([]byte, error) { return nil, nil },
 			want:    nil,
 			makeWantErr: func() error {
-				return fmt.Errorf("failed to parse, rom is nil")
+				return xerrors.Errorf("failed to parse, rom is nil")
 			},
 		},
 		{
@@ -37,7 +38,7 @@ func TestParseINESHeader(t *testing.T) {
 			openRom: func() ([]byte, error) { return []byte{0x00, 0x01, 0x02, 0x03, 0x04}, nil },
 			want:    nil,
 			makeWantErr: func() error {
-				return fmt.Errorf("failed to parse, rom is too short")
+				return xerrors.Errorf("failed to parse, rom is too short")
 			},
 		},
 	}
@@ -206,13 +207,13 @@ func TestTilePatternToColorMap(t *testing.T) {
 func openROM(p string) ([]byte, error) {
 	f, err := os.Open(p)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
+		return nil, xerrors.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
 	}
 	defer f.Close()
 
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
+		return nil, xerrors.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
 	}
 	return b, nil
 }

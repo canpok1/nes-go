@@ -1,10 +1,10 @@
 package impl
 
 import (
-	"fmt"
-
 	"nes-go/pkg/domain"
 	"nes-go/pkg/log"
+
+	"golang.org/x/xerrors"
 )
 
 // Bus ...
@@ -77,11 +77,11 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 	}()
 
 	if b == nil {
-		err = fmt.Errorf("failed to readByCPU, bus is nil")
+		err = xerrors.Errorf("failed to readByCPU, bus is nil")
 		return data, err
 	}
 	if !b.setupped {
-		err = fmt.Errorf("failed to readByCPU, bus setup is not completed")
+		err = xerrors.Errorf("failed to readByCPU, bus setup is not completed")
 		return data, err
 	}
 
@@ -234,7 +234,7 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 		return data, err
 	}
 
-	return 0, fmt.Errorf("failed read, addr out of range; addr: %#v", addr)
+	return 0, xerrors.Errorf("failed read, addr out of range; addr: %#v", addr)
 }
 
 // WriteByCPU ...
@@ -251,11 +251,11 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	}()
 
 	if b == nil {
-		err = fmt.Errorf("failed to writeByCPU, bus is nil")
+		err = xerrors.Errorf("failed to writeByCPU, bus is nil")
 		return err
 	}
 	if !b.setupped {
-		err = fmt.Errorf("failed to writeByCPU, bus setup is not completed")
+		err = xerrors.Errorf("failed to writeByCPU, bus setup is not completed")
 		return err
 	}
 
@@ -321,7 +321,7 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 
 	// 0x4020～0x5FFF	0x1FE0	拡張ROM
 	if addr >= 0x4000 && addr <= 0x401F {
-		return fmt.Errorf("failed write, cannot write EX ROM; addr: %#v", addr)
+		return xerrors.Errorf("failed write, cannot write EX ROM; addr: %#v", addr)
 	}
 
 	// 0x6000～0x7FFF	0x2000	拡張RAM
@@ -334,10 +334,10 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
 	if addr >= 0x8000 && addr <= 0xFFFF {
-		return fmt.Errorf("failed write, cannot write PRG-ROM; addr: %#v", addr)
+		return xerrors.Errorf("failed write, cannot write PRG-ROM; addr: %#v", addr)
 	}
 
-	return fmt.Errorf("failed write, addr out of range; addr: %#v", addr)
+	return xerrors.Errorf("failed write, addr out of range; addr: %#v", addr)
 }
 
 // ReadByPPU ...
@@ -353,11 +353,11 @@ func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 	}()
 
 	if b == nil {
-		err = fmt.Errorf("failed to readByPPU, bus is nil")
+		err = xerrors.Errorf("failed to readByPPU, bus is nil")
 		return data, err
 	}
 	if !b.setupped {
-		err = fmt.Errorf("failed to readByPPU, bus setup is not completed")
+		err = xerrors.Errorf("failed to readByPPU, bus setup is not completed")
 		return data, err
 	}
 
@@ -458,7 +458,7 @@ func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 		return
 	}
 
-	err = fmt.Errorf("failed to read by PPU; addr: %v", addr)
+	err = xerrors.Errorf("failed to read by PPU; addr: %v", addr)
 	return
 }
 
@@ -475,11 +475,11 @@ func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 	}()
 
 	if b == nil {
-		err = fmt.Errorf("failed to writeByPPU, bus is nil")
+		err = xerrors.Errorf("failed to writeByPPU, bus is nil")
 		return err
 	}
 	if !b.setupped {
-		err = fmt.Errorf("failed to writeByPPU, bus setup is not completed")
+		err = xerrors.Errorf("failed to writeByPPU, bus setup is not completed")
 		return err
 	}
 	addrTmp := addr
@@ -494,14 +494,14 @@ func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 
 	// 0x0000～0x0FFF	0x1000	パターンテーブル0
 	if addrTmp >= 0x0000 && addrTmp <= 0x0FFF {
-		err = fmt.Errorf("failed write, PatternTable0(CHR-ROM) is read only; addr: %#v", addr)
+		err = xerrors.Errorf("failed write, PatternTable0(CHR-ROM) is read only; addr: %#v", addr)
 		target = "PatternTable0"
 		return
 	}
 
 	// 0x1000～0x1FFF	0x1000	パターンテーブル1
 	if addrTmp >= 0x1000 && addrTmp <= 0x1FFF {
-		err = fmt.Errorf("failed write, PatternTable1(CHR-ROM) is read only; addr: %#v", addr)
+		err = xerrors.Errorf("failed write, PatternTable1(CHR-ROM) is read only; addr: %#v", addr)
 		target = "PatternTable1"
 		return
 	}
@@ -589,7 +589,7 @@ func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 		return
 	}
 
-	err = fmt.Errorf("failed to read by PPU; addr: %v", addr)
+	err = xerrors.Errorf("failed to read by PPU; addr: %v", addr)
 	return
 }
 

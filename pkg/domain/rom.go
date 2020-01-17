@@ -1,10 +1,11 @@
 package domain
 
 import (
-	"fmt"
 	"io/ioutil"
 	"nes-go/pkg/log"
 	"os"
+
+	"golang.org/x/xerrors"
 )
 
 // INESHeader ...
@@ -42,23 +43,23 @@ type ROM struct {
 func readFile(p string) ([]byte, error) {
 	f, err := os.Open(p)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
+		return nil, xerrors.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
 	}
 	defer f.Close()
 
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
+		return nil, xerrors.Errorf("failed to open rom\nromPath: %#v\nerr: %w", p, err)
 	}
 	return b, nil
 }
 
 func parseINESHeader(rom []byte) (*INESHeader, error) {
 	if rom == nil {
-		return nil, fmt.Errorf("failed to parse, rom is nil")
+		return nil, xerrors.New("failed to parse, rom is nil")
 	}
 	if len(rom) < 6 {
-		return nil, fmt.Errorf("failed to parse, rom is too short")
+		return nil, xerrors.New("failed to parse, rom is too short")
 	}
 
 	prg := uint8(rom[4])
@@ -99,12 +100,12 @@ func FetchROM(romPath string) (*ROM, error) {
 	log.Info("fetch[rom]: %v", romPath)
 	f, err := readFile(romPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed fetch rom; %w", err)
+		return nil, xerrors.Errorf("failed fetch rom: %w", err)
 	}
 
 	r, err := parseROM(f)
 	if err != nil {
-		return nil, fmt.Errorf("failed fetch rom; %w", err)
+		return nil, xerrors.Errorf("failed fetch rom: %w", err)
 	}
 
 	return r, nil

@@ -2,13 +2,13 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"nes-go/pkg/domain"
 	"nes-go/pkg/impl"
 	"nes-go/pkg/log"
 	"os"
 
 	"github.com/hajimehoshi/ebiten"
+	"golang.org/x/xerrors"
 )
 
 const (
@@ -28,7 +28,7 @@ func main() {
 	defer func() {
 		err := recover()
 		if err != nil {
-			log.Fatal("error:%#v", err)
+			log.Fatal("%+v", err)
 		}
 		log.Debug("========================================")
 		log.Debug("program end")
@@ -36,7 +36,7 @@ func main() {
 	}()
 
 	if len(os.Args) < 2 {
-		panic(fmt.Errorf("failed to start, rom is nil"))
+		panic(xerrors.Errorf("failed to start, rom is nil"))
 	}
 
 	romPath := os.Args[1]
@@ -74,17 +74,17 @@ func main() {
 			if err := recover(); err != nil {
 				switch err.(type) {
 				case error:
-					log.Fatal("process error: %v", err)
+					log.Fatal("process error: %+v", err)
 					inner := errors.Unwrap(err.(error))
 					for {
 						if inner == nil {
 							break
 						}
-						log.Fatal("inner error: %v", inner)
+						log.Fatal("inner error: %+v", inner)
 						inner = errors.Unwrap(inner)
 					}
 				default:
-					log.Fatal("process error: %v", err)
+					log.Fatal("process error: %+v", err)
 				}
 			} else {
 				log.Info("process end")

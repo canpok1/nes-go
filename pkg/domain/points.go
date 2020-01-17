@@ -1,6 +1,6 @@
 package domain
 
-import "fmt"
+import "golang.org/x/xerrors"
 
 // NameTablePoint ...
 type NameTablePoint struct {
@@ -11,10 +11,10 @@ type NameTablePoint struct {
 // Validate ...
 func (p NameTablePoint) Validate() error {
 	if p.Y < 0 || p.Y >= 30 {
-		return fmt.Errorf("y is out of range; y: %v", p.Y)
+		return xerrors.Errorf("y is out of range; y: %v", p.Y)
 	}
 	if p.X < 0 || p.X >= 32 {
-		return fmt.Errorf("x is out of range; x: %v", p.X)
+		return xerrors.Errorf("x is out of range; x: %v", p.X)
 	}
 	return nil
 }
@@ -44,7 +44,7 @@ type MonitorX uint8
 // Validate ...
 func (x MonitorX) Validate() error {
 	if x < 0 {
-		return fmt.Errorf("x is out of range; x: %v", x)
+		return xerrors.Errorf("x is out of range; x: %v", x)
 	}
 	return nil
 }
@@ -55,7 +55,7 @@ type MonitorY uint8
 // Validate ...
 func (y MonitorY) Validate() error {
 	if y < 0 || y >= 240 {
-		return fmt.Errorf("y is out of range; y: %v", y)
+		return xerrors.Errorf("y is out of range; y: %v", y)
 	}
 	return nil
 }

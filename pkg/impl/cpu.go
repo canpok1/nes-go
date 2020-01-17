@@ -5,6 +5,8 @@ import (
 
 	"nes-go/pkg/domain"
 	"nes-go/pkg/log"
+
+	"golang.org/x/xerrors"
 )
 
 // Operand ...
@@ -44,10 +46,19 @@ func (s *CPUStack) Push(b byte) {
 }
 
 // Pop ...
-func (s *CPUStack) Pop() byte {
-	b := s.stack[len(s.stack)-1]
-	s.stack = s.stack[0 : len(s.stack)-2]
-	return b
+func (s *CPUStack) Pop() (byte, error) {
+	l := len(s.stack)
+	if l == 0 {
+		return 0, xerrors.Errorf("failed to pop, stack is empty")
+	}
+
+	b := s.stack[l-1]
+	if l == 1 {
+		s.stack = []byte{}
+	} else {
+		s.stack = s.stack[0 : len(s.stack)-2]
+	}
+	return b, nil
 }
 
 // CPU ...
@@ -88,21 +99,21 @@ func (c *CPU) Run() (int, error) {
 
 	if c.shouldReset {
 		if err := c.interruptRESET(); err != nil {
-			return 0, fmt.Errorf("%w", err)
+			return 0, xerrors.Errorf(": %w", err)
 		}
 		return 0, nil
 	}
 
 	if !c.registers.P.InterruptDisable && c.registers.P.BreakMode {
 		if err := c.interruptBRK(); err != nil {
-			return 0, fmt.Errorf("%w", err)
+			return 0, xerrors.Errorf(": %w", err)
 		}
 		return 0, nil
 	}
 
 	if !c.registers.P.InterruptDisable && !c.registers.P.BreakMode {
 		if err := c.interruptIRQ(); err != nil {
-			return 0, fmt.Errorf("%w", err)
+			return 0, xerrors.Errorf(": %w", err)
 		}
 		return 0, nil
 	}
@@ -110,24 +121,24 @@ func (c *CPU) Run() (int, error) {
 	// PC（プログラムカウンタ）からオペコードをフェッチ（PCをインクリメント）
 	oc, err := c.fetchOpcode()
 	if err != nil {
-		return 0, fmt.Errorf("%w", err)
+		return 0, xerrors.Errorf(": %w", err)
 	}
 
 	// 命令とアドレッシング・モードを判別
 	ocp, err := decodeOpcode(oc)
 	if err != nil {
-		return 0, fmt.Errorf("%w", err)
+		return 0, xerrors.Errorf(": %w", err)
 	}
 
 	// （必要であれば）オペランドをフェッチ（PCをインクリメント）
 	op, err := c.fetchAsOperand(ocp.AddressingMode)
 	if err != nil {
-		return 0, fmt.Errorf("%w", err)
+		return 0, xerrors.Errorf(": %w", err)
 	}
 
 	// 命令を実行
 	if err := c.exec(ocp.Mnemonic, ocp.AddressingMode, op); err != nil {
-		return 0, fmt.Errorf("%w", err)
+		return 0, xerrors.Errorf(": %w", err)
 	}
 
 	return ocp.Cycle, nil
@@ -140,7 +151,7 @@ func decodeOpcode(o domain.Opcode) (*domain.OpcodeProp, error) {
 		return &p, nil
 	}
 	log.Trace("CPU.decode[%#v] => not found", o)
-	return nil, fmt.Errorf("opcode is not support; opcode: %#v", o)
+	return nil, xerrors.Errorf("opcode is not support; opcode: %#v", o)
 }
 
 // fetch ...
@@ -161,7 +172,7 @@ func (c *CPU) fetch() (byte, error) {
 	addr = domain.Address(c.registers.PC)
 	data, err = c.bus.ReadByCPU(addr)
 	if err != nil {
-		return data, fmt.Errorf("failed to fetch; %w", err)
+		return data, xerrors.Errorf("failed to fetch: %w", err)
 	}
 
 	c.registers.IncrementPC()
@@ -173,7 +184,7 @@ func (c *CPU) fetch() (byte, error) {
 func (c *CPU) fetchOpcode() (domain.Opcode, error) {
 	v, err := c.fetch()
 	if err != nil {
-		return domain.ErrorOpcode, fmt.Errorf("%w", err)
+		return domain.ErrorOpcode, xerrors.Errorf(": %w", err)
 	}
 	return domain.Opcode(v), nil
 }
@@ -237,7 +248,7 @@ func (c *CPU) fetchAsOperand(mode domain.AddressingMode) (op []byte, err error) 
 		op = []byte{l, h}
 		return
 	default:
-		err = fmt.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", mode)
+		err = xerrors.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", mode)
 		return
 	}
 }
@@ -335,7 +346,7 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 		addr = domain.Address((uint16(addrH) << 8) + uint16(addrL))
 		return
 	default:
-		err = fmt.Errorf("failed to make address, AddressingMode is not supported; mode: %#v", mode)
+		err = xerrors.Errorf("failed to make address, AddressingMode is not supported; mode: %#v", mode)
 		return
 	}
 }
@@ -353,11 +364,11 @@ func (c *CPU) InterruptNMI() error {
 
 	l, err := c.bus.ReadByCPU(0xFFFA)
 	if err != nil {
-		return fmt.Errorf("failed to interrupt[NMI]; %w", err)
+		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
 	}
 	h, err := c.bus.ReadByCPU(0xFFFB)
 	if err != nil {
-		return fmt.Errorf("failed to interrupt[NMI]; %w", err)
+		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
 	}
 	c.registers.PC = (uint16(h) << 8) + uint16(l)
 	return nil
@@ -371,12 +382,12 @@ func (c *CPU) interruptRESET() error {
 
 	l, err := c.bus.ReadByCPU(0xFFFC)
 	if err != nil {
-		return fmt.Errorf("failed to reset; %w", err)
+		return xerrors.Errorf("failed to reset: %w", err)
 	}
 
 	h, err := c.bus.ReadByCPU(0xFFFD)
 	if err != nil {
-		return fmt.Errorf("failed to reset; %w", err)
+		return xerrors.Errorf("failed to reset: %w", err)
 	}
 
 	c.registers.UpdatePC((uint16(h) << 8) | uint16(l))
@@ -396,11 +407,11 @@ func (c *CPU) interruptBRK() error {
 
 	l, err := c.bus.ReadByCPU(0xFFFE)
 	if err != nil {
-		return fmt.Errorf("failed to interrupt[BRK]; %w", err)
+		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
 	}
 	h, err := c.bus.ReadByCPU(0xFFFF)
 	if err != nil {
-		return fmt.Errorf("failed to interrupt[BRK]; %w", err)
+		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
 	}
 	c.registers.PC = (uint16(h) << 8) + uint16(l)
 	return nil
@@ -417,11 +428,11 @@ func (c *CPU) interruptIRQ() error {
 
 	l, err := c.bus.ReadByCPU(0xFFFE)
 	if err != nil {
-		return fmt.Errorf("failed to interrupt[IRQ]; %w", err)
+		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
 	}
 	h, err := c.bus.ReadByCPU(0xFFFF)
 	if err != nil {
-		return fmt.Errorf("failed to interrupt[IRQ]; %w", err)
+		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
 	}
 	c.registers.PC = (uint16(h) << 8) + uint16(l)
 	return nil
@@ -444,7 +455,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -474,7 +485,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -504,7 +515,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -527,7 +538,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -550,7 +561,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -757,19 +768,20 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 			return
 		}
 
-		var b byte
-		b, err = c.bus.ReadByCPU(addr)
-		if err != nil {
-			return
-		}
-
 		c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
 		c.stack.Push(byte(c.registers.PC & 0x00FF))
-		c.registers.PC = uint16(b)
+		c.registers.PC = uint16(addr)
 		return
 	case domain.RTS:
-		l := c.stack.Pop()
-		h := c.stack.Pop()
+		var l, h byte
+		if l, err = c.stack.Pop(); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+		if h, err = c.stack.Pop(); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
 		c.registers.PC = (uint16(h) << 8) + uint16(l) + 1
 		return
 	case domain.BRK:
@@ -777,16 +789,29 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		c.registers.IncrementPC()
 		return
 	case domain.RTI:
-		c.registers.P.UpdateAll(c.stack.Pop())
-		l := c.stack.Pop()
-		h := c.stack.Pop()
+		var b byte
+		if b, err = c.stack.Pop(); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+		c.registers.P.UpdateAll(b)
+
+		var l, h byte
+		if l, err = c.stack.Pop(); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+		if h, err = c.stack.Pop(); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
 		c.registers.PC = (uint16(h) << 8) + uint16(l)
 		return
 	case domain.CMP:
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -810,7 +835,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -834,7 +859,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -941,7 +966,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -965,7 +990,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -989,7 +1014,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		if mode == domain.Immediate {
 			if len(op) < 1 {
-				err = fmt.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
 				return
 			}
 			b = op[0]
@@ -1012,7 +1037,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 	case domain.STA:
 		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
+			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
 		}
 
@@ -1024,7 +1049,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 	case domain.STX:
 		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
+			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
 		}
 
@@ -1036,7 +1061,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 	case domain.STY:
 		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
-			err = fmt.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
+			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
 		}
 
@@ -1077,18 +1102,26 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		c.stack.Push(c.registers.A)
 		return
 	case domain.PLA:
-		c.registers.A = c.stack.Pop()
+		if c.registers.A, err = c.stack.Pop(); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
 		return
 	case domain.PHP:
 		c.stack.Push(c.registers.P.ToByte())
 		return
 	case domain.PLP:
-		c.registers.P.UpdateAll(c.stack.Pop())
+		var b byte
+		if b, err = c.stack.Pop(); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+		c.registers.P.UpdateAll(b)
 		return
 	case domain.NOP:
 		return
 	default:
-		err = fmt.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", mne)
+		err = xerrors.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", mne)
 		return
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"image"
 	"nes-go/pkg/domain"
 	"nes-go/pkg/log"
+
+	"golang.org/x/xerrors"
 )
 
 // PPU ...
@@ -99,33 +101,33 @@ func (p *PPU) ReadRegisters(addr domain.Address) (byte, error) {
 	switch addr {
 	case 0x2000:
 		target = "PPUCTRL"
-		err = fmt.Errorf("failed to read, PPURegister[PPUCTRL] is write only; addr: %#v", addr)
+		err = xerrors.Errorf("failed to read, PPURegister[PPUCTRL] is write only; addr: %#v", addr)
 	case 0x2001:
 		target = "PPUMASK"
-		err = fmt.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
+		err = xerrors.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
 	case 0x2002:
 		target = "PPUSTATUS"
 		data = p.registers.PPUStatus.ToByte()
 		p.registers.PPUStatus.VBlankHasStarted = false
 	case 0x2003:
 		target = "OAMADDR"
-		err = fmt.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
+		err = xerrors.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
 	case 0x2004:
 		target = "OAMDATA"
 		data = p.registers.OAMData
 	case 0x2005:
 		target = "PPUSCROLL"
-		err = fmt.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
+		err = xerrors.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
 	case 0x2006:
 		target = "PPUADDR"
-		err = fmt.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
+		err = xerrors.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
 	case 0x2007:
 		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", p.ppuaddrFull)
 		data, err = p.bus.ReadByPPU(p.ppuaddrFull)
 		p.incrementPPUADDR()
 	default:
 		target = "-"
-		err = fmt.Errorf("failed to read PPURegisters, address is out of range; addr: %#v", addr)
+		err = xerrors.Errorf("failed to read PPURegisters, address is out of range; addr: %#v", addr)
 	}
 
 	return data, err
@@ -152,7 +154,7 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		p.registers.PPUMask.UpdateAll(data)
 		target = "PPUMASK"
 	case 0x2002:
-		err = fmt.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
+		err = xerrors.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
 		target = "PPUSTATUS"
 	case 0x2003:
 		p.registers.OAMAddr = data
@@ -187,7 +189,7 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		p.enableOAMDMA = true
 	default:
 		target = "-"
-		err = fmt.Errorf("failed to write PPURegisters, address is out of range; addr: %#v", addr)
+		err = xerrors.Errorf("failed to write PPURegisters, address is out of range; addr: %#v", addr)
 	}
 
 	return err
@@ -231,8 +233,6 @@ func (p *PPU) Run(cycle int) (*domain.Screen, error) {
 
 // run1Cycle ...
 func (p *PPU) run1Cycle() (*domain.Screen, error) {
-	log.Trace("PPU.Run[(x,y)=%v] ...", p.drawingPoint.String())
-
 	defer p.updateDrawingPoint()
 
 	if p.drawingPoint.X == 0 && p.drawingPoint.Y == domain.ResolutionHeight {
