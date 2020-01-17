@@ -43,6 +43,7 @@ func NewCPUStack() *CPUStack {
 // Push ...
 func (s *CPUStack) Push(b byte) {
 	s.stack = append(s.stack, b)
+	log.Trace("CPUStack.Push[%#v] stack: %#v", b, s.stack)
 }
 
 // Pop ...
@@ -53,11 +54,8 @@ func (s *CPUStack) Pop() (byte, error) {
 	}
 
 	b := s.stack[l-1]
-	if l == 1 {
-		s.stack = []byte{}
-	} else {
-		s.stack = s.stack[0 : len(s.stack)-2]
-	}
+	s.stack = s.stack[0 : len(s.stack)-1]
+	log.Trace("CPUStack.Pop stack: %#v => %#v", s.stack, b)
 	return b, nil
 }
 
@@ -782,7 +780,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
-		c.registers.PC = (uint16(h) << 8) + uint16(l) + 1
+		c.registers.PC = (uint16(h) << 8) + uint16(l)
 		return
 	case domain.BRK:
 		c.registers.P.BreakMode = true
