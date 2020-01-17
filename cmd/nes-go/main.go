@@ -75,12 +75,13 @@ func main() {
 				switch err.(type) {
 				case error:
 					log.Fatal("process error: %v", err)
+					inner := errors.Unwrap(err.(error))
 					for {
-						inner := errors.Unwrap(err.(error))
 						if inner == nil {
 							break
 						}
 						log.Fatal("inner error: %v", inner)
+						inner = errors.Unwrap(inner)
 					}
 				default:
 					log.Fatal("process error: %v", err)
