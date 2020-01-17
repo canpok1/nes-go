@@ -363,7 +363,8 @@ func (p *PPU) execOAMDMA() error {
 	for readAddrL := 0; readAddrL <= 0xFF; readAddrL++ {
 		readAddr := domain.Address(readAddrH + uint16(readAddrL))
 
-		readData, err := p.bus.ReadByPPU(readAddr)
+		// CPUのメモリマップにおけるアドレスからデータを読み込む
+		readData, err := p.bus.ReadByCPU(readAddr)
 		if err != nil {
 			return err
 		}
