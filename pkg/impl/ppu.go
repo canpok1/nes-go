@@ -98,30 +98,36 @@ func (p *PPU) ReadRegisters(addr domain.Address) (byte, error) {
 		}
 	}()
 
-	switch addr {
-	case 0x2000:
+	if addr < 0x2000 && addr > 0x3FFF {
+		target = "-"
+		err = xerrors.Errorf("failed to read PPURegisters, address is out of range; addr: %#v", addr)
+		return data, err
+	}
+
+	switch addr % 8 {
+	case 0:
 		target = "PPUCTRL"
 		err = xerrors.Errorf("failed to read, PPURegister[PPUCTRL] is write only; addr: %#v", addr)
-	case 0x2001:
+	case 1:
 		target = "PPUMASK"
 		err = xerrors.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
-	case 0x2002:
+	case 2:
 		target = "PPUSTATUS"
 		data = p.registers.PPUStatus.ToByte()
 		p.registers.PPUStatus.VBlankHasStarted = false
-	case 0x2003:
+	case 3:
 		target = "OAMADDR"
 		err = xerrors.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
-	case 0x2004:
+	case 4:
 		target = "OAMDATA"
 		data = p.registers.OAMData
-	case 0x2005:
+	case 5:
 		target = "PPUSCROLL"
 		err = xerrors.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
-	case 0x2006:
+	case 6:
 		target = "PPUADDR"
 		err = xerrors.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
-	case 0x2007:
+	case 7:
 		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", p.ppuaddrFull)
 		data, err = p.bus.ReadByPPU(p.ppuaddrFull)
 		p.incrementPPUADDR()
@@ -146,27 +152,40 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		}
 	}()
 
-	switch addr {
-	case 0x2000:
+	if addr < 0x2000 && addr > 0x3FFF && addr != 0x4014 {
+		target = "-"
+		err = xerrors.Errorf("failed to write PPURegisters, address is out of range; addr: %#v", addr)
+		return err
+	}
+
+	if addr == 0x4014 {
+		target = "OAMDMA"
+		p.registers.OAMDMA = data
+		p.enableOAMDMA = true
+		return err
+	}
+
+	switch addr % 8 {
+	case 0:
 		p.registers.PPUCtrl.UpdateAll(data)
 		target = "PPUCTRL"
-	case 0x2001:
+	case 1:
 		p.registers.PPUMask.UpdateAll(data)
 		target = "PPUMASK"
-	case 0x2002:
+	case 2:
 		err = xerrors.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
 		target = "PPUSTATUS"
-	case 0x2003:
+	case 3:
 		p.registers.OAMAddr = data
 		target = "OAMADDR"
-	case 0x2004:
+	case 4:
 		p.oam.Write(p.registers.OAMAddr, data)
 		p.registers.OAMAddr = p.registers.OAMAddr + 1
 		target = "OAMDATA"
-	case 0x2005:
+	case 5:
 		p.registers.PPUScroll = data
 		target = "PPUSCROLL"
-	case 0x2006:
+	case 6:
 		p.registers.PPUAddr = data
 		switch p.ppuaddrWriteCount {
 		case 0, 2:
@@ -179,17 +198,10 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 			p.ppuaddrWriteCount = 2
 			target = fmt.Sprintf("PPUADDR(for low 8 bits(ppuaddr:%#v))", p.ppuaddrBuf)
 		}
-	case 0x2007:
+	case 7:
 		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.ppuaddrFull)
 		err = p.bus.WriteByPPU(p.ppuaddrFull, data)
 		p.incrementPPUADDR()
-	case 0x4014:
-		target = "OAMDMA"
-		p.registers.OAMDMA = data
-		p.enableOAMDMA = true
-	default:
-		target = "-"
-		err = xerrors.Errorf("failed to write PPURegisters, address is out of range; addr: %#v", addr)
 	}
 
 	return err
