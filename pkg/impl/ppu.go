@@ -227,14 +227,14 @@ func (p *PPU) Run(cycle int) (*domain.Screen, error) {
 	for i := 0; i < cycle; i++ {
 		if p.enableOAMDMA {
 			if err := p.execOAMDMA(); err != nil {
-				return nil, err
+				return nil, xerrors.Errorf(": %w", err)
 			}
 			continue
 		}
 
 		s, err := p.run1Cycle()
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf(": %w", err)
 		}
 		if s != nil {
 			screen = s
@@ -274,17 +274,17 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 				np := domain.NameTablePoint{X: uint8(x), Y: uint8(y)}
 				attribute, err := p.bus.GetAttribute(nameTblIdx, np)
 				if err != nil {
-					return nil, err
+					return nil, xerrors.Errorf(": %w", err)
 				}
 
 				paletteNo, err := p.bus.GetPaletteNo(np, attribute)
 				if err != nil {
-					return nil, err
+					return nil, xerrors.Errorf(": %w", err)
 				}
 
 				tileIndex, err := p.bus.GetTileNo(nameTblIdx, np)
 				if err != nil {
-					return nil, err
+					return nil, xerrors.Errorf(": %w", err)
 				}
 
 				patternTblIdx := p.registers.PPUCtrl.BackgroundPatternTableIndex
@@ -324,12 +324,12 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 			np := domain.NameTablePoint{X: uint8(sx), Y: uint8(sy)}
 			attribute, err := p.bus.GetAttribute(nameTblIdx, np)
 			if err != nil {
-				return err
+				return xerrors.Errorf(": %w", err)
 			}
 
 			paletteNo, err := p.bus.GetPaletteNo(np, attribute)
 			if err != nil {
-				return err
+				return xerrors.Errorf(": %w", err)
 			}
 
 			offset := (s.Attribute & 0x3) << 2
@@ -348,7 +348,7 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf(": %w", err)
 		}
 	}
 
@@ -369,6 +369,7 @@ func (p *PPU) execOAMDMA() error {
 		// CPUのメモリマップにおけるアドレスからデータを読み込む
 		readData, err := p.bus.ReadByCPU(readAddr)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return err
 		}
 

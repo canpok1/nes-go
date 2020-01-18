@@ -42,8 +42,9 @@ func NewCPUStack() *CPUStack {
 
 // Push ...
 func (s *CPUStack) Push(b byte) {
+	l := len(s.stack)
 	s.stack = append(s.stack, b)
-	log.Trace("CPUStack.Push[%#v] stack: %#v", b, s.stack)
+	log.Trace("CPUStack.Push[%#v][size: %v => %v]", b, l, len(s.stack))
 }
 
 // Pop ...
@@ -55,7 +56,7 @@ func (s *CPUStack) Pop() (byte, error) {
 
 	b := s.stack[l-1]
 	s.stack = s.stack[0 : len(s.stack)-1]
-	log.Trace("CPUStack.Pop stack: %#v => %#v", s.stack, b)
+	log.Trace("CPUStack.Pop[size: %v => %v] => %#v", l, len(s.stack), b)
 	return b, nil
 }
 
@@ -228,6 +229,7 @@ func (c *CPU) fetchAsOperand(mode domain.AddressingMode) (op []byte, err error) 
 		var b byte
 		b, err = c.fetch()
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		op = []byte{b}
@@ -246,12 +248,14 @@ func (c *CPU) fetchAsOperand(mode domain.AddressingMode) (op []byte, err error) 
 		var l byte
 		l, err = c.fetch()
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
 		var h byte
 		h, err = c.fetch()
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -313,6 +317,7 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 		var l byte
 		l, err = c.bus.ReadByCPU(dest)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -327,6 +332,7 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 		var h byte
 		h, err = c.bus.ReadByCPU(dest)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -344,12 +350,14 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 		var addrL byte
 		addrL, err = c.bus.ReadByCPU(dest)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
 		var addrH byte
 		addrH, err = c.bus.ReadByCPU(nextDest)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -479,6 +487,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -509,6 +518,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -539,6 +549,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -562,6 +573,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -585,6 +597,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -604,6 +617,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -623,6 +637,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -643,6 +658,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -667,6 +683,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -760,6 +777,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		b, err = c.bus.ReadByCPU(addr)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -835,6 +853,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -859,6 +878,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -883,6 +903,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -900,12 +921,14 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		var b byte
 		b, err = c.bus.ReadByCPU(addr)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
 		ans := b + 1
 		err = c.bus.WriteByCPU(addr, ans)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -915,18 +938,21 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 	case domain.DEC:
 		var addr domain.Address
 		if addr, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
 		var b byte
 		b, err = c.bus.ReadByCPU(addr)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
 		ans := b - 1
 		err = c.bus.WriteByCPU(addr, ans)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -985,11 +1011,13 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		} else {
 			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -1009,11 +1037,13 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		} else {
 			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}
@@ -1033,11 +1063,13 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		} else {
 			var addr domain.Address
 			if addr, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 		}

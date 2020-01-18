@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"nes-go/pkg/domain"
 	"nes-go/pkg/impl"
 	"nes-go/pkg/log"
@@ -72,20 +71,7 @@ func main() {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				switch err.(type) {
-				case error:
-					log.Fatal("process error: %+v", err)
-					inner := errors.Unwrap(err.(error))
-					for {
-						if inner == nil {
-							break
-						}
-						log.Fatal("inner error: %+v", inner)
-						inner = errors.Unwrap(inner)
-					}
-				default:
-					log.Fatal("process error: %+v", err)
-				}
+				log.Fatal("process error: %+v", err)
 			} else {
 				log.Info("process end")
 			}
