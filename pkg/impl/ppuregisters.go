@@ -1,6 +1,10 @@
 package impl
 
-import "fmt"
+import (
+	"fmt"
+	"nes-go/pkg/domain"
+	"nes-go/pkg/log"
+)
 
 // PPURegisters ...
 type PPURegisters struct {
@@ -10,8 +14,12 @@ type PPURegisters struct {
 	OAMAddr   byte       // 0x2003	OAMADDR	W	スプライトメモリデータ	書き込むスプライト領域のアドレス
 	OAMData   byte       // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
 	PPUScroll byte       // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
-	PPUAddr   byte       // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
+	ppuaddr   byte       // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
 	OAMDMA    byte       // 0x4014  OAMDMA W
+
+	ppuaddrWriteCount uint8          // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
+	ppuaddrBuf        domain.Address // 組み立て中のPPUADDR
+	ppuaddrFull       domain.Address // 組み立て済のPPUADDR
 }
 
 // NewPPURegisters ...
@@ -41,8 +49,12 @@ func NewPPURegisters() *PPURegisters {
 		OAMAddr:   0,
 		OAMData:   0,
 		PPUScroll: 0,
-		PPUAddr:   0,
+		ppuaddr:   0,
 		OAMDMA:    0,
+
+		ppuaddrWriteCount: 0,
+		ppuaddrBuf:        0,
+		ppuaddrFull:       0,
 	}
 }
 
@@ -56,9 +68,35 @@ func (r PPURegisters) String() string {
 		r.OAMAddr,
 		r.OAMData,
 		r.PPUScroll,
-		r.PPUAddr,
+		r.ppuaddr,
 		r.OAMDMA,
 	)
+}
+
+// WritePPUADDR ...
+func (r *PPURegisters) WritePPUADDR(data byte) {
+	r.ppuaddr = data
+	switch r.ppuaddrWriteCount {
+	case 0, 2:
+		r.ppuaddrBuf = domain.Address(r.ppuaddr) << 8
+		r.ppuaddrWriteCount = 1
+	case 1:
+		r.ppuaddrBuf = r.ppuaddrBuf + domain.Address(r.ppuaddr)
+		r.ppuaddrFull = r.ppuaddrBuf
+		r.ppuaddrWriteCount = 2
+	}
+}
+
+// IncrementPPUADDR ...
+func (r *PPURegisters) IncrementPPUADDR(v uint16) {
+	old := r.ppuaddrFull
+	r.ppuaddrFull = domain.Address(uint16(r.ppuaddrFull) + v)
+	log.Trace("PPURegisters.update[PPUADDR Full] %#v => %#v", old, r.ppuaddrFull)
+}
+
+// GetFullPPUADDR ...
+func (r *PPURegisters) GetFullPPUADDR() domain.Address {
+	return r.ppuaddrFull
 }
 
 // PPUCtrl ...

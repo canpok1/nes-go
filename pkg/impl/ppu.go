@@ -14,10 +14,6 @@ type PPU struct {
 	registers *PPURegisters
 	bus       domain.Bus
 
-	ppuaddrWriteCount uint8          // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
-	ppuaddrBuf        domain.Address // 組み立て中のPPUADDR
-	ppuaddrFull       domain.Address // 組み立て済のPPUADDR
-
 	tileImages [][]domain.TileImage
 
 	drawingPoint *image.Point
@@ -40,14 +36,11 @@ func NewPPU() (domain.PPU, error) {
 	}
 
 	return &PPU{
-		registers:         NewPPURegisters(),
-		ppuaddrWriteCount: 0,
-		ppuaddrBuf:        0,
-		ppuaddrFull:       0,
-		tileImages:        tileImages,
-		drawingPoint:      &image.Point{0, 0},
-		oam:               NewPPUOAM(),
-		enableOAMDMA:      false,
+		registers:    NewPPURegisters(),
+		tileImages:   tileImages,
+		drawingPoint: &image.Point{0, 0},
+		oam:          NewPPUOAM(),
+		enableOAMDMA: false,
 	}, nil
 }
 
@@ -66,13 +59,11 @@ func (p *PPU) SetBus(b domain.Bus) {
 
 // incrementPPUADDR
 func (p *PPU) incrementPPUADDR() {
-	old := p.ppuaddrFull
 	if p.registers.PPUCtrl.VRAMAddressIncrementMode == 0 {
-		p.ppuaddrFull = p.ppuaddrFull + 1
+		p.registers.IncrementPPUADDR(1)
 	} else {
-		p.ppuaddrFull = p.ppuaddrFull + 32
+		p.registers.IncrementPPUADDR(32)
 	}
-	log.Trace("PPURegisters.update[PPUADDR Full] %#v => %#v", old, p.ppuaddrFull)
 }
 
 // flatten ...
@@ -128,8 +119,9 @@ func (p *PPU) ReadRegisters(addr domain.Address) (byte, error) {
 		target = "PPUADDR"
 		err = xerrors.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
 	case 7:
-		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", p.ppuaddrFull)
-		data, err = p.bus.ReadByPPU(p.ppuaddrFull)
+		ppuaddr := p.registers.GetFullPPUADDR()
+		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", ppuaddr)
+		data, err = p.bus.ReadByPPU(ppuaddr)
 		p.incrementPPUADDR()
 	default:
 		target = "-"
@@ -186,21 +178,11 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		p.registers.PPUScroll = data
 		target = "PPUSCROLL"
 	case 6:
-		p.registers.PPUAddr = data
-		switch p.ppuaddrWriteCount {
-		case 0, 2:
-			p.ppuaddrBuf = domain.Address(p.registers.PPUAddr) << 8
-			p.ppuaddrWriteCount = 1
-			target = fmt.Sprintf("PPUADDR(for high 8 bits(ppuaddr:%#v))", p.ppuaddrBuf)
-		case 1:
-			p.ppuaddrBuf = p.ppuaddrBuf + domain.Address(p.registers.PPUAddr)
-			p.ppuaddrFull = p.ppuaddrBuf
-			p.ppuaddrWriteCount = 2
-			target = fmt.Sprintf("PPUADDR(for low 8 bits(ppuaddr:%#v))", p.ppuaddrBuf)
-		}
+		p.registers.WritePPUADDR(data)
 	case 7:
-		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", p.ppuaddrFull)
-		err = p.bus.WriteByPPU(p.ppuaddrFull, data)
+		ppuaddr := p.registers.GetFullPPUADDR()
+		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", ppuaddr)
+		err = p.bus.WriteByPPU(ppuaddr, data)
 		p.incrementPPUADDR()
 	}
 
