@@ -62,7 +62,7 @@ func (b *Bus) Setup(rom *domain.ROM, ppu domain.PPU, cpu domain.CPU, vram *domai
 	b.setupped = true
 }
 
-// readByCPU ...
+// ReadByCPU ...
 func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 	var data byte
 	var err error

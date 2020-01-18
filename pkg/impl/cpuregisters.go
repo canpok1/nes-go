@@ -16,7 +16,7 @@ type CPURegisters struct {
 	PC uint16
 }
 
-// NewRegisters ...
+// NewCPURegisters ...
 func NewCPURegisters() *CPURegisters {
 	// initialize as CPU power up state
 	// https://wiki.nesdev.com/w/index.php/CPU_power_up_state
@@ -83,7 +83,7 @@ func (r *CPURegisters) UpdatePC(pc uint16) {
 	log.Trace("CPU.update[PC] %#v => %#v", old, r.PC)
 }
 
-// StatusRegister ...
+// CPUStatusRegister ...
 // https://qiita.com/bokuweb/items/1575337bef44ae82f4d3#%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9%E3%83%AC%E3%82%B8%E3%82%B9%E3%82%BF
 type CPUStatusRegister struct {
 	Negative         bool // bit7	N	ネガティブ	演算結果のbit7が1の時にセット
@@ -96,7 +96,7 @@ type CPUStatusRegister struct {
 	Carry            bool // bit0	C	キャリー	キャリー発生時にセット
 }
 
-// NewStatusRegister ...
+// NewCPUStatusRegister ...
 func NewCPUStatusRegister() *CPUStatusRegister {
 	return &CPUStatusRegister{
 		Negative:         false,
