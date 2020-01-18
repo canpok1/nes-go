@@ -64,15 +64,20 @@ type CPU struct {
 	registers   *CPURegisters
 	bus         domain.Bus
 	shouldReset bool
+	shouldNMI   bool
 	stack       *CPUStack
+
+	beforeNMIActive bool
 }
 
 // NewCPU ...
 func NewCPU() domain.CPU {
 	return &CPU{
-		registers:   NewCPURegisters(),
-		shouldReset: true,
-		stack:       NewCPUStack(),
+		registers:       NewCPURegisters(),
+		shouldReset:     true,
+		shouldNMI:       false,
+		stack:           NewCPUStack(),
+		beforeNMIActive: false,
 	}
 }
 
@@ -97,6 +102,13 @@ func (c *CPU) Run() (int, error) {
 
 	if c.shouldReset {
 		if err := c.interruptRESET(); err != nil {
+			return 0, xerrors.Errorf(": %w", err)
+		}
+		return 0, nil
+	}
+
+	if c.shouldNMI {
+		if err := c.InterruptNMI(); err != nil {
 			return 0, xerrors.Errorf(": %w", err)
 		}
 		return 0, nil
@@ -369,6 +381,8 @@ func (c *CPU) InterruptNMI() error {
 		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
 	}
 	c.registers.PC = (uint16(h) << 8) + uint16(l)
+
+	c.shouldNMI = false
 	return nil
 }
 
@@ -1125,7 +1139,11 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 }
 
 // ReceiveNMI ...
-func (c *CPU) ReceiveNMI() error {
-	log.Trace("CPU.ReceiveNMI")
-	return c.InterruptNMI()
+func (c *CPU) ReceiveNMI(active bool) {
+	log.Trace("CPU.ReceiveNMI[%v]", active)
+	if !c.beforeNMIActive && active {
+		// activeが　false => true となったときにNMI割り込みを発生
+		c.shouldNMI = true
+	}
+	c.beforeNMIActive = active
 }

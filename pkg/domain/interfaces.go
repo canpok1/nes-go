@@ -5,7 +5,7 @@ type CPU interface {
 	SetBus(Bus)
 	Run() (int, error)
 	String() string
-	ReceiveNMI() error
+	ReceiveNMI(active bool)
 }
 
 // PPU ...
@@ -29,7 +29,7 @@ type Bus interface {
 	GetPaletteNo(NameTablePoint, byte) (uint8, error)
 	GetPalette(uint8) *Palette
 	GetAttribute(uint8, NameTablePoint) (byte, error)
-	SendNMI() error
+	SendNMI(active bool)
 }
 
 // Renderer ...

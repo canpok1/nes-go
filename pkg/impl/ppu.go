@@ -254,11 +254,7 @@ func (p *PPU) run1Cycle() (*domain.Screen, error) {
 		p.registers.PPUStatus.VBlankHasStarted = false
 	}
 
-	if p.registers.PPUCtrl.NMIEnable && p.registers.PPUStatus.VBlankHasStarted {
-		if err := p.bus.SendNMI(); err != nil {
-			return nil, err
-		}
-	}
+	p.bus.SendNMI(p.registers.PPUCtrl.NMIEnable && p.registers.PPUStatus.VBlankHasStarted)
 
 	if p.drawingPoint.X >= domain.ResolutionWidth {
 		return nil, nil

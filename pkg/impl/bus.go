@@ -686,6 +686,6 @@ func (b *Bus) GetPalette(no uint8) *domain.Palette {
 }
 
 // SendNMI ...
-func (b *Bus) SendNMI() error {
-	return b.cpu.ReceiveNMI()
+func (b *Bus) SendNMI(active bool) {
+	b.cpu.ReceiveNMI(active)
 }
