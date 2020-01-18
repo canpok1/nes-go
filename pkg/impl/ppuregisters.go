@@ -14,7 +14,7 @@ type PPURegisters struct {
 	OAMAddr   byte       // 0x2003	OAMADDR	W	スプライトメモリデータ	書き込むスプライト領域のアドレス
 	OAMData   byte       // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
 	PPUScroll byte       // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
-	ppuaddr   byte       // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
+	PPUAddr   *PPUAddr   // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
 	OAMDMA    byte       // 0x4014  OAMDMA W
 
 	ppuaddrWriteCount uint8          // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
@@ -49,12 +49,12 @@ func NewPPURegisters() *PPURegisters {
 		OAMAddr:   0,
 		OAMData:   0,
 		PPUScroll: 0,
-		ppuaddr:   0,
-		OAMDMA:    0,
-
-		ppuaddrWriteCount: 0,
-		ppuaddrBuf:        0,
-		ppuaddrFull:       0,
+		PPUAddr: &PPUAddr{
+			writeCount: 0,
+			buf:        0,
+			full:       0,
+		},
+		OAMDMA: 0,
 	}
 }
 
@@ -68,35 +68,41 @@ func (r PPURegisters) String() string {
 		r.OAMAddr,
 		r.OAMData,
 		r.PPUScroll,
-		r.ppuaddr,
+		r.PPUAddr,
 		r.OAMDMA,
 	)
 }
 
-// WritePPUADDR ...
-func (r *PPURegisters) WritePPUADDR(data byte) {
-	r.ppuaddr = data
-	switch r.ppuaddrWriteCount {
+// PPUAddr ...
+type PPUAddr struct {
+	writeCount uint8          // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
+	buf        domain.Address // 組み立て中のPPUADDR
+	full       domain.Address // 組み立て済のPPUADDR
+}
+
+// Set ...
+func (a *PPUAddr) Set(data byte) {
+	switch a.writeCount {
 	case 0, 2:
-		r.ppuaddrBuf = domain.Address(r.ppuaddr) << 8
-		r.ppuaddrWriteCount = 1
+		a.buf = domain.Address(data) << 8
+		a.writeCount = 1
 	case 1:
-		r.ppuaddrBuf = r.ppuaddrBuf + domain.Address(r.ppuaddr)
-		r.ppuaddrFull = r.ppuaddrBuf
-		r.ppuaddrWriteCount = 2
+		a.buf = a.buf + domain.Address(data)
+		a.full = a.buf
+		a.writeCount = 2
 	}
 }
 
-// IncrementPPUADDR ...
-func (r *PPURegisters) IncrementPPUADDR(v uint16) {
-	old := r.ppuaddrFull
-	r.ppuaddrFull = domain.Address(uint16(r.ppuaddrFull) + v)
-	log.Trace("PPURegisters.update[PPUADDR Full] %#v => %#v", old, r.ppuaddrFull)
+// Increment ...
+func (a *PPUAddr) Increment(v uint16) {
+	old := a.full
+	a.full = domain.Address(uint16(a.full) + v)
+	log.Trace("PPUAddr.update %#v => %#v", old, a.full)
 }
 
-// GetFullPPUADDR ...
-func (r *PPURegisters) GetFullPPUADDR() domain.Address {
-	return r.ppuaddrFull
+// ToFullAddress ...
+func (a *PPUAddr) ToFullAddress() domain.Address {
+	return a.full
 }
 
 // PPUCtrl ...

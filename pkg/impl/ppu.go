@@ -60,9 +60,9 @@ func (p *PPU) SetBus(b domain.Bus) {
 // incrementPPUADDR
 func (p *PPU) incrementPPUADDR() {
 	if p.registers.PPUCtrl.VRAMAddressIncrementMode == 0 {
-		p.registers.IncrementPPUADDR(1)
+		p.registers.PPUAddr.Increment(1)
 	} else {
-		p.registers.IncrementPPUADDR(32)
+		p.registers.PPUAddr.Increment(32)
 	}
 }
 
@@ -119,7 +119,7 @@ func (p *PPU) ReadRegisters(addr domain.Address) (byte, error) {
 		target = "PPUADDR"
 		err = xerrors.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
 	case 7:
-		ppuaddr := p.registers.GetFullPPUADDR()
+		ppuaddr := p.registers.PPUAddr.ToFullAddress()
 		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", ppuaddr)
 		data, err = p.bus.ReadByPPU(ppuaddr)
 		p.incrementPPUADDR()
@@ -178,9 +178,9 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		p.registers.PPUScroll = data
 		target = "PPUSCROLL"
 	case 6:
-		p.registers.WritePPUADDR(data)
+		p.registers.PPUAddr.Set(data)
 	case 7:
-		ppuaddr := p.registers.GetFullPPUADDR()
+		ppuaddr := p.registers.PPUAddr.ToFullAddress()
 		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", ppuaddr)
 		err = p.bus.WriteByPPU(ppuaddr, data)
 		p.incrementPPUADDR()
