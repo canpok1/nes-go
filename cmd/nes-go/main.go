@@ -48,7 +48,7 @@ func main() {
 
 	bus := impl.NewBus()
 	cpu := impl.NewCPU()
-	ppu, err := impl.NewPPU()
+	ppu, err := impl.NewPPU2()
 	if err != nil {
 		return
 	}

@@ -404,7 +404,7 @@ func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 	}
 
 	// 0x2400～0x27BF	0x03C0	ネームテーブル1
-	if addrTmp >= 0x2400 && addrTmp <= 0x03C0 {
+	if addrTmp >= 0x2400 && addrTmp <= 0x27BF {
 		data = b.vram.NameTable1[addrTmp-0x2400]
 		target = "NameTable1"
 		return
@@ -425,7 +425,7 @@ func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 	}
 
 	// 0x2BC0～0x2BFF	0x0040	属性テーブル2
-	if addrTmp >= 0x2BC0 && addrTmp <= 0x0040 {
+	if addrTmp >= 0x2BC0 && addrTmp <= 0x2BFF {
 		data = b.vram.AttributeTable2[addrTmp-0x2BC0]
 		target = "AttributeTable2"
 		return

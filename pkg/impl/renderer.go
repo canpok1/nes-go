@@ -75,6 +75,26 @@ func (m *Renderer) Render(s *domain.Screen) error {
 func toPixels(s *domain.Screen) []byte {
 	pixels := make([]byte, 4*domain.ResolutionHeight*domain.ResolutionWidth)
 
+	if s.Images != nil {
+		idx := 0
+		for _, line := range s.Images {
+			for _, pixel := range line {
+				pixels[idx] = pixel.R
+				idx++
+
+				pixels[idx] = pixel.G
+				idx++
+
+				pixels[idx] = pixel.B
+				idx++
+
+				pixels[idx] = pixel.A
+				idx++
+			}
+		}
+		return pixels
+	}
+
 	// タイルを描画
 	idx := 0
 	for y := uint16(0); y < domain.ResolutionHeight; y++ {

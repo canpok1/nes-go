@@ -9,6 +9,21 @@ const (
 	SpriteWidth = 8
 	// SpriteHeight ... スプライトサイズ（横）
 	SpriteHeight = 8
+
+	// TileWidth ... タイルサイズ（横）
+	TileWidth = 8
+	// TileHeight ... タイルサイズ（縦）
+	TileHeight = 8
+
+	// NameTableWidth ... ネームテーブルサイズ（横）
+	NameTableWidth = ResolutionWidth / TileWidth
+	// NameTableHeight ... ネームテーブルサイズ（縦）
+	NameTableHeight = ResolutionHeight / TileHeight
+	// NameTableBaseAddress ... ネームテーブルの基準アドレス(ネームテーブル0の開始アドレス)
+	NameTableBaseAddress = uint16(0x2000)
+
+	// AttributeTableBaseAddress ... 属性テーブルの基準アドレス(属性テーブル0の開始アドレス)
+	AttributeTableBaseAddress = NameTableBaseAddress + NameTableWidth*NameTableHeight
 )
 
 var colors = [][]byte{
