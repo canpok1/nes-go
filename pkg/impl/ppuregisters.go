@@ -13,7 +13,7 @@ type PPURegisters struct {
 	PPUStatus *PPUStatus // 0x2002	PPUSTATUS	R	PPUステータス	PPUのステータス
 	OAMAddr   byte       // 0x2003	OAMADDR	W	スプライトメモリデータ	書き込むスプライト領域のアドレス
 	OAMData   byte       // 0x2004	OAMDATA	RW	デシマルモード	スプライト領域のデータ
-	PPUScroll byte       // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
+	PPUScroll *PPUScroll // 0x2005	PPUSCROLL	W	背景スクロールオフセット	背景スクロール値
 	PPUAddr   *PPUAddr   // 0x2006	PPUADDR	W	PPUメモリアドレス	書き込むPPUメモリ領域のアドレス
 	OAMDMA    byte       // 0x4014  OAMDMA W
 
@@ -46,9 +46,13 @@ func NewPPURegisters() *PPURegisters {
 		PPUStatus: &PPUStatus{
 			VBlankHasStarted: false,
 		},
-		OAMAddr:   0,
-		OAMData:   0,
-		PPUScroll: 0,
+		OAMAddr: 0,
+		OAMData: 0,
+		PPUScroll: &PPUScroll{
+			buf:     nil,
+			vOffset: 0,
+			hOffset: 0,
+		},
 		PPUAddr: &PPUAddr{
 			writeCount: 0,
 			buf:        0,
@@ -71,6 +75,34 @@ func (r PPURegisters) String() string {
 		r.PPUAddr,
 		r.OAMDMA,
 	)
+}
+
+// PPUScroll ...
+type PPUScroll struct {
+	buf     *byte
+	vOffset byte
+	hOffset byte
+}
+
+// Set ...
+func (s *PPUScroll) Set(data byte) {
+	if s.buf == nil {
+		s.buf = &data
+		return
+	}
+	s.vOffset = *s.buf
+	s.hOffset = data
+	s.buf = nil
+}
+
+// GetVOffset ...
+func (s *PPUScroll) GetVOffset() byte {
+	return s.vOffset
+}
+
+// GetHOffset ...
+func (s *PPUScroll) GetHOffset() byte {
+	return s.hOffset
 }
 
 // PPUAddr ...

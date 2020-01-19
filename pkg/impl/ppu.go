@@ -175,7 +175,7 @@ func (p *PPU) WriteRegisters(addr domain.Address, data byte) error {
 		p.registers.OAMAddr = p.registers.OAMAddr + 1
 		target = "OAMDATA"
 	case 5:
-		p.registers.PPUScroll = data
+		p.registers.PPUScroll.Set(data)
 		target = "PPUSCROLL"
 	case 6:
 		p.registers.PPUAddr.Set(data)
