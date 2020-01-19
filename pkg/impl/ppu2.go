@@ -304,22 +304,24 @@ func (p *PPU2) updatePixel() {
 		return
 	}
 
-	attrL := p.attributeRegisterL.GetLow() & 0x01
-	attrH := p.attributeRegisterH.GetLow() & 0x01
-	attr := (attrH << 1) | attrL
+	if p.registers.PPUMask.EnableBackground {
+		attrL := p.attributeRegisterL.GetLow() & 0x01
+		attrH := p.attributeRegisterH.GetLow() & 0x01
+		attr := (attrH << 1) | attrL
 
-	palette := p.bus.GetPalette(attr)
+		palette := p.bus.GetPalette(attr)
 
-	patternL := p.patternRegisterL.GetLow() & 0x01
-	patternH := p.patternRegisterH.GetLow() & 0x01
-	pattern := (patternH << 1) | patternL
+		patternL := p.patternRegisterL.GetLow() & 0x01
+		patternH := p.patternRegisterH.GetLow() & 0x01
+		pattern := (patternH << 1) | patternL
+
+		r, g, b := palette.GetColor(pattern)
+		p.images[y][x] = color.RGBA{R: r, G: g, B: b, A: 0xFF}
+
+		log.Trace("PPU[%v,%v]update pixel completed (x,y)=(%v,%v), attr=%v, (r,g,b)=(%v,%v,%v)", p.dot, p.scanline, x, y, attr, r, g, b)
+	}
 
 	// TODO スプライトと合成する
-
-	r, g, b := palette.GetColor(pattern)
-	p.images[y][x] = color.RGBA{R: r, G: g, B: b, A: 0xFF}
-
-	log.Trace("PPU[%v,%v]update pixel completed (x,y)=(%v,%v), attr=%v, (r,g,b)=(%v,%v,%v)", p.dot, p.scanline, x, y, attr, r, g, b)
 }
 
 func (p *PPU2) incrementHorizontal() error {
@@ -415,11 +417,6 @@ func (p *PPU2) clearFlags() error {
 func (p *PPU2) run1Cycle() error {
 	log.Trace("PPU[%v,%v] run start", p.dot, p.scanline)
 	defer log.Trace("PPU[%v,%v] run end: internal register : %#v", p.dot, p.scanline, *p.internalRegisters)
-
-	if !p.registers.PPUMask.EnableBackground && !p.registers.PPUMask.EnableSprite {
-		log.Trace("PPU[%v,%v] run skip, Background and Sprite are Disable (PPUMask: %#v)", p.dot, p.scanline, *p.registers.PPUMask)
-		return nil
-	}
 
 	p.shift()
 	p.setNextData()
