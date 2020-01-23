@@ -25,7 +25,7 @@ type Renderer struct {
 }
 
 // NewRenderer ...
-func NewRenderer(scale float64, title string, enableDebugPrint bool) (*Renderer, error) {
+func NewRenderer(scale float64, title string, enableDebugPrint bool) (domain.Renderer, error) {
 	imageBuf, err := ebiten.NewImage(domain.ResolutionWidth, domain.ResolutionHeight, ebiten.FilterDefault)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to NewMonitor; err: %w", err)

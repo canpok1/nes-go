@@ -34,5 +34,6 @@ type Bus interface {
 
 // Renderer ...
 type Renderer interface {
+	Run() error
 	Render(*Screen) error
 }

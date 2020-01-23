@@ -41,25 +41,13 @@ func main() {
 	romPath := os.Args[1]
 	log.Info("rom: %v", romPath)
 
-	rom, err := domain.FetchROM(romPath)
-	if err != nil {
-		panic(err)
-	}
-
 	bus := impl.NewBus()
 	cpu := impl.NewCPU()
 	ppu, err := impl.NewPPU2()
 	if err != nil {
 		return
 	}
-	vram := domain.NewVRAM()
-
-	bus.Setup(rom, ppu, cpu, vram, makePad1(), makePad2())
-
-	cpu.SetBus(bus)
-	ppu.SetBus(bus)
-
-	r, err := impl.NewRenderer(
+	renderer, err := impl.NewRenderer(
 		SCALE,
 		"nes-go",
 		ENABLE_DEBUG_PRINT,
@@ -68,35 +56,18 @@ func main() {
 		return
 	}
 
-	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				log.Fatal("process error: %+v", err)
-			} else {
-				log.Info("process end")
-			}
-		}()
-		for {
-			cycle, err := cpu.Run()
-			if err != nil {
-				panic(err)
-			}
+	nes := domain.NES{
+		Bus:      bus,
+		CPU:      cpu,
+		PPU:      ppu,
+		Pad1:     makePad1(),
+		Pad2:     makePad2(),
+		Renderer: renderer,
+	}
 
-			screen, err := ppu.Run(cycle * 3)
-			if err != nil {
-				panic(err)
-			}
-
-			if screen != nil {
-				err = r.Render(screen)
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
-	}()
-
-	err = r.Run()
+	if err := nes.Run(romPath); err != nil {
+		panic(err)
+	}
 }
 
 func makePad1() domain.Pad {
