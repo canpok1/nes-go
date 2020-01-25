@@ -16,15 +16,7 @@ type PPU2 struct {
 	internalRegisters *component.PPUInternalRegisters
 	bus               domain.Bus
 
-	patternRegisterL   *component.ShiftRegister16bit
-	patternRegisterH   *component.ShiftRegister16bit
-	attributeRegisterL *component.ShiftRegister16bit
-	attributeRegisterH *component.ShiftRegister16bit
-
-	nextTileIndex      byte
-	nextAttributeTable byte
-	nextTilePatternL   byte
-	nextTilePatternH   byte
+	bgController *component.BackgroundController
 
 	images [][]color.RGBA
 
@@ -45,22 +37,15 @@ func NewPPU2() (domain.PPU, error) {
 	}
 
 	return &PPU2{
-		registers:          component.NewPPURegisters(),
-		internalRegisters:  component.NewPPUInnerRegisters(),
-		patternRegisterL:   &component.ShiftRegister16bit{},
-		patternRegisterH:   &component.ShiftRegister16bit{},
-		attributeRegisterL: &component.ShiftRegister16bit{},
-		attributeRegisterH: &component.ShiftRegister16bit{},
-		nextTileIndex:      0,
-		nextAttributeTable: 0,
-		nextTilePatternL:   0,
-		nextTilePatternH:   0,
-		images:             images,
-		dot:                0,
-		scanline:           261, // Pre-render line
-		oam:                component.NewPPUOAM(),
-		enableOAMDMA:       false,
-		rendered:           false,
+		registers:         component.NewPPURegisters(),
+		internalRegisters: component.NewPPUInnerRegisters(),
+		bgController:      component.NewBackgroundController(),
+		images:            images,
+		dot:               0,
+		scanline:          261, // Pre-render line
+		oam:               component.NewPPUOAM(),
+		enableOAMDMA:      false,
+		rendered:          false,
 	}, nil
 }
 
@@ -75,6 +60,7 @@ func (p *PPU2) String() string {
 // SetBus ...
 func (p *PPU2) SetBus(b domain.Bus) {
 	p.bus = b
+	p.bgController.SetBus(b)
 }
 
 // incrementPPUADDR
@@ -240,10 +226,7 @@ func (p *PPU2) shift() {
 		return
 	}
 
-	p.patternRegisterL.Shift()
-	p.patternRegisterH.Shift()
-	p.attributeRegisterL.Shift()
-	p.attributeRegisterH.Shift()
+	p.bgController.Shift()
 
 	log.Trace("PPU[%v,%v]shift completed", p.dot, p.scanline)
 }
@@ -270,19 +253,8 @@ func (p *PPU2) setNextData() {
 		return
 	}
 
-	p.patternRegisterL.SetHigh(swapbit(p.nextTilePatternL))
-	p.patternRegisterH.SetHigh(swapbit(p.nextTilePatternH))
-
 	attrIdx := p.internalRegisters.GetAttributeIndex()
-	attr := (p.nextAttributeTable & (0x03 << attrIdx)) >> attrIdx
-
-	// 1タイルにおける属性（適用するパレット番号）は同じなので全ビットを揃える
-	if (attr & 0x01) == 0x01 {
-		p.attributeRegisterL.SetHigh(0xFF)
-	}
-	if (attr & 0x02) == 0x02 {
-		p.attributeRegisterH.SetHigh(0xFF)
-	}
+	p.bgController.SetupNextData(attrIdx)
 
 	log.Trace("PPU[%v,%v]set next data completed", p.dot, p.scanline)
 }
@@ -306,20 +278,10 @@ func (p *PPU2) updatePixel() {
 	}
 
 	if p.registers.PPUMask.EnableBackground {
-		attrL := p.attributeRegisterL.GetLow() & 0x01
-		attrH := p.attributeRegisterH.GetLow() & 0x01
-		attr := (attrH << 1) | attrL
+		pixel := p.bgController.MakePixel()
+		p.images[y][x] = pixel
 
-		palette := p.bus.GetPalette(attr)
-
-		patternL := p.patternRegisterL.GetLow() & 0x01
-		patternH := p.patternRegisterH.GetLow() & 0x01
-		pattern := (patternH << 1) | patternL
-
-		r, g, b := palette.GetColor(pattern)
-		p.images[y][x] = color.RGBA{R: r, G: g, B: b, A: 0xFF}
-
-		log.Trace("PPU[%v,%v]update pixel completed (x,y)=(%v,%v), attr=%v, (r,g,b)=(%v,%v,%v)", p.dot, p.scanline, x, y, attr, r, g, b)
+		log.Trace("PPU[%v,%v]update pixel completed (x,y)=(%v,%v), (r,g,b)=(%v,%v,%v)", p.dot, p.scanline, x, y, pixel.R, pixel.G, pixel.B)
 	}
 
 	// TODO スプライトと合成する
@@ -351,11 +313,11 @@ func (p *PPU2) fetchNTByte() error {
 	addr := p.internalRegisters.GetTileIndexAddress()
 
 	var err error
-	if p.nextTileIndex, err = p.bus.ReadByPPU(addr); err != nil {
+	if p.bgController.NextTileIndex, err = p.bus.ReadByPPU(addr); err != nil {
 		return xerrors.Errorf(": %w", err)
 	}
 
-	log.Trace("PPU[%v,%v] fetch NT byte (addr: %#v) => %#v", p.dot, p.scanline, addr, p.nextTileIndex)
+	log.Trace("PPU[%v,%v] fetch NT byte (addr: %#v) => %#v", p.dot, p.scanline, addr, p.bgController.NextTileIndex)
 	return nil
 }
 
@@ -365,39 +327,39 @@ func (p *PPU2) fetchATByte() error {
 	addr := p.internalRegisters.GetAttributeAddress()
 
 	var err error
-	if p.nextAttributeTable, err = p.bus.ReadByPPU(addr); err != nil {
+	if p.bgController.NextAttributeTable, err = p.bus.ReadByPPU(addr); err != nil {
 		return xerrors.Errorf(": %w", err)
 	}
 
-	log.Trace("PPU[%v,%v] fetch AT byte (addr: %#v) => %#v", p.dot, p.scanline, addr, p.nextAttributeTable)
+	log.Trace("PPU[%v,%v] fetch AT byte (addr: %#v) => %#v", p.dot, p.scanline, addr, p.bgController.NextAttributeTable)
 	return nil
 }
 
 func (p *PPU2) fetchLowBGTileByte() error {
 	log.Trace("PPU[%v,%v] fetch Low BG Tile byte ...", p.dot, p.scanline)
 
-	addr := p.internalRegisters.GetTilePatternLowAddress(p.nextTileIndex)
+	addr := p.internalRegisters.GetTilePatternLowAddress(p.bgController.NextTileIndex)
 
 	var err error
-	if p.nextTilePatternL, err = p.bus.ReadByPPU(addr); err != nil {
+	if p.bgController.NextTilePatternL, err = p.bus.ReadByPPU(addr); err != nil {
 		return xerrors.Errorf(": %w", err)
 	}
 
-	log.Trace("PPU[%v,%v] fetch Low BG Tile byte (addr: %#v) => %#v", p.dot, p.scanline, addr, p.nextTilePatternL)
+	log.Trace("PPU[%v,%v] fetch Low BG Tile byte (addr: %#v) => %#v", p.dot, p.scanline, addr, p.bgController.NextTilePatternL)
 	return nil
 }
 
 func (p *PPU2) fetchHighBGTileByte() error {
 	log.Trace("PPU[%v,%v] fetch High BG Tile byte ...", p.dot, p.scanline)
 
-	addr := p.internalRegisters.GetTilePatternHighAddress(p.nextTileIndex)
+	addr := p.internalRegisters.GetTilePatternHighAddress(p.bgController.NextTileIndex)
 
 	var err error
-	if p.nextTilePatternH, err = p.bus.ReadByPPU(addr); err != nil {
+	if p.bgController.NextTilePatternH, err = p.bus.ReadByPPU(addr); err != nil {
 		return xerrors.Errorf(": %w", err)
 	}
 
-	log.Trace("PPU[%v,%v] fetch High BG Tile byte (addr: %#v) => %#v", p.dot, p.scanline, addr, p.nextTilePatternH)
+	log.Trace("PPU[%v,%v] fetch High BG Tile byte (addr: %#v) => %#v", p.dot, p.scanline, addr, p.bgController.NextTilePatternH)
 	return nil
 }
 
