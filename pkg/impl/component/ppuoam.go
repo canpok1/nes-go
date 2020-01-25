@@ -1,4 +1,4 @@
-package impl
+package component
 
 import "nes-go/pkg/domain"
 

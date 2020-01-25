@@ -12,8 +12,8 @@ import (
 
 // PPU2 ...
 type PPU2 struct {
-	registers         *PPURegisters
-	internalRegisters *PPUInternalRegisters
+	registers         *component.PPURegisters
+	internalRegisters *component.PPUInternalRegisters
 	bus               domain.Bus
 
 	patternRegisterL   *component.ShiftRegister16bit
@@ -31,7 +31,7 @@ type PPU2 struct {
 	dot      uint16
 	scanline uint16
 
-	oam          *PPUOAM
+	oam          *component.PPUOAM
 	enableOAMDMA bool
 
 	rendered bool
@@ -45,8 +45,8 @@ func NewPPU2() (domain.PPU, error) {
 	}
 
 	return &PPU2{
-		registers:          NewPPURegisters(),
-		internalRegisters:  NewPPUInnerRegisters(),
+		registers:          component.NewPPURegisters(),
+		internalRegisters:  component.NewPPUInnerRegisters(),
 		patternRegisterL:   &component.ShiftRegister16bit{},
 		patternRegisterH:   &component.ShiftRegister16bit{},
 		attributeRegisterL: &component.ShiftRegister16bit{},
@@ -58,7 +58,7 @@ func NewPPU2() (domain.PPU, error) {
 		images:             images,
 		dot:                0,
 		scanline:           261, // Pre-render line
-		oam:                NewPPUOAM(),
+		oam:                component.NewPPUOAM(),
 		enableOAMDMA:       false,
 		rendered:           false,
 	}, nil

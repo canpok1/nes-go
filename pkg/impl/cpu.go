@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"nes-go/pkg/domain"
+	"nes-go/pkg/impl/component"
 	"nes-go/pkg/log"
 
 	"golang.org/x/xerrors"
@@ -62,7 +63,7 @@ func (s *CPUStack) Pop() (byte, error) {
 
 // CPU ...
 type CPU struct {
-	registers   *CPURegisters
+	registers   *component.CPURegisters
 	bus         domain.Bus
 	shouldReset bool
 	shouldNMI   bool
@@ -74,7 +75,7 @@ type CPU struct {
 // NewCPU ...
 func NewCPU() domain.CPU {
 	return &CPU{
-		registers:       NewCPURegisters(),
+		registers:       component.NewCPURegisters(),
 		shouldReset:     true,
 		shouldNMI:       false,
 		stack:           NewCPUStack(),

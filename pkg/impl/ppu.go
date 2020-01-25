@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"nes-go/pkg/domain"
+	"nes-go/pkg/impl/component"
 	"nes-go/pkg/log"
 
 	"golang.org/x/xerrors"
@@ -11,14 +12,14 @@ import (
 
 // PPU ...
 type PPU struct {
-	registers *PPURegisters
+	registers *component.PPURegisters
 	bus       domain.Bus
 
 	tileImages [][]domain.TileImage
 
 	drawingPoint *image.Point
 
-	oam *PPUOAM
+	oam *component.PPUOAM
 
 	enableOAMDMA bool
 }
@@ -36,10 +37,10 @@ func NewPPU() (domain.PPU, error) {
 	}
 
 	return &PPU{
-		registers:    NewPPURegisters(),
+		registers:    component.NewPPURegisters(),
 		tileImages:   tileImages,
 		drawingPoint: &image.Point{0, 0},
-		oam:          NewPPUOAM(),
+		oam:          component.NewPPUOAM(),
 		enableOAMDMA: false,
 	}, nil
 }
