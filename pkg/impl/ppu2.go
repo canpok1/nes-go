@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"nes-go/pkg/domain"
+	"nes-go/pkg/impl/component"
 	"nes-go/pkg/log"
 
 	"golang.org/x/xerrors"
@@ -15,10 +16,10 @@ type PPU2 struct {
 	internalRegisters *PPUInternalRegisters
 	bus               domain.Bus
 
-	patternRegisterL   *ShiftRegister16bit
-	patternRegisterH   *ShiftRegister16bit
-	attributeRegisterL *ShiftRegister16bit
-	attributeRegisterH *ShiftRegister16bit
+	patternRegisterL   *component.ShiftRegister16bit
+	patternRegisterH   *component.ShiftRegister16bit
+	attributeRegisterL *component.ShiftRegister16bit
+	attributeRegisterH *component.ShiftRegister16bit
 
 	nextTileIndex      byte
 	nextAttributeTable byte
@@ -46,10 +47,10 @@ func NewPPU2() (domain.PPU, error) {
 	return &PPU2{
 		registers:          NewPPURegisters(),
 		internalRegisters:  NewPPUInnerRegisters(),
-		patternRegisterL:   &ShiftRegister16bit{},
-		patternRegisterH:   &ShiftRegister16bit{},
-		attributeRegisterL: &ShiftRegister16bit{},
-		attributeRegisterH: &ShiftRegister16bit{},
+		patternRegisterL:   &component.ShiftRegister16bit{},
+		patternRegisterH:   &component.ShiftRegister16bit{},
+		attributeRegisterL: &component.ShiftRegister16bit{},
+		attributeRegisterH: &component.ShiftRegister16bit{},
 		nextTileIndex:      0,
 		nextAttributeTable: 0,
 		nextTilePatternL:   0,
