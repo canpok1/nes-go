@@ -345,7 +345,7 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 		f1 := op[0]
 		f2 := op[1]
 
-		dest := domain.Address((uint16(f2) << 8) + uint16(f1))
+		dest := domain.Address((uint16(f2) << 8) | uint16(f1))
 		nextDest := dest + 1
 
 		var addrL byte
@@ -362,7 +362,7 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 			return
 		}
 
-		addr = domain.Address((uint16(addrH) << 8) + uint16(addrL))
+		addr = domain.Address((uint16(addrH) << 8) | uint16(addrL))
 		return
 	default:
 		err = xerrors.Errorf("failed to make address, AddressingMode is not supported; mode: %#v", mode)
@@ -492,7 +492,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 				return
 			}
 		}
-		ans := int16(int8(c.registers.A)) + int16(int8(b))
+		ans := int16(int8(c.registers.A)) | int16(int8(b))
 		if c.registers.P.Carry {
 			ans = ans + 1
 		}
@@ -690,7 +690,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		}
 		c.registers.A = b >> 1
 		if c.registers.P.Carry {
-			c.registers.A = c.registers.A + 0x80
+			c.registers.A = c.registers.A | 0x80
 		}
 
 		c.registers.P.UpdateN(c.registers.A)
@@ -813,7 +813,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
-		c.registers.PC = (uint16(h) << 8) + uint16(l)
+		c.registers.PC = (uint16(h) << 8) | uint16(l)
 		return
 	case domain.BRK:
 		c.registers.P.BreakMode = true
@@ -836,7 +836,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
-		c.registers.PC = (uint16(h) << 8) + uint16(l)
+		c.registers.PC = (uint16(h) << 8) | uint16(l)
 		return
 	case domain.CMP:
 		var b byte
