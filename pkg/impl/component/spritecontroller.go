@@ -100,10 +100,10 @@ func (s *SpriteController) EvaluateSprite(scanline uint16) {
 		X:         s.oam[idx+3],
 	}
 
-	if y >= top && y <= btm && sprite.X < 255 {
+	if top != 1 && y >= top && y <= btm {
 		// セカンダリにコピー
 		s.oam2[s.secondarySize] = sprite
-		log.Info("copy to secondaryOAM; scanline: %v, sprite: %v", scanline, s.oam2[s.secondarySize])
+		log.Trace("SpriteController.EvaluateSprite[%v]copy to secondaryOAM; sprite: %v", scanline, s.oam2[s.secondarySize])
 
 		s.secondarySize++
 	}
