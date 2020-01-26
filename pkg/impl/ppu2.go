@@ -17,13 +17,13 @@ type PPU2 struct {
 	bus               domain.Bus
 
 	bgController *component.BackgroundController
+	spController *component.SpriteController
 
 	images [][]color.RGBA
 
 	dot      uint16
 	scanline uint16
 
-	oam          *component.PPUOAM
 	enableOAMDMA bool
 
 	rendered bool
@@ -40,10 +40,10 @@ func NewPPU2() (domain.PPU, error) {
 		registers:         component.NewPPURegisters(),
 		internalRegisters: component.NewPPUInnerRegisters(),
 		bgController:      component.NewBackgroundController(),
+		spController:      component.NewSpriteController(),
 		images:            images,
 		dot:               0,
 		scanline:          261, // Pre-render line
-		oam:               component.NewPPUOAM(),
 		enableOAMDMA:      false,
 		rendered:          false,
 	}, nil
@@ -61,6 +61,7 @@ func (p *PPU2) String() string {
 func (p *PPU2) SetBus(b domain.Bus) {
 	p.bus = b
 	p.bgController.SetBus(b)
+	p.spController.SetBus(b)
 }
 
 // incrementPPUADDR
@@ -171,7 +172,7 @@ func (p *PPU2) WriteRegisters(addr domain.Address, data byte) error {
 		p.registers.OAMAddr = data
 		target = "OAMADDR"
 	case 4:
-		p.oam.Write(p.registers.OAMAddr, data)
+		p.spController.WriteOAM(p.registers.OAMAddr, data)
 		p.registers.OAMAddr = p.registers.OAMAddr + 1
 		target = "OAMDATA"
 	case 5:
@@ -206,7 +207,7 @@ func (p *PPU2) execOAMDMA() error {
 			return err
 		}
 
-		p.oam.Write(uint8(readAddrL), readData)
+		p.spController.WriteOAM(uint8(readAddrL), readData)
 	}
 	return nil
 }
@@ -277,14 +278,36 @@ func (p *PPU2) updatePixel() {
 		return
 	}
 
-	if p.registers.PPUMask.EnableBackground {
-		pixel := p.bgController.MakePixel()
-		p.images[y][x] = pixel
+	var bgPixel, spPixel color.RGBA
+	var spAttr byte
 
-		log.Trace("PPU[%v,%v]update pixel completed (x,y)=(%v,%v), (r,g,b)=(%v,%v,%v)", p.dot, p.scanline, x, y, pixel.R, pixel.G, pixel.B)
+	if p.registers.PPUMask.EnableBackground {
+		bgPixel = p.bgController.MakePixel()
+
+	}
+	if p.registers.PPUMask.EnableSprite {
+		spPixel, spAttr = p.spController.MakePixel()
 	}
 
-	// TODO スプライトと合成する
+	if bgPixel.A == 0 && spPixel.A == 0 {
+		p.images[y][x] = color.RGBA{R: 0, G: 0, B: 0, A: 0xFF}
+		return
+	}
+	if bgPixel.A == 0 && spPixel.A != 0 {
+		p.images[y][x] = spPixel
+		return
+	}
+	if bgPixel.A != 0 && spPixel.A == 0 {
+		p.images[y][x] = bgPixel
+		return
+	}
+	if (spAttr & 0x08) == 0x08 {
+		p.images[y][x] = bgPixel
+		return
+	}
+	p.images[y][x] = spPixel
+
+	//log.Trace("PPU[%v,%v]update pixel completed (x,y)=(%v,%v), (r,g,b)=(%v,%v,%v)", p.dot, p.scanline, x, y, pixel.R, pixel.G, pixel.B)
 }
 
 func (p *PPU2) incrementHorizontal() error {
@@ -376,6 +399,63 @@ func (p *PPU2) clearFlags() error {
 	return nil
 }
 
+// clearSecondaryOAM ...
+func (p *PPU2) clearSecondaryOAM() error {
+	spriteIdx := (p.dot & 0x1C) >> 2
+	byteIdx := p.dot & 0x03
+	p.spController.ClearSecondaryOAM(spriteIdx, byteIdx)
+	return nil
+}
+
+// evaluateSprite ...
+func (p *PPU2) evaluateSprite() error {
+	p.spController.EvaluateSprite(p.scanline)
+	return nil
+}
+
+// fetchSprite ...
+func (p *PPU2) fetchSprite() error {
+	if (p.dot % 8) != 0 {
+		return nil
+	}
+
+	p.spController.FetchSprite(p.scanline, p.registers.PPUCtrl.SpritePatternTableIndex)
+	return nil
+}
+
+// updateSpriteController ...
+func (p *PPU2) updateSpriteController() error {
+
+	if p.scanline >= 240 && p.scanline <= 260 {
+		return nil
+	}
+
+	if p.scanline <= 239 && p.dot <= 255 {
+		p.spController.Shift()
+	}
+
+	if p.dot >= 1 && p.dot <= 64 {
+		if err := p.clearSecondaryOAM(); err != nil {
+			return xerrors.Errorf(": %w", err)
+		}
+		return nil
+	}
+	if p.dot >= 65 && p.dot <= 256 {
+		if err := p.evaluateSprite(); err != nil {
+			return xerrors.Errorf(": %w", err)
+		}
+		return nil
+	}
+	if p.dot >= 257 && p.dot <= 320 {
+		if err := p.fetchSprite(); err != nil {
+			return xerrors.Errorf(": %w", err)
+		}
+		return nil
+	}
+
+	return nil
+}
+
 // run1Cycle ...
 func (p *PPU2) run1Cycle() error {
 	log.Trace("PPU[%v,%v] run start", p.dot, p.scanline)
@@ -387,6 +467,10 @@ func (p *PPU2) run1Cycle() error {
 
 	// 次の仕様にしたがって更新
 	// http://wiki.nesdev.com/w/index.php/PPU_rendering
+
+	if err := p.updateSpriteController(); err != nil {
+		return xerrors.Errorf(": %w", err)
+	}
 
 	// Visible scanlines (0-239)
 	if p.scanline >= 0 && p.scanline <= 239 {
@@ -461,6 +545,12 @@ func (p *PPU2) run1Cycle() error {
 			}
 			return nil
 		}
+		if p.dot == 65 {
+			if err := p.evaluateSprite(); err != nil {
+				return xerrors.Errorf(": %w", err)
+			}
+		}
+
 		if p.dot == 257 {
 			if err := p.updateHorizontalToLeftEdge(); err != nil {
 				return xerrors.Errorf(": %w", err)
