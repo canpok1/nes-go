@@ -283,7 +283,6 @@ func (p *PPU2) updatePixel() {
 
 	if p.registers.PPUMask.EnableBackground {
 		bgPixel = p.bgController.MakePixel()
-
 	}
 	if p.registers.PPUMask.EnableSprite {
 		spPixel, spAttr = p.spController.MakePixel()
@@ -430,7 +429,7 @@ func (p *PPU2) updateSpriteController() error {
 		return nil
 	}
 
-	if p.scanline <= 239 && p.dot <= 255 {
+	if p.scanline <= 239 && p.dot >= 1 && p.dot <= 256 {
 		p.spController.Shift()
 	}
 
@@ -544,11 +543,6 @@ func (p *PPU2) run1Cycle() error {
 				return xerrors.Errorf(": %w", err)
 			}
 			return nil
-		}
-		if p.dot == 65 {
-			if err := p.evaluateSprite(); err != nil {
-				return xerrors.Errorf(": %w", err)
-			}
 		}
 
 		if p.dot == 257 {

@@ -85,16 +85,25 @@ func (s *SpriteController) EvaluateSprite(scanline uint16) {
 	}
 
 	idx := s.n << 2
-	top := uint16(s.oam[idx])
+	top := uint16(s.oam[idx]) + 1
 	btm := top + domain.SpriteHeight - 1
-	if scanline >= top && scanline <= btm {
+
+	var y uint16
+	if scanline <= 239 {
+		y = scanline + 1
+	}
+
+	sprite := domain.Sprite{
+		Y:         s.oam[idx],
+		TileIndex: s.oam[idx+1],
+		Attribute: s.oam[idx+2],
+		X:         s.oam[idx+3],
+	}
+
+	if y >= top && y <= btm && sprite.X < 255 {
 		// セカンダリにコピー
-		s.oam2[s.secondarySize] = domain.Sprite{
-			Y:         s.oam[idx],
-			TileIndex: s.oam[idx+1],
-			Attribute: s.oam[idx+2],
-			X:         s.oam[idx+3],
-		}
+		s.oam2[s.secondarySize] = sprite
+		log.Info("copy to secondaryOAM; scanline: %v, sprite: %v", scanline, s.oam2[s.secondarySize])
 
 		s.secondarySize++
 	}
@@ -115,17 +124,16 @@ func (s *SpriteController) FetchSprite(scanline uint16, patternTblIdx uint8) {
 		s.patternRegisterH[idx].Set(0xFF)
 		s.latches[idx] = 0xFF
 		s.counters[idx] = int16(0xFF)
-		return
+	} else {
+		sprite := s.oam2[idx]
+		yOffset := scanline - uint16(sprite.Y)
+		pattern := s.bus.GetTilePattern(patternTblIdx, sprite.TileIndex)
+
+		s.patternRegisterL[idx].Set(swapbit((*pattern)[yOffset]))
+		s.patternRegisterH[idx].Set(swapbit((*pattern)[yOffset+8]))
+		s.latches[idx] = sprite.Attribute
+		s.counters[idx] = int16(sprite.X)
 	}
-
-	sprite := s.oam2[idx]
-	yOffset := scanline - uint16(sprite.Y)
-	pattern := s.bus.GetTilePattern(patternTblIdx, sprite.TileIndex)
-
-	s.patternRegisterL[idx].Set(swapbit((*pattern)[yOffset]))
-	s.patternRegisterH[idx].Set(swapbit((*pattern)[yOffset+8]))
-	s.latches[idx] = sprite.Attribute
-	s.counters[idx] = int16(sprite.X)
 
 	s.fetchedCount++
 }
