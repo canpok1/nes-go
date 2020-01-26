@@ -25,10 +25,6 @@ func main() {
 	log.Debug("========================================")
 
 	defer func() {
-		err := recover()
-		if err != nil {
-			log.Fatal("%+v", err)
-		}
 		log.Debug("========================================")
 		log.Debug("program end")
 		log.Debug("========================================")

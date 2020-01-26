@@ -29,11 +29,7 @@ func (n *NES) Run(p string) error {
 
 	go func() {
 		defer func() {
-			if err := recover(); err != nil {
-				log.Fatal("process error: %+v", err)
-			} else {
-				log.Info("process end")
-			}
+			log.Info("process end")
 		}()
 		for {
 			cycle, err := n.CPU.Run()
