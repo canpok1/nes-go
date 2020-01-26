@@ -127,10 +127,18 @@ func (s *SpriteController) FetchSprite(scanline uint16, patternTblIdx uint8) {
 	} else {
 		sprite := s.oam2[idx]
 		yOffset := scanline - uint16(sprite.Y)
+		if (sprite.Attribute & 0x80) == 0x80 {
+			yOffset = domain.SpriteHeight - yOffset
+		}
 		pattern := s.bus.GetTilePattern(patternTblIdx, sprite.TileIndex)
 
-		s.patternRegisterL[idx].Set(swapbit((*pattern)[yOffset]))
-		s.patternRegisterH[idx].Set(swapbit((*pattern)[yOffset+8]))
+		if (sprite.Attribute & 0x40) == 0x40 {
+			s.patternRegisterL[idx].Set((*pattern)[yOffset])
+			s.patternRegisterH[idx].Set((*pattern)[yOffset+8])
+		} else {
+			s.patternRegisterL[idx].Set(swapbit((*pattern)[yOffset]))
+			s.patternRegisterH[idx].Set(swapbit((*pattern)[yOffset+8]))
+		}
 		s.latches[idx] = sprite.Attribute
 		s.counters[idx] = int16(sprite.X)
 	}
