@@ -14,6 +14,7 @@ const (
 	LOGLEVEL           = log.LevelInfo
 	SCALE              = 2.5
 	ENABLE_DEBUG_PRINT = true
+	FIRST_PC           = 0x0000
 )
 
 func main() {
@@ -35,10 +36,19 @@ func main() {
 	}
 
 	romPath := os.Args[1]
+
 	log.Info("rom: %v", romPath)
 
 	bus := impl.NewBus()
-	cpu := impl.NewCPU()
+
+	var cpu domain.CPU
+	if FIRST_PC == 0 {
+		cpu = impl.NewCPU(nil)
+	} else {
+		firstPC := uint16(FIRST_PC)
+		cpu = impl.NewCPU(&firstPC)
+	}
+
 	ppu, err := impl.NewPPU2()
 	if err != nil {
 		return

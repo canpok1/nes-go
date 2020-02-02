@@ -70,16 +70,19 @@ type CPU struct {
 	stack       *CPUStack
 
 	beforeNMIActive bool
+
+	firstPC    *uint16
 }
 
 // NewCPU ...
-func NewCPU() domain.CPU {
+func NewCPU(pc *uint16) domain.CPU {
 	return &CPU{
 		registers:       component.NewCPURegisters(),
 		shouldReset:     true,
 		shouldNMI:       false,
 		stack:           NewCPUStack(),
 		beforeNMIActive: false,
+		firstPC:         pc,
 	}
 }
 
@@ -401,17 +404,21 @@ func (c *CPU) interruptRESET() error {
 
 	c.registers.P.UpdateI(true)
 
-	l, err := c.bus.ReadByCPU(0xFFFC)
-	if err != nil {
-		return xerrors.Errorf("failed to reset: %w", err)
-	}
+	if c.firstPC != nil {
+		c.registers.UpdatePC(*c.firstPC)
+	} else {
+		l, err := c.bus.ReadByCPU(0xFFFC)
+		if err != nil {
+			return xerrors.Errorf("failed to reset: %w", err)
+		}
 
-	h, err := c.bus.ReadByCPU(0xFFFD)
-	if err != nil {
-		return xerrors.Errorf("failed to reset: %w", err)
-	}
+		h, err := c.bus.ReadByCPU(0xFFFD)
+		if err != nil {
+			return xerrors.Errorf("failed to reset: %w", err)
+		}
 
-	c.registers.UpdatePC((uint16(h) << 8) | uint16(l))
+		c.registers.UpdatePC((uint16(h) << 8) | uint16(l))
+	}
 
 	c.shouldReset = false
 	return nil
