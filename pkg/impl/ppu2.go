@@ -282,7 +282,7 @@ func (p *PPU2) updatePixel() {
 	var spAttr byte
 
 	if p.registers.PPUMask.EnableBackground {
-		bgPixel = p.bgController.MakePixel()
+		bgPixel = p.bgController.MakePixel(p.internalRegisters.GetFineX())
 	}
 	if p.registers.PPUMask.EnableSprite {
 		spPixel, spAttr = p.spController.MakePixel()
@@ -463,6 +463,8 @@ func (p *PPU2) run1Cycle() error {
 	p.shift()
 	p.setNextData()
 	p.updatePixel()
+
+	p.bus.SendNMI(p.registers.PPUCtrl.NMIEnable && p.registers.PPUStatus.VBlankHasStarted)
 
 	// 次の仕様にしたがって更新
 	// http://wiki.nesdev.com/w/index.php/PPU_rendering

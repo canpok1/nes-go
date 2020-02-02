@@ -365,3 +365,8 @@ func (p *PPUInternalRegisters) GetTilePatternHighAddress(tileIndex byte) domain.
 	offsetY := (p.v & 0x7000) >> 12
 	return domain.Address((uint16(tileIndex) << 4) | offsetY | 0x0008)
 }
+
+// GetFineX ...
+func (p *PPUInternalRegisters) GetFineX() byte {
+	return p.x
+}

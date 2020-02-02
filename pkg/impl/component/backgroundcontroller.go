@@ -64,15 +64,17 @@ func (b *BackgroundController) SetupNextData(attrIdx byte) {
 }
 
 // MakePixel ...
-func (b *BackgroundController) MakePixel() color.RGBA {
-	attrL := b.attributeRegisterL.GetLow() & 0x01
-	attrH := b.attributeRegisterH.GetLow() & 0x01
+func (b *BackgroundController) MakePixel(fineX uint8) color.RGBA {
+	shift := fineX
+
+	attrL := (b.attributeRegisterL.GetLow() & (0x01 << shift)) >> shift
+	attrH := (b.attributeRegisterH.GetLow() & (0x01 << shift)) >> shift
 	attr := (attrH << 1) | attrL
 
 	palette := b.bus.GetPalette(attr)
 
-	patternL := b.patternRegisterL.GetLow() & 0x01
-	patternH := b.patternRegisterH.GetLow() & 0x01
+	patternL := (b.patternRegisterL.GetLow() & (0x01 << shift)) >> shift
+	patternH := (b.patternRegisterH.GetLow() & (0x01 << shift)) >> shift
 	pattern := (patternH << 1) | patternL
 
 	red, green, blue := palette.GetColor(pattern)
