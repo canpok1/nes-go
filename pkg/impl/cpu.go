@@ -72,6 +72,7 @@ type CPU struct {
 	beforeNMIActive bool
 
 	firstPC    *uint16
+	executeLog *ExecuteLog
 }
 
 // NewCPU ...
@@ -83,6 +84,7 @@ func NewCPU(pc *uint16) domain.CPU {
 		stack:           NewCPUStack(),
 		beforeNMIActive: false,
 		firstPC:         pc,
+		executeLog:      &ExecuteLog{},
 	}
 }
 
@@ -102,8 +104,15 @@ func (c *CPU) SetBus(b domain.Bus) {
 
 // Run ...
 func (c *CPU) Run() (int, error) {
+	defer func() {
+		log.Debug(c.executeLog.String())
+	}()
+
 	log.Trace("===== CPU RUN =====")
 	log.Trace(c.String())
+
+	c.executeLog.Clear()
+	c.executeLog.SetRegisters(c.registers)
 
 	if c.shouldReset {
 		if err := c.interruptRESET(); err != nil {
@@ -191,6 +200,8 @@ func (c *CPU) fetch() (byte, error) {
 	}
 
 	c.registers.IncrementPC()
+
+	c.executeLog.FetchedValue = append(c.executeLog.FetchedValue, data)
 
 	return data, nil
 }
@@ -468,7 +479,9 @@ func (c *CPU) interruptIRQ() error {
 
 // exec ...
 func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (err error) {
-	log.Debug("CPU.exec[%v][%v][%#v] ...", mne, mode, op)
+	log.Trace("CPU.exec[%#x][%v][%v][%#v] ...", c.registers.PC, mne, mode, op)
+
+	c.executeLog.Mnemonic = mne
 
 	defer func() {
 		if err != nil {
@@ -1186,4 +1199,51 @@ func (c *CPU) ReceiveNMI(active bool) {
 		c.shouldNMI = true
 	}
 	c.beforeNMIActive = active
+}
+
+type ExecuteLog struct {
+	PC           uint16
+	FetchedValue []byte
+	Mnemonic     domain.Mnemonic
+	A            byte
+	X            byte
+	Y            byte
+	P            byte
+	SP           byte
+}
+
+func (e *ExecuteLog) Clear() {
+	e.PC = 0
+	e.FetchedValue = nil
+	e.Mnemonic = domain.NOP
+	e.A = 0
+	e.X = 0
+	e.Y = 0
+	e.P = 0
+	e.SP = 0
+}
+
+func (e *ExecuteLog) SetRegisters(r *component.CPURegisters) {
+	e.PC = r.PC
+	e.A = r.A
+	e.X = r.X
+	e.Y = r.Y
+	e.P = r.P.ToByte()
+	e.SP = r.S
+}
+
+func (e *ExecuteLog) String() string {
+	var fetchedValue string
+	switch len(e.FetchedValue) {
+	case 0:
+		fetchedValue = "         "
+	case 1:
+		fetchedValue = fmt.Sprintf("%02X       ", e.FetchedValue[0])
+	case 2:
+		fetchedValue = fmt.Sprintf("%02X %02X    ", e.FetchedValue[0], e.FetchedValue[1])
+	case 3:
+		fetchedValue = fmt.Sprintf("%02X %02X %02X ", e.FetchedValue[0], e.FetchedValue[1], e.FetchedValue[2])
+	}
+
+	return fmt.Sprintf("%04X %v %v A:%02X X:%02X Y:%02X P:%02X SP:%02X", e.PC, fetchedValue, e.Mnemonic, e.A, e.X, e.Y, e.P, e.SP)
 }
