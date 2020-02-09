@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Recorder ...
@@ -10,6 +11,8 @@ type Recorder struct {
 	FetchedValue   []byte
 	Mnemonic       Mnemonic
 	AddressingMode AddressingMode
+	Address        Address
+	Data           byte
 	A              byte
 	X              byte
 	Y              byte
@@ -36,23 +39,31 @@ func (e *Recorder) makeFetchedValueString() string {
 
 // makeOperandString ...
 func (e *Recorder) makeOperandString() string {
-	var v1, v2 byte
-
-	if len(e.FetchedValue) >= 2 {
-		v1 = e.FetchedValue[1]
-	}
-	if len(e.FetchedValue) >= 3 {
-		v2 = e.FetchedValue[2]
-	}
-
+	var operand string
 	switch e.AddressingMode {
-	case Absolute:
-		return fmt.Sprintf("$%02X%02X                      ", v2, v1)
+	case Accumulator:
 	case Immediate:
-		return fmt.Sprintf("#$%02X                       ", v1)
+		operand = fmt.Sprintf("#$%02X", e.Data)
+	case Absolute:
+		operand = fmt.Sprintf("$%04X", e.Address)
+	case ZeroPage:
+		operand = fmt.Sprintf("$%02X = 00", e.Address)
+	case IndexedZeroPageX:
+	case IndexedZeroPageY:
+	case IndexedAbsoluteX:
+	case IndexedAbsoluteY:
+	case Implied:
+	case Relative:
+		operand = fmt.Sprintf("$%04X", e.Address)
+	case IndexedIndirect:
+	case IndirectIndexed:
+	case AbsoluteIndirect:
 	default:
-		return ""
+		operand = ""
 	}
+
+	s := operand + strings.Repeat(" ", 27)
+	return s[0:27]
 }
 
 // String ...
