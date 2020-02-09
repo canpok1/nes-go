@@ -23,11 +23,13 @@ const (
 
 // Config ...
 type Config struct {
-	logLevel Level
+	logLevel         Level
+	enableLevelLabel bool
 }
 
 var config = Config{
-	logLevel: LevelDebug,
+	logLevel:         LevelDebug,
+	enableLevelLabel: true,
 }
 
 // SetOutput ...
@@ -40,11 +42,29 @@ func SetLogLevel(l Level) {
 	config.logLevel = l
 }
 
+// SetEnableLevelLabel ...
+func SetEnableLevelLabel(enable bool) {
+	config.enableLevelLabel = enable
+}
+
+// SetEnableTimestamp ...
+func SetEnableTimestamp(enable bool) {
+	if enable {
+		log.SetFlags(log.Flags() | log.Ldate | log.Ltime)
+	} else {
+		log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+	}
+}
+
 // print ...
 func print(level string, format string, v ...interface{}) {
-	f := "[%v]" + format
 	args := append([]interface{}{level}, v...)
-	log.Printf(f, args...)
+	if config.enableLevelLabel {
+		f := "[%v]" + format
+		log.Printf(f, args...)
+	} else {
+		log.Printf(format, args...)
+	}
 }
 
 // Fatal ...
