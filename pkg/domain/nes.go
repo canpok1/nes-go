@@ -14,7 +14,8 @@ type NES struct {
 	Renderer Renderer
 	Recorder *Recorder
 
-	ppuDelayCycle int
+	ppuDelayCycle  int
+	cpuBeforeCycle int
 }
 
 // Setup ...
@@ -40,13 +41,8 @@ func (n *NES) Setup(p string) error {
 
 // Run1Cycle ...
 func (n *NES) Run1Cycle() error {
-	cycle, err := n.CPU.Run()
-	if err != nil {
-		return err
-	}
-
 	if n.ppuDelayCycle <= 0 {
-		screen, err := n.PPU.Run(cycle * 3)
+		screen, err := n.PPU.Run(n.cpuBeforeCycle * 3)
 		if err != nil {
 			return err
 		}
@@ -58,10 +54,16 @@ func (n *NES) Run1Cycle() error {
 			}
 		}
 	} else {
-		n.ppuDelayCycle = n.ppuDelayCycle - cycle
+		n.ppuDelayCycle = n.ppuDelayCycle - n.cpuBeforeCycle
 	}
 
-	n.Recorder.Cycle = n.Recorder.Cycle + cycle
+	n.Recorder.Cycle = n.Recorder.Cycle + n.cpuBeforeCycle
+
+	cycle, err := n.CPU.Run()
+	if err != nil {
+		return err
+	}
+	n.cpuBeforeCycle = cycle
 
 	log.Debug(n.Recorder.String())
 

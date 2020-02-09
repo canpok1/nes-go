@@ -118,12 +118,13 @@ func (c *CPU) Run() (int, error) {
 	c.executeLog.Y = c.registers.Y
 	c.executeLog.P = c.registers.P.ToByte()
 	c.executeLog.SP = c.registers.S
+	c.executeLog.FetchedValue = nil
 
 	if c.shouldReset {
 		if err := c.interruptRESET(); err != nil {
 			return 0, xerrors.Errorf(": %w", err)
 		}
-		return 4, nil
+		return 7, nil
 	}
 
 	if c.shouldNMI {

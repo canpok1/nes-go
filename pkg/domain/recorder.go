@@ -48,6 +48,8 @@ func (e *Recorder) makeOperandString() string {
 	switch e.AddressingMode {
 	case Absolute:
 		return fmt.Sprintf("$%02X%02X                      ", v2, v1)
+	case Immediate:
+		return fmt.Sprintf("#$%02X                       ", v1)
 	default:
 		return ""
 	}

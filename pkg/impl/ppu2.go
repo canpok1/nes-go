@@ -45,7 +45,7 @@ func NewPPU2() domain.PPU {
 		spController:      component.NewSpriteController(),
 		images:            images,
 		dot:               0,
-		scanline:          261, // Pre-render line
+		scanline:          0,
 		enableOAMDMA:      false,
 		rendered:          false,
 		recorder:          &domain.Recorder{},
@@ -607,8 +607,10 @@ func (p *PPU2) run1Cycle() error {
 
 // Run ... 指定サイクル数だけ実行
 func (p *PPU2) Run(cycle int) (*domain.Screen, error) {
-	p.recorder.Dot = p.dot
-	p.recorder.Scanline = p.scanline
+	defer func() {
+		p.recorder.Dot = p.dot
+		p.recorder.Scanline = p.scanline
+	}()
 
 	for i := 0; i < cycle; i++ {
 		if p.enableOAMDMA {
