@@ -27,11 +27,8 @@ func main() {
 
 	firstPC := uint16(FIRST_PC)
 	cpu := impl.NewCPU(&firstPC)
+	ppu := impl.NewPPU2()
 
-	ppu, err := impl.NewPPU2()
-	if err != nil {
-		return
-	}
 	renderer, err := impl.NewRenderer(
 		SCALE,
 		"nes-go",
@@ -49,8 +46,11 @@ func main() {
 		Pad2:     makePad2(),
 		Renderer: renderer,
 	}
+	if err := nes.Setup(ROM_PATH); err != nil {
+		panic(err)
+	}
 
-	if err := nes.Run(ROM_PATH); err != nil {
+	if err := nes.Run(); err != nil {
 		panic(err)
 	}
 }

@@ -30,7 +30,7 @@ type PPU2 struct {
 }
 
 // NewPPU2 ...
-func NewPPU2() (domain.PPU, error) {
+func NewPPU2() domain.PPU {
 	images := make([][]color.RGBA, domain.ResolutionHeight)
 	for i := range images {
 		images[i] = make([]color.RGBA, domain.ResolutionWidth)
@@ -46,7 +46,7 @@ func NewPPU2() (domain.PPU, error) {
 		scanline:          261, // Pre-render line
 		enableOAMDMA:      false,
 		rendered:          false,
-	}, nil
+	}
 }
 
 // String ...
