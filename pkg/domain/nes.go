@@ -14,8 +14,8 @@ type NES struct {
 	Renderer Renderer
 }
 
-// Run ...
-func (n *NES) Run(p string) error {
+// Setup ...
+func (n *NES) Setup(p string) error {
 	rom, err := FetchROM(p)
 	if err != nil {
 		return err
@@ -27,6 +27,11 @@ func (n *NES) Run(p string) error {
 	n.CPU.SetBus(n.Bus)
 	n.PPU.SetBus(n.Bus)
 
+	return nil
+}
+
+// Run ...
+func (n *NES) Run() error {
 	go func() {
 		defer func() {
 			log.Info("process end")
@@ -51,7 +56,7 @@ func (n *NES) Run(p string) error {
 		}
 	}()
 
-	if err = n.Renderer.Run(); err != nil {
+	if err := n.Renderer.Run(); err != nil {
 		return err
 	}
 
