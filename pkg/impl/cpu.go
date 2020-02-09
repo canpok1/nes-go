@@ -386,7 +386,7 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 
 // InterruptNMI ...
 func (c *CPU) InterruptNMI() error {
-	log.Info("CPU.Interrupt[NMI] ...")
+	log.Trace("CPU.Interrupt[NMI] ...")
 
 	c.registers.P.BreakMode = false
 	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
@@ -411,7 +411,7 @@ func (c *CPU) InterruptNMI() error {
 
 // interruptRESET ...
 func (c *CPU) interruptRESET() error {
-	log.Info("CPU.Interrupt[RESET] ...")
+	log.Trace("CPU.Interrupt[RESET] ...")
 
 	c.registers.P.UpdateI(true)
 
@@ -437,7 +437,7 @@ func (c *CPU) interruptRESET() error {
 
 // interruptBRK ...
 func (c *CPU) interruptBRK() error {
-	log.Info("CPU.Interrupt[BRK] ...")
+	log.Trace("CPU.Interrupt[BRK] ...")
 
 	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
 	c.stack.Push(byte(c.registers.PC & 0x00FF))
@@ -458,7 +458,7 @@ func (c *CPU) interruptBRK() error {
 
 // interruptIRQ ...
 func (c *CPU) interruptIRQ() error {
-	log.Info("CPU.Interrupt[IRQ] ...")
+	log.Trace("CPU.Interrupt[IRQ] ...")
 
 	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
 	c.stack.Push(byte(c.registers.PC & 0x00FF))

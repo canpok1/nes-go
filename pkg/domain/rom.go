@@ -77,14 +77,14 @@ func parseROM(rom []byte) (*ROM, error) {
 		return nil, err
 	}
 
-	log.Debug("rom header: %#v", h)
+	log.Trace("rom header: %#v", h)
 
 	begin := 0x0010
 	prgromEnd := 0x0010 + int(h.PRGROMSize)*0x4000
 	chrromEnd := prgromEnd + int(h.CHRROMSize)*0x2000
 
-	log.Debug("prg-rom byte index: %#v-%#v", begin, (prgromEnd - 1))
-	log.Debug("chr-rom byte index: %#v-%#v", prgromEnd, (chrromEnd - 1))
+	log.Trace("prg-rom byte index: %#v-%#v", begin, (prgromEnd - 1))
+	log.Trace("chr-rom byte index: %#v-%#v", prgromEnd, (chrromEnd - 1))
 
 	p := PRGROM(rom[begin:prgromEnd])
 	c := CHRROM(rom[prgromEnd:chrromEnd])
@@ -97,7 +97,7 @@ func parseROM(rom []byte) (*ROM, error) {
 
 // FetchROM ...
 func FetchROM(romPath string) (*ROM, error) {
-	log.Info("fetch[rom]: %v", romPath)
+	log.Trace("fetch[rom]: %v", romPath)
 	f, err := readFile(romPath)
 	if err != nil {
 		return nil, xerrors.Errorf("failed fetch rom: %w", err)
