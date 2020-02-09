@@ -112,7 +112,6 @@ func (c *CPU) Run() (int, error) {
 	log.Trace("===== CPU RUN =====")
 	log.Trace(c.String())
 
-	c.executeLog.Clear()
 	c.executeLog.PC = c.registers.PC
 	c.executeLog.A = c.registers.A
 	c.executeLog.X = c.registers.X
@@ -124,7 +123,7 @@ func (c *CPU) Run() (int, error) {
 		if err := c.interruptRESET(); err != nil {
 			return 0, xerrors.Errorf(": %w", err)
 		}
-		return 0, nil
+		return 4, nil
 	}
 
 	if c.shouldNMI {

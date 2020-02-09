@@ -13,6 +13,8 @@ type NES struct {
 	Pad2     Pad
 	Renderer Renderer
 	Recorder *Recorder
+
+	ppuDelayCycle int
 }
 
 // Setup ...
@@ -31,6 +33,38 @@ func (n *NES) Setup(p string) error {
 	n.CPU.SetRecorder(n.Recorder)
 	n.PPU.SetRecorder(n.Recorder)
 
+	n.ppuDelayCycle = 7
+
+	return nil
+}
+
+// Run1Cycle ...
+func (n *NES) Run1Cycle() error {
+	cycle, err := n.CPU.Run()
+	if err != nil {
+		return err
+	}
+
+	if n.ppuDelayCycle <= 0 {
+		screen, err := n.PPU.Run(cycle * 3)
+		if err != nil {
+			return err
+		}
+
+		if screen != nil {
+			err = n.Renderer.Render(screen)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		n.ppuDelayCycle = n.ppuDelayCycle - cycle
+	}
+
+	n.Recorder.Cycle = n.Recorder.Cycle + cycle
+
+	log.Debug(n.Recorder.String())
+
 	return nil
 }
 
@@ -41,23 +75,9 @@ func (n *NES) Run() error {
 			log.Info("process end")
 		}()
 		for {
-			cycle, err := n.CPU.Run()
-			if err != nil {
+			if err := n.Run1Cycle(); err != nil {
 				panic(err)
 			}
-
-			screen, err := n.PPU.Run(cycle * 3)
-			if err != nil {
-				panic(err)
-			}
-
-			if screen != nil {
-				err = n.Renderer.Render(screen)
-				if err != nil {
-					panic(err)
-				}
-			}
-			log.Debug(n.Recorder.String())
 		}
 	}()
 

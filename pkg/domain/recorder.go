@@ -15,18 +15,9 @@ type Recorder struct {
 	Y              byte
 	P              byte
 	SP             byte
-}
-
-// Clear ...
-func (e *Recorder) Clear() {
-	e.PC = 0
-	e.FetchedValue = nil
-	e.Mnemonic = NOP
-	e.A = 0
-	e.X = 0
-	e.Y = 0
-	e.P = 0
-	e.SP = 0
+	Dot            uint16
+	Scanline       uint16
+	Cycle          int
 }
 
 // makeFetchedValueString ...
@@ -67,5 +58,5 @@ func (e *Recorder) String() string {
 	fetchedValue := e.makeFetchedValueString()
 	operand := e.makeOperandString()
 
-	return fmt.Sprintf("%04X  %v %v %v A:%02X X:%02X Y:%02X P:%02X SP:%02X", e.PC, fetchedValue, e.Mnemonic, operand, e.A, e.X, e.Y, e.P, e.SP)
+	return fmt.Sprintf("%04X  %v %v %v A:%02X X:%02X Y:%02X P:%02X SP:%02X PPU:%3d,%3d CYC:%d", e.PC, fetchedValue, e.Mnemonic, operand, e.A, e.X, e.Y, e.P, e.SP, e.Dot, e.Scanline, e.Cycle)
 }

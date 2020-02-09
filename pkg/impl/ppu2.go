@@ -607,6 +607,9 @@ func (p *PPU2) run1Cycle() error {
 
 // Run ... 指定サイクル数だけ実行
 func (p *PPU2) Run(cycle int) (*domain.Screen, error) {
+	p.recorder.Dot = p.dot
+	p.recorder.Scanline = p.scanline
+
 	for i := 0; i < cycle; i++ {
 		if p.enableOAMDMA {
 			if err := p.execOAMDMA(); err != nil {

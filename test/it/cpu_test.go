@@ -63,7 +63,7 @@ func TestCPU(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 
-	if _, err := nes.CPU.Run(); err != nil {
+	if err := nes.Run1Cycle(); err != nil {
 		t.Errorf("failed to run, %v", err)
 		return
 	}
@@ -73,7 +73,7 @@ func TestCPU(t *testing.T) {
 		want := scanner.Text()
 		line++
 
-		if _, err := nes.CPU.Run(); err != nil {
+		if err := nes.Run1Cycle(); err != nil {
 			t.Errorf("failed to run, %v", err)
 			return
 		}

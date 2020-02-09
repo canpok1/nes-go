@@ -102,7 +102,7 @@ func NewCPUStatusRegister() *CPUStatusRegister {
 		Negative:         false,
 		Overflow:         false,
 		Reserved:         true,
-		BreakMode:        true,
+		BreakMode:        false,
 		DecimalMode:      false,
 		InterruptDisable: true,
 		Zero:             false,
