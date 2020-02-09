@@ -31,43 +31,12 @@ func (o *Operand) String() string {
 	return fmt.Sprintf("{Data:%#v, Address:%#v}", d, a)
 }
 
-// CPUStack ...
-type CPUStack struct {
-	stack []byte
-}
-
-// NewCPUStack ...
-func NewCPUStack() *CPUStack {
-	return &CPUStack{[]byte{}}
-}
-
-// Push ...
-func (s *CPUStack) Push(b byte) {
-	l := len(s.stack)
-	s.stack = append(s.stack, b)
-	log.Trace("CPUStack.Push[%#v][size: %v => %v]", b, l, len(s.stack))
-}
-
-// Pop ...
-func (s *CPUStack) Pop() (byte, error) {
-	l := len(s.stack)
-	if l == 0 {
-		return 0, xerrors.Errorf("failed to pop, stack is empty")
-	}
-
-	b := s.stack[l-1]
-	s.stack = s.stack[0 : len(s.stack)-1]
-	log.Trace("CPUStack.Pop[size: %v => %v] => %#v", l, len(s.stack), b)
-	return b, nil
-}
-
 // CPU ...
 type CPU struct {
 	registers   *component.CPURegisters
 	bus         domain.Bus
 	shouldReset bool
 	shouldNMI   bool
-	stack       *CPUStack
 
 	beforeNMIActive bool
 
@@ -81,7 +50,6 @@ func NewCPU(pc *uint16) domain.CPU {
 		registers:       component.NewCPURegisters(),
 		shouldReset:     true,
 		shouldNMI:       false,
-		stack:           NewCPUStack(),
 		beforeNMIActive: false,
 		firstPC:         pc,
 		executeLog:      &domain.Recorder{},
@@ -399,9 +367,15 @@ func (c *CPU) InterruptNMI() error {
 	log.Trace("CPU.Interrupt[NMI] ...")
 
 	c.registers.P.BreakMode = false
-	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
-	c.stack.Push(byte(c.registers.PC & 0x00FF))
-	c.stack.Push(c.registers.P.ToByte())
+	if err := c.pushStack(byte((c.registers.PC & 0xFF00) >> 8)); err != nil {
+		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
+	}
+	if err := c.pushStack(byte(c.registers.PC & 0x00FF)); err != nil {
+		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
+	}
+	if err := c.pushStack(c.registers.P.ToByte()); err != nil {
+		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
+	}
 
 	c.registers.P.InterruptDisable = true
 
@@ -449,9 +423,15 @@ func (c *CPU) interruptRESET() error {
 func (c *CPU) interruptBRK() error {
 	log.Trace("CPU.Interrupt[BRK] ...")
 
-	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
-	c.stack.Push(byte(c.registers.PC & 0x00FF))
-	c.stack.Push(c.registers.P.ToByte())
+	if err := c.pushStack(byte((c.registers.PC & 0xFF00) >> 8)); err != nil {
+		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
+	}
+	if err := c.pushStack(byte(c.registers.PC & 0x00FF)); err != nil {
+		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
+	}
+	if err := c.pushStack(c.registers.P.ToByte()); err != nil {
+		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
+	}
 	c.registers.P.InterruptDisable = true
 
 	l, err := c.bus.ReadByCPU(0xFFFE)
@@ -470,9 +450,15 @@ func (c *CPU) interruptBRK() error {
 func (c *CPU) interruptIRQ() error {
 	log.Trace("CPU.Interrupt[IRQ] ...")
 
-	c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
-	c.stack.Push(byte(c.registers.PC & 0x00FF))
-	c.stack.Push(c.registers.P.ToByte())
+	if err := c.pushStack(byte((c.registers.PC & 0xFF00) >> 8)); err != nil {
+		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
+	}
+	if err := c.pushStack(byte(c.registers.PC & 0x00FF)); err != nil {
+		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
+	}
+	if err := c.pushStack(c.registers.P.ToByte()); err != nil {
+		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
+	}
 	c.registers.P.InterruptDisable = true
 
 	l, err := c.bus.ReadByCPU(0xFFFE)
@@ -805,7 +791,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 		c.executeLog.Address = addr
 
-		if !c.registers.P.Carry {
+		if !c.registers.P.Overflow {
 			c.registers.UpdatePC(uint16(addr))
 			cycle++
 		}
@@ -817,7 +803,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 		c.executeLog.Address = addr
 
-		if c.registers.P.Carry {
+		if c.registers.P.Overflow {
 			c.registers.UpdatePC(uint16(addr))
 			cycle++
 		}
@@ -831,6 +817,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 
 		if !c.registers.P.Negative {
 			c.registers.UpdatePC(uint16(addr))
+			cycle++
 		}
 		return
 	case domain.BMI:
@@ -889,11 +876,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.RTS:
 		var l, h byte
-		if l, err = c.stack.Pop(); err != nil {
+		if l, err = c.popStack(); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
-		if h, err = c.stack.Pop(); err != nil {
+		if h, err = c.popStack(); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
@@ -905,18 +892,18 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.RTI:
 		var b byte
-		if b, err = c.stack.Pop(); err != nil {
+		if b, err = c.popStack(); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		c.registers.P.UpdateAll(b)
 
 		var l, h byte
-		if l, err = c.stack.Pop(); err != nil {
+		if l, err = c.popStack(); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
-		if h, err = c.stack.Pop(); err != nil {
+		if h, err = c.popStack(); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
@@ -1267,20 +1254,26 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		c.registers.UpdateS(c.registers.X)
 		return
 	case domain.PHA:
-		c.stack.Push(c.registers.A)
+		if err = c.pushStack(c.registers.A); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
 		return
 	case domain.PLA:
-		if c.registers.A, err = c.stack.Pop(); err != nil {
+		if c.registers.A, err = c.popStack(); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		return
 	case domain.PHP:
-		c.stack.Push(c.registers.P.ToByte())
+		if err = c.pushStack(c.registers.P.ToByte()); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
 		return
 	case domain.PLP:
 		var b byte
-		if b, err = c.stack.Pop(); err != nil {
+		if b, err = c.popStack(); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
