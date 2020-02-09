@@ -171,11 +171,11 @@ func (c *CPU) Run() (int, error) {
 	}
 
 	// 命令を実行
-	if err := c.exec(ocp.Mnemonic, ocp.AddressingMode, op); err != nil {
+	if cycle, err := c.exec(ocp, op); err != nil {
 		return 0, xerrors.Errorf(": %w", err)
+	} else {
+		return cycle, nil
 	}
-
-	return ocp.Cycle, nil
 }
 
 // decodeOpcode ...
@@ -488,7 +488,11 @@ func (c *CPU) interruptIRQ() error {
 }
 
 // exec ...
-func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (err error) {
+func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
+	mne := opc.Mnemonic
+	mode := opc.AddressingMode
+	cycle = opc.Cycle
+
 	log.Trace("CPU.exec[%#x][%v][%v][%#v] ...", c.registers.PC, mne, mode, op)
 
 	c.executeLog.Mnemonic = mne
@@ -755,6 +759,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 		if !c.registers.P.Carry {
 			c.registers.UpdatePC(uint16(addr))
+			cycle++
 		}
 		return
 	case domain.BCS:
@@ -766,6 +771,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 		if c.registers.P.Carry {
 			c.registers.UpdatePC(uint16(addr))
+			cycle++
 		}
 		return
 	case domain.BEQ:
@@ -777,6 +783,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 		if c.registers.P.Zero {
 			c.registers.UpdatePC(uint16(addr))
+			cycle++
 		}
 		return
 	case domain.BNE:
@@ -788,6 +795,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 		if !c.registers.P.Zero {
 			c.registers.UpdatePC(uint16(addr))
+			cycle++
 		}
 		return
 	case domain.BVC:
@@ -799,6 +807,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 		if !c.registers.P.Carry {
 			c.registers.UpdatePC(uint16(addr))
+			cycle++
 		}
 		return
 	case domain.BVS:
@@ -810,6 +819,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 
 		if c.registers.P.Carry {
 			c.registers.UpdatePC(uint16(addr))
+			cycle++
 		}
 		return
 	case domain.BPL:
@@ -847,6 +857,7 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
+		c.executeLog.Data = b
 
 		c.registers.P.Zero = (c.registers.A & b) == 0
 		c.registers.P.Negative = (b & 0x80) == 0x80
@@ -868,8 +879,6 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 		}
 		c.executeLog.Address = addr
 
-		// c.stack.Push(byte((c.registers.PC & 0xFF00) >> 8))
-		// c.stack.Push(byte(c.registers.PC & 0x00FF))
 		if err = c.pushStack(byte((c.registers.PC & 0xFF00) >> 8)); err != nil {
 			return
 		}
@@ -1175,6 +1184,28 @@ func (c *CPU) exec(mne domain.Mnemonic, mode domain.AddressingMode, op []byte) (
 			return
 		}
 		c.executeLog.Address = addr
+
+		var b byte
+		b, err = c.bus.ReadByCPU(addr)
+		if err != nil {
+			return
+		}
+		c.executeLog.Data = b
+
+		switch mode {
+		case domain.IndexedZeroPageX:
+			fallthrough
+		case domain.Absolute:
+			cycle++
+		case domain.IndexedAbsoluteX:
+			fallthrough
+		case domain.IndexedAbsoluteY:
+			cycle = cycle + 2
+		case domain.IndirectIndexed:
+			fallthrough
+		case domain.IndexedIndirect:
+			cycle = cycle + 3
+		}
 
 		err = c.bus.WriteByCPU(addr, c.registers.A)
 		if err != nil {

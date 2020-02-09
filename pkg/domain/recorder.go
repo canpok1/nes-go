@@ -47,7 +47,7 @@ func (e *Recorder) makeOperandString() string {
 	case Absolute:
 		operand = fmt.Sprintf("$%04X", e.Address)
 	case ZeroPage:
-		operand = fmt.Sprintf("$%02X = 00", e.Address)
+		operand = fmt.Sprintf("$%02X = %02X", e.Address, e.Data)
 	case IndexedZeroPageX:
 	case IndexedZeroPageY:
 	case IndexedAbsoluteX:
