@@ -45,6 +45,18 @@ func (mr *MockCPUMockRecorder) SetBus(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBus", reflect.TypeOf((*MockCPU)(nil).SetBus), arg0)
 }
 
+// SetRecorder mocks base method
+func (m *MockCPU) SetRecorder(arg0 *domain.Recorder) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetRecorder", arg0)
+}
+
+// SetRecorder indicates an expected call of SetRecorder
+func (mr *MockCPUMockRecorder) SetRecorder(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRecorder", reflect.TypeOf((*MockCPU)(nil).SetRecorder), arg0)
+}
+
 // Run mocks base method
 func (m *MockCPU) Run() (int, error) {
 	m.ctrl.T.Helper()
@@ -119,6 +131,18 @@ func (m *MockPPU) SetBus(arg0 domain.Bus) {
 func (mr *MockPPUMockRecorder) SetBus(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBus", reflect.TypeOf((*MockPPU)(nil).SetBus), arg0)
+}
+
+// SetRecorder mocks base method
+func (m *MockPPU) SetRecorder(arg0 *domain.Recorder) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetRecorder", arg0)
+}
+
+// SetRecorder indicates an expected call of SetRecorder
+func (mr *MockPPUMockRecorder) SetRecorder(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRecorder", reflect.TypeOf((*MockPPU)(nil).SetRecorder), arg0)
 }
 
 // ReadRegisters mocks base method

@@ -22,6 +22,8 @@ type PPU struct {
 	oam *component.PPUOAM
 
 	enableOAMDMA bool
+
+	recorder *domain.Recorder
 }
 
 // NewPPU ...
@@ -42,6 +44,7 @@ func NewPPU() (domain.PPU, error) {
 		drawingPoint: &image.Point{0, 0},
 		oam:          component.NewPPUOAM(),
 		enableOAMDMA: false,
+		recorder:     &domain.Recorder{},
 	}, nil
 }
 
@@ -56,6 +59,11 @@ func (p *PPU) String() string {
 // SetBus ...
 func (p *PPU) SetBus(b domain.Bus) {
 	p.bus = b
+}
+
+// SetRecorder ...
+func (p *PPU) SetRecorder(r *domain.Recorder) {
+	p.recorder = r
 }
 
 // incrementPPUADDR

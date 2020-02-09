@@ -7,7 +7,6 @@ import (
 	"nes-go/pkg/log"
 	"nes-go/pkg/mock_domain"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -39,6 +38,8 @@ func TestCPU(t *testing.T) {
 	mRenderer := mock_domain.NewMockRenderer(ctrl)
 	mRenderer.EXPECT().Run().AnyTimes()
 
+	recorder := &domain.Recorder{}
+
 	nes := domain.NES{
 		Bus:      bus,
 		CPU:      cpu,
@@ -46,6 +47,7 @@ func TestCPU(t *testing.T) {
 		Pad1:     mock_domain.NewMockPad(ctrl),
 		Pad2:     mock_domain.NewMockPad(ctrl),
 		Renderer: mRenderer,
+		Recorder: recorder,
 	}
 	if err := nes.Setup(ROM_PATH); err != nil {
 		t.Errorf("failed to setup; %v", err)
@@ -61,9 +63,6 @@ func TestCPU(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 
-	tester := IOWriterTester{}
-	log.SetOutput(&tester)
-
 	if _, err := nes.CPU.Run(); err != nil {
 		t.Errorf("failed to run, %v", err)
 		return
@@ -71,7 +70,6 @@ func TestCPU(t *testing.T) {
 
 	var line int = 0
 	for scanner.Scan() {
-		tester.Buffer = nil
 		want := scanner.Text()
 		line++
 
@@ -80,27 +78,10 @@ func TestCPU(t *testing.T) {
 			return
 		}
 
-		writeCount := len(tester.Buffer)
-		if writeCount != 1 {
-			t.Errorf("write count is too many, line:%v, count:%v", line, writeCount)
-			return
-		}
-
-		got := strings.Trim(tester.Buffer[0], "\n")
+		got := recorder.String()
 		if got != want {
 			t.Errorf("wrong value\nline:%v\ngot :%s\nwant:%s\n", line, got, want)
 			return
 		}
 	}
-}
-
-// IOWriterTester ...
-type IOWriterTester struct {
-	Buffer []string
-}
-
-// Write ...
-func (t *IOWriterTester) Write(b []byte) (int, error) {
-	t.Buffer = append(t.Buffer, string(b))
-	return len(b), nil
 }

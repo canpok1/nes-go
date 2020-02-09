@@ -58,12 +58,12 @@ func SetEnableTimestamp(enable bool) {
 
 // print ...
 func print(level string, format string, v ...interface{}) {
-	args := append([]interface{}{level}, v...)
 	if config.enableLevelLabel {
+		args := append([]interface{}{level}, v...)
 		f := "[%v]" + format
 		log.Printf(f, args...)
 	} else {
-		log.Printf(format, args...)
+		log.Printf(format, v...)
 	}
 }
 

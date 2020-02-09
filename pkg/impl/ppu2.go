@@ -27,6 +27,8 @@ type PPU2 struct {
 	enableOAMDMA bool
 
 	rendered bool
+
+	recorder *domain.Recorder
 }
 
 // NewPPU2 ...
@@ -46,6 +48,7 @@ func NewPPU2() domain.PPU {
 		scanline:          261, // Pre-render line
 		enableOAMDMA:      false,
 		rendered:          false,
+		recorder:          &domain.Recorder{},
 	}
 }
 
@@ -62,6 +65,11 @@ func (p *PPU2) SetBus(b domain.Bus) {
 	p.bus = b
 	p.bgController.SetBus(b)
 	p.spController.SetBus(b)
+}
+
+// SetRecorder ...
+func (p *PPU2) SetRecorder(r *domain.Recorder) {
+	p.recorder = r
 }
 
 // incrementPPUADDR

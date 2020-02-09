@@ -3,6 +3,7 @@ package domain
 // CPU ...
 type CPU interface {
 	SetBus(Bus)
+	SetRecorder(*Recorder)
 	Run() (int, error)
 	String() string
 	ReceiveNMI(active bool)
@@ -11,6 +12,7 @@ type CPU interface {
 // PPU ...
 type PPU interface {
 	SetBus(Bus)
+	SetRecorder(*Recorder)
 	ReadRegisters(Address) (byte, error)
 	WriteRegisters(Address, byte) error
 	Run(int) (*Screen, error)

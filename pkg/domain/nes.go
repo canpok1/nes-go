@@ -12,6 +12,7 @@ type NES struct {
 	Pad1     Pad
 	Pad2     Pad
 	Renderer Renderer
+	Recorder *Recorder
 }
 
 // Setup ...
@@ -26,6 +27,9 @@ func (n *NES) Setup(p string) error {
 	n.Bus.Setup(rom, n.PPU, n.CPU, vram, n.Pad1, n.Pad2)
 	n.CPU.SetBus(n.Bus)
 	n.PPU.SetBus(n.Bus)
+
+	n.CPU.SetRecorder(n.Recorder)
+	n.PPU.SetRecorder(n.Recorder)
 
 	return nil
 }
@@ -53,6 +57,7 @@ func (n *NES) Run() error {
 					panic(err)
 				}
 			}
+			log.Debug(n.Recorder.String())
 		}
 	}()
 

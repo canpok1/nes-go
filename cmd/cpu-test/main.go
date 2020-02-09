@@ -45,6 +45,7 @@ func main() {
 		Pad1:     makePad1(),
 		Pad2:     makePad2(),
 		Renderer: renderer,
+		Recorder: &domain.Recorder{},
 	}
 	if err := nes.Setup(ROM_PATH); err != nil {
 		panic(err)
