@@ -1264,6 +1264,8 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.UpdateN(c.registers.A)
 		return
 	case domain.PHP:
 		if err = c.pushStack(c.registers.P.ToByte()); err != nil {
