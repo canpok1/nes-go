@@ -7,6 +7,7 @@ import (
 	"nes-go/pkg/log"
 	"nes-go/pkg/mock_domain"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -70,7 +71,7 @@ func TestCPU(t *testing.T) {
 
 	var line int = 0
 	for scanner.Scan() {
-		want := scanner.Text()
+		wantFull := scanner.Text()
 		line++
 
 		if err := nes.Run1Cycle(); err != nil {
@@ -78,10 +79,49 @@ func TestCPU(t *testing.T) {
 			return
 		}
 
-		got := recorder.String()
-		if got != want {
-			t.Errorf("wrong value\nline:%v\ngot :%s\nwant:%s\n", line, got, want)
-			return
+		gotFull := recorder.String()
+
+		// Pフラグは完全一致しなくてもいいため、分割して比較する
+		{
+			want := wantFull[0:65]
+			got := gotFull[0:65]
+
+			if want != got {
+				t.Errorf("wrong value\nline  :%v\ngot :%#v\nwant:%#v\ngot  full:%#v\nwant full:%#v\n", line, got, want, gotFull, wantFull)
+				return
+			}
+		}
+
+		{
+			want, err := strconv.ParseInt(wantFull[65:67], 16, 32)
+			if err != nil {
+				t.Errorf("failed to parse P\nline  :%v\nwant P:%#v\nerror :%#v\n", line, want, err)
+				return
+			}
+
+			got, err := strconv.ParseInt(gotFull[65:67], 16, 32)
+			if err != nil {
+				t.Errorf("failed to parse P\nline  :%v\ngot P:%#v\nerror:%#v\n", line, got, err)
+				return
+			}
+
+			// Pフラグのビット4,5は異なっててよいため、ビット4,5だけ0にして比較
+			filteredWant := want & 0xCF
+			filteredGot := got & 0xCF
+			if filteredWant != filteredGot {
+				t.Errorf("bit0-3 and bit6-7 is wrong\nline:%v\ngot  P:%02X => %02X\nwant P:%02X => %02X\ngot  full:%#v\nwant full:%#v\n", line, got, filteredGot, want, filteredWant, gotFull, wantFull)
+				return
+			}
+		}
+
+		{
+			want := wantFull[67:]
+			got := gotFull[67:]
+
+			if want != got {
+				t.Errorf("wrong value\nline:%v\ngot :%#v\nwant:%#v\ngot  full:%#v\nwant full:%#v\n", line, got, want, gotFull, wantFull)
+				return
+			}
 		}
 	}
 }
