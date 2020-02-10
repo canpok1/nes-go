@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"golang.org/x/xerrors"
 	"nes-go/pkg/log"
 )
 
@@ -22,7 +23,7 @@ type NES struct {
 func (n *NES) Setup(p string) error {
 	rom, err := FetchROM(p)
 	if err != nil {
-		return err
+		return xerrors.Errorf(": %w", err)
 	}
 
 	vram := NewVRAM()
@@ -44,13 +45,13 @@ func (n *NES) Run1Cycle() error {
 	if n.ppuDelayCycle <= 0 {
 		screen, err := n.PPU.Run(n.cpuBeforeCycle * 3)
 		if err != nil {
-			return err
+			return xerrors.Errorf(": %w", err)
 		}
 
 		if screen != nil {
 			err = n.Renderer.Render(screen)
 			if err != nil {
-				return err
+				return xerrors.Errorf(": %w", err)
 			}
 		}
 	} else {
@@ -61,7 +62,7 @@ func (n *NES) Run1Cycle() error {
 
 	cycle, err := n.CPU.Run()
 	if err != nil {
-		return err
+		return xerrors.Errorf(": %w", err)
 	}
 	n.cpuBeforeCycle = cycle
 
@@ -78,13 +79,15 @@ func (n *NES) Run() error {
 		}()
 		for {
 			if err := n.Run1Cycle(); err != nil {
+				log.Warn("error occured")
+				log.Warn("%s", n.Recorder.String())
 				panic(err)
 			}
 		}
 	}()
 
 	if err := n.Renderer.Run(); err != nil {
-		return err
+		return xerrors.Errorf(": %w", err)
 	}
 
 	return nil
