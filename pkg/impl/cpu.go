@@ -1268,7 +1268,12 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		c.registers.P.UpdateN(c.registers.A)
 		return
 	case domain.PHP:
-		if err = c.pushStack(c.registers.P.ToByte()); err != nil {
+		p := c.registers.P.ToByte()
+
+		// 6502のバグ：スタックに格納するフラグはBフラグがセットされた状態になる
+		p = (p & 0xEF) | 0x10
+
+		if err = c.pushStack(p); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
