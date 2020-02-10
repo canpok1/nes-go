@@ -54,14 +54,20 @@ func TestParseINESHeader(t *testing.T) {
 			wantErr := tt.makeWantErr()
 
 			got, err := parseINESHeader(rom)
-			if !reflect.DeepEqual(err, wantErr) {
-				t.Errorf("wrong error\ngot: %#v\nwant: %#v", err, wantErr)
-				return
+
+			if wantErr == nil && err != nil {
+				t.Errorf("wrong error\ngot : %+v\nwant: %+v", err, wantErr)
+			}
+			if wantErr != nil {
+				errMsg := err.Error()
+				wantErrMsg := wantErr.Error()
+				if errMsg != wantErrMsg {
+					t.Errorf("wrong error msg\ngot : %+v\nwant: %+v", errMsg, wantErrMsg)
+				}
 			}
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("wrong output\ngot: %#v\nwant: %#v", got, tt.want)
-				return
 			}
 		})
 	}
