@@ -1281,6 +1281,12 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 		c.registers.P.UpdateAll(b)
 		return
+	case domain.DCP:
+		return
+	case domain.SLO:
+		return
+	case domain.STP:
+		return
 	case domain.NOP:
 		return
 	default:
