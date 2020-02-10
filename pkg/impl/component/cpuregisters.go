@@ -175,10 +175,10 @@ func (s *CPUStatusRegister) UpdateN(result byte) {
 }
 
 // UpdateV ...
-func (s *CPUStatusRegister) UpdateV(result int16) {
+func (s *CPUStatusRegister) UpdateV(org int8, ans int16) {
 	old := s.Overflow
-	s.Overflow = (result < 0x7F) || (result > 0x80)
-	log.Trace("CPU.update[V] %#v => %#v", old, s.Overflow)
+	s.Overflow = ((org > 0) && (ans < 0)) || ((org < 0) && (ans > 0))
+	log.Debug("CPU.update[V] %#v => %#v", old, s.Overflow)
 }
 
 // UpdateI ...

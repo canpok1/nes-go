@@ -522,7 +522,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 
 		c.registers.A = byte(ans & 0xFF)
 		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateV(ans)
+		c.registers.P.UpdateV(int8(c.registers.A), ans)
 		c.registers.P.UpdateZ(c.registers.A)
 		c.registers.P.UpdateC(ans)
 		return
@@ -555,7 +555,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 
 		c.registers.A = byte(ans & 0xFF)
 		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateV(ans)
+		c.registers.P.UpdateV(int8(c.registers.A), ans)
 		c.registers.P.UpdateZ(c.registers.A)
 		c.registers.P.UpdateC(ans)
 		return
