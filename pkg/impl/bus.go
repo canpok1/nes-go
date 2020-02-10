@@ -273,7 +273,8 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	// 0x0800～0x1FFF	-	WRAMのミラー
 	if addr >= 0x0800 && addr <= 0x1FFF {
 		target = "WRAM Mirror"
-		b.wram[addr-0x0800] = data
+		index := (addr - 0x0800) & 0x17FF
+		b.wram[index] = data
 		return nil
 	}
 
