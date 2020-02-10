@@ -105,6 +105,14 @@ func (s *PPUScroll) GetHOffset() byte {
 	return s.hOffset
 }
 
+// ToByte ...
+func (s *PPUScroll) ToByte() byte {
+	if s.buf == nil {
+		return s.hOffset
+	}
+	return *s.buf
+}
+
 // PPUAddr ...
 type PPUAddr struct {
 	writeCount uint8          // PPUADDRへの書き込み回数（0→1→2→1→2→...と遷移）
@@ -137,6 +145,14 @@ func (a *PPUAddr) ToFullAddress() domain.Address {
 	return a.full
 }
 
+// ToByte ...
+func (a *PPUAddr) ToByte() byte {
+	if a.writeCount&0x01 == 0x01 {
+		return byte((a.buf & 0xFF00) >> 8)
+	}
+	return byte(a.buf & 0x00FF)
+}
+
 // PPUCtrl ...
 type PPUCtrl struct {
 	NMIEnable                   bool
@@ -154,6 +170,21 @@ func (p *PPUCtrl) UpdateAll(b byte) {
 	p.BackgroundPatternTableIndex = (b & 0x10) >> 4
 	p.SpritePatternTableIndex = (b & 0x08) >> 3
 	p.VRAMAddressIncrementMode = (b & 0x04) >> 2
+}
+
+// ToByte ...
+func (p *PPUCtrl) ToByte() byte {
+	var b byte = 0
+	if p.NMIEnable {
+		b = b | 0x80
+	}
+	if p.SpriteTileSelect {
+		b = b | 0x04
+	}
+	b = b | (p.BackgroundPatternTableIndex << 4)
+	b = b | (p.SpritePatternTableIndex << 3)
+	b = b | (p.VRAMAddressIncrementMode << 2)
+	return b
 }
 
 // PPUMask ...
@@ -178,6 +209,34 @@ func (p *PPUMask) UpdateAll(b byte) {
 	p.DisableSpriteMask = (b & 0x04) == 0x04
 	p.DisableBackgroundMask = (b & 0x02) == 0x02
 	p.DisplayType = b & 0x01
+}
+
+// ToByte ...
+func (p *PPUMask) ToByte() byte {
+	var b byte = 0
+	if p.EmphasizeB {
+		b = b | 0x80
+	}
+	if p.EmphasizeG {
+		b = b | 0x40
+	}
+	if p.EmphasizeR {
+		b = b | 0x20
+	}
+	if p.EnableSprite {
+		b = b | 0x10
+	}
+	if p.EnableBackground {
+		b = b | 0x08
+	}
+	if p.DisableSpriteMask {
+		b = b | 0x04
+	}
+	if p.DisableBackgroundMask {
+		b = b | 0x02
+	}
+	b = b | p.DisplayType
+	return b
 }
 
 // PPUStatus ...

@@ -104,10 +104,10 @@ func (p *PPU2) ReadRegisters(addr domain.Address) (byte, error) {
 	switch addr % 8 {
 	case 0:
 		target = "PPUCTRL"
-		err = xerrors.Errorf("failed to read, PPURegister[PPUCTRL] is write only; addr: %#v", addr)
+		data = p.registers.PPUCtrl.ToByte()
 	case 1:
 		target = "PPUMASK"
-		err = xerrors.Errorf("failed to read, PPURegister[PPUMASK] is write only; addr: %#v", addr)
+		data = p.registers.PPUMask.ToByte()
 	case 2:
 		target = "PPUSTATUS"
 		data = p.registers.PPUStatus.ToByte()
@@ -115,16 +115,16 @@ func (p *PPU2) ReadRegisters(addr domain.Address) (byte, error) {
 		p.registers.PPUStatus.VBlankHasStarted = false
 	case 3:
 		target = "OAMADDR"
-		err = xerrors.Errorf("failed to read, PPURegister[OAMADDR] is write only; addr: %#v", addr)
+		data = p.registers.OAMAddr
 	case 4:
 		target = "OAMDATA"
 		data = p.registers.OAMData
 	case 5:
 		target = "PPUSCROLL"
-		err = xerrors.Errorf("failed to read, PPURegister[PPUSCROLL] is write only; addr: %#v", addr)
+		data = p.registers.PPUScroll.ToByte()
 	case 6:
 		target = "PPUADDR"
-		err = xerrors.Errorf("failed to read, PPURegister[PPUADDR] is write only; addr: %#v", addr)
+		data = p.registers.PPUAddr.ToByte()
 	case 7:
 		ppuaddr := p.registers.PPUAddr.ToFullAddress()
 		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", ppuaddr)
