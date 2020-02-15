@@ -36,9 +36,16 @@ type Bus struct {
 
 // NewBus ...
 func NewBus() domain.Bus {
+	io := make([]byte, 0x0020)
+	io[0x04] = 0xFF
+	io[0x05] = 0xFF
+	io[0x06] = 0xFF
+	io[0x07] = 0xFF
+	io[0x15] = 0xFF
+
 	return &Bus{
 		wram:  make([]byte, 0x0800),
-		io:    make([]byte, 0x0020),
+		io:    io,
 		exrom: make([]byte, 0x1FE0),
 		exram: make([]byte, 0x2000),
 
@@ -206,9 +213,9 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 	}
 
 	// 0x4020～0x5FFF	0x1FE0	拡張ROM
-	if addr >= 0x4000 && addr <= 0x401F {
+	if addr >= 0x4020 && addr <= 0x5FFF {
 		target = "EX ROM"
-		data = b.exrom[addr-0x4000]
+		data = b.exrom[addr-0x4020]
 		return data, err
 	}
 
