@@ -42,6 +42,8 @@ func (n *NES) Setup(p string) error {
 
 // Run1Cycle ...
 func (n *NES) Run1Cycle() error {
+	defer log.Debug(n.Recorder.String())
+
 	if n.ppuDelayCycle <= 0 {
 		screen, err := n.PPU.Run(n.cpuBeforeCycle * 3)
 		if err != nil {
@@ -65,8 +67,6 @@ func (n *NES) Run1Cycle() error {
 		return xerrors.Errorf(": %w", err)
 	}
 	n.cpuBeforeCycle = cycle
-
-	log.Debug(n.Recorder.String())
 
 	return nil
 }

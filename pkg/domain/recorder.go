@@ -11,6 +11,7 @@ type Recorder struct {
 	PC             uint16
 	FetchedValue   []byte
 	Mnemonic       Mnemonic
+	Documented     bool
 	AddressingMode AddressingMode
 	Address        []Address
 	Data           *byte
@@ -49,10 +50,14 @@ func (e *Recorder) makeOperandString() string {
 			operand = fmt.Sprintf("#$%02X", *e.Data)
 		}
 	case Absolute:
+		var a0 string
+		if len(e.Address) >= 1 {
+			a0 = fmt.Sprintf("$%04X", e.Address[0])
+		}
 		if e.Data == nil {
-			operand = fmt.Sprintf("$%04X", e.Address[0])
+			operand = fmt.Sprintf("%s", a0)
 		} else {
-			operand = fmt.Sprintf("$%04X = %02X", e.Address[0], *e.Data)
+			operand = fmt.Sprintf("%s = %02X", a0, *e.Data)
 		}
 	case ZeroPage:
 		var a0 string
@@ -165,10 +170,15 @@ func (e *Recorder) makeOperandString() string {
 
 // String ...
 func (e *Recorder) String() string {
-	fetchedValue := e.makeFetchedValueString()
-	operand := e.makeOperandString()
+	f := e.makeFetchedValueString()
+	o := e.makeOperandString()
 
-	return fmt.Sprintf("%04X  %v %v %v A:%02X X:%02X Y:%02X P:%02X SP:%02X PPU:%3d,%3d CYC:%d", e.PC, fetchedValue, e.Mnemonic, operand, e.A, e.X, e.Y, e.P, e.SP, e.Dot, e.Scanline, e.Cycle)
+	m := " "
+	if !e.Documented {
+		m = "*"
+	}
+
+	return fmt.Sprintf("%04X  %v%v%v %v A:%02X X:%02X Y:%02X P:%02X SP:%02X PPU:%3d,%3d CYC:%d", e.PC, f, m, e.Mnemonic, o, e.A, e.X, e.Y, e.P, e.SP, e.Dot, e.Scanline, e.Cycle)
 }
 
 // AddAddress ...

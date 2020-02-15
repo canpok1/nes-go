@@ -83,6 +83,7 @@ func (c *CPU) Run() (int, error) {
 	c.executeLog.PC = c.registers.PC
 	c.executeLog.FetchedValue = nil
 	c.executeLog.Mnemonic = domain.NOP
+	c.executeLog.Documented = false
 	c.executeLog.AddressingMode = domain.Implied
 	c.executeLog.Address = nil
 	c.executeLog.Data = nil
@@ -321,6 +322,9 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 		b := op[0]
 		addr = domain.Address(c.registers.PC + uint16(int8(b)))
 		c.executeLog.AddAddress(addr)
+
+		pageCrossed = (uint16(addr) & 0xFF00) != (c.registers.PC & 0xFF00)
+
 		return
 	case domain.IndexedIndirect:
 		b := op[0]
@@ -530,6 +534,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	log.Trace("CPU.exec[%#x][%v][%v][%#v] ...", c.registers.PC, mne, mode, op)
 
 	c.executeLog.Mnemonic = mne
+	c.executeLog.Documented = opc.Documented
 	c.executeLog.AddressingMode = mode
 
 	defer func() {
@@ -860,14 +865,19 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.BEQ:
 		var addr domain.Address
-		if addr, _, err = c.makeAddress(mode, op); err != nil {
+		var pageCrossed bool
+		if addr, pageCrossed, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
 
 		if c.registers.P.Zero {
 			c.registers.UpdatePC(uint16(addr))
 			cycle++
+			if pageCrossed {
+				cycle++
+			}
 		}
+
 		return
 	case domain.BNE:
 		var addr domain.Address
@@ -1397,17 +1407,64 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 		c.registers.P.UpdateAll(b)
 		return
-	case domain.DCP:
-		return
-	case domain.SLO:
-		return
-	case domain.STP:
-		return
-	case domain.NOP:
-		switch mode {
-		case domain.ZeroPage:
+	case domain.LAX:
+		var b byte
+		if mode == domain.Immediate {
+			if len(op) < 1 {
+				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
+				return
+			}
+			b = op[0]
+		} else {
 			var addr domain.Address
-			if addr, _, err = c.makeAddress(mode, op); err != nil {
+			var pageCrossed bool
+			if addr, pageCrossed, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+
+			b, err = c.bus.ReadByCPU(addr)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+
+			if opc.AddressingMode == domain.IndirectIndexed && pageCrossed {
+				cycle++
+			}
+		}
+		c.executeLog.Data = &b
+
+		c.registers.UpdateA(b)
+		c.registers.UpdateX(b)
+
+		c.registers.P.UpdateN(b)
+		c.registers.P.UpdateZ(b)
+		return
+	case domain.SAX:
+		switch mode {
+		case domain.Absolute:
+			fallthrough
+		case domain.ZeroPage:
+			fallthrough
+		case domain.IndexedZeroPageX:
+			fallthrough
+		case domain.IndexedZeroPageY:
+			fallthrough
+		case domain.IndexedAbsoluteX:
+			fallthrough
+		case domain.IndexedAbsoluteY:
+			fallthrough
+		case domain.Relative:
+			fallthrough
+		case domain.IndexedIndirect:
+			fallthrough
+		case domain.IndirectIndexed:
+			fallthrough
+		case domain.AbsoluteIndirect:
+			var addr domain.Address
+			var pageCrossed bool
+			if addr, pageCrossed, err = c.makeAddress(mode, op); err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
@@ -1418,6 +1475,299 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
+			c.executeLog.Data = &b
+
+			switch opc.AddressingMode {
+			case domain.IndexedAbsoluteX:
+				if pageCrossed {
+					cycle++
+				}
+			}
+
+			ans := c.registers.A & c.registers.X
+			err = c.bus.WriteByCPU(addr, ans)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+		}
+
+		return
+	case domain.DCP:
+		var addr domain.Address
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+
+		var b byte
+		b, err = c.bus.ReadByCPU(addr)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+		c.executeLog.Data = &b
+
+		ans := b - 1
+		err = c.bus.WriteByCPU(addr, ans)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+
+		ans = c.registers.A - ans
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
+		c.registers.P.Carry = c.registers.A >= b
+		return
+	case domain.ISB:
+		fallthrough
+	case domain.ISC:
+		var addr domain.Address
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			return
+		}
+
+		var b byte
+		b, err = c.bus.ReadByCPU(addr)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+		c.executeLog.Data = &b
+
+		ans1 := b + 1
+		err = c.bus.WriteByCPU(addr, ans1)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
+
+		ans2 := uint16(c.registers.A) - uint16(ans1)
+		if !c.registers.P.Carry {
+			ans2 = ans2 - 1
+		}
+
+		beforeA := c.registers.A
+		c.registers.A = byte(ans2 & 0x00FF)
+		c.registers.P.UpdateN(c.registers.A)
+		if (beforeA & 0x80) == (b & 0x80) {
+			c.registers.P.ClearV()
+		} else {
+			c.registers.P.UpdateV(beforeA, c.registers.A)
+		}
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.Carry = (ans2 & 0xFF00) == 0x0000
+		return
+	case domain.SLO:
+		var b, ans byte
+		if mode == domain.Accumulator {
+			b = c.registers.A
+			c.executeLog.Data = &b
+
+			ans = b << 1
+			c.registers.A = ans
+		} else {
+			var addr domain.Address
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.ReadByCPU(addr)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+			c.executeLog.Data = &b
+
+			ans = b << 1
+			err = c.bus.WriteByCPU(addr, ans)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+		}
+		c.registers.A = c.registers.A | ans
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.Carry = (b & 0x80) == 0x80
+		return
+	case domain.RLA:
+		var b, ans byte
+		if mode == domain.Accumulator {
+			b = c.registers.A
+			c.executeLog.Data = &b
+
+			ans = b << 1
+			if c.registers.P.Carry {
+				ans = ans + 1
+			}
+			c.registers.A = ans
+		} else {
+			var addr domain.Address
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.ReadByCPU(addr)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+			c.executeLog.Data = &b
+
+			ans = b << 1
+			if c.registers.P.Carry {
+				ans = ans + 1
+			}
+
+			err = c.bus.WriteByCPU(addr, ans)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+		}
+
+		c.registers.A = c.registers.A & ans
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.Carry = (b & 0x80) == 0x80
+		return
+	case domain.SRE:
+		var b, ans byte
+		if mode == domain.Accumulator {
+			b = c.registers.A
+			c.executeLog.Data = &b
+
+			ans = b >> 1
+			c.registers.A = ans
+		} else {
+			var addr domain.Address
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.ReadByCPU(addr)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+			c.executeLog.Data = &b
+
+			ans = b >> 1
+			err = c.bus.WriteByCPU(addr, ans)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+		}
+
+		c.registers.A = c.registers.A ^ ans
+		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.Carry = (b & 0x01) == 0x01
+		return
+	case domain.RRA:
+		var b, ans1 byte
+		if mode == domain.Accumulator {
+			b = c.registers.A
+			c.executeLog.Data = &b
+
+			ans1 = b >> 1
+			if c.registers.P.Carry {
+				ans1 = ans1 | 0x80
+			}
+
+			c.registers.A = ans1
+		} else {
+			var addr domain.Address
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				return
+			}
+
+			b, err = c.bus.ReadByCPU(addr)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+			c.executeLog.Data = &b
+
+			ans1 = b >> 1
+			if c.registers.P.Carry {
+				ans1 = ans1 | 0x80
+			}
+
+			err = c.bus.WriteByCPU(addr, ans1)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+		}
+		c.registers.P.Carry = (b & 0x01) == 0x01
+
+		ans2 := uint16(c.registers.A) + uint16(ans1)
+		if c.registers.P.Carry {
+			ans2 = ans2 + 1
+		}
+
+		beforeA := c.registers.A
+		c.registers.A = byte(ans2 & 0xFF)
+		c.registers.P.UpdateN(c.registers.A)
+		if (b & 0x80) == 0x00 {
+			c.registers.P.UpdateV(beforeA, c.registers.A)
+		} else {
+			c.registers.P.ClearV()
+		}
+		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.UpdateC(ans2)
+		return
+	case domain.STP:
+		fallthrough
+	case domain.NOP:
+		switch mode {
+		case domain.Absolute:
+			fallthrough
+		case domain.ZeroPage:
+			fallthrough
+		case domain.IndexedZeroPageX:
+			fallthrough
+		case domain.IndexedZeroPageY:
+			fallthrough
+		case domain.IndexedAbsoluteX:
+			fallthrough
+		case domain.IndexedAbsoluteY:
+			fallthrough
+		case domain.Relative:
+			fallthrough
+		case domain.IndexedIndirect:
+			fallthrough
+		case domain.IndirectIndexed:
+			fallthrough
+		case domain.AbsoluteIndirect:
+			var addr domain.Address
+			var pageCrossed bool
+			if addr, pageCrossed, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+
+			var b byte
+			b, err = c.bus.ReadByCPU(addr)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+			c.executeLog.Data = &b
+
+			switch opc.AddressingMode {
+			case domain.IndexedAbsoluteX:
+				if pageCrossed {
+					cycle++
+				}
+			}
+
+		case domain.Immediate:
+			b := op[0]
 			c.executeLog.Data = &b
 		}
 
@@ -1443,7 +1793,7 @@ func (c *CPU) pushStack(b byte) error {
 	addr := domain.Address(uint16(0x0100) | uint16(c.registers.S))
 	err := c.bus.WriteByCPU(addr, b)
 	c.registers.S--
-	log.Debug("CPU.pushStack[%2X] => [addr=%v]", b, addr)
+	log.Trace("CPU.pushStack[%2X] => [addr=%v]", b, addr)
 	return err
 }
 
@@ -1452,6 +1802,6 @@ func (c *CPU) popStack() (byte, error) {
 	c.registers.S++
 	addr := domain.Address(uint16(0x0100) | uint16(c.registers.S))
 	b, err := c.bus.ReadByCPU(addr)
-	log.Debug("CPU.popStack[%2X] <= [addr=%v]", b, addr)
+	log.Trace("CPU.popStack[%2X] <= [addr=%v]", b, addr)
 	return b, err
 }
