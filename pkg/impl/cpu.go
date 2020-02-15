@@ -515,14 +515,19 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
-		ans := int16(int8(c.registers.A)) | int16(int8(b))
+		ans := uint16(c.registers.A) + uint16(b)
 		if c.registers.P.Carry {
 			ans = ans + 1
 		}
 
+		beforeA := c.registers.A
 		c.registers.A = byte(ans & 0xFF)
 		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateV(int8(c.registers.A), ans)
+		if (b & 0x80) == 0x00 {
+			c.registers.P.UpdateV(beforeA, c.registers.A)
+		} else {
+			c.registers.P.ClearV()
+		}
 		c.registers.P.UpdateZ(c.registers.A)
 		c.registers.P.UpdateC(ans)
 		return
@@ -548,16 +553,21 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
-		ans := int16(int8(c.registers.A)) - int16(int8(b))
+		ans := uint16(c.registers.A) - uint16(b)
 		if !c.registers.P.Carry {
 			ans = ans - 1
 		}
 
-		c.registers.A = byte(ans & 0xFF)
+		beforeA := c.registers.A
+		c.registers.A = byte(ans & 0x00FF)
 		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateV(int8(c.registers.A), ans)
+		if (beforeA & 0x80) == (b & 0x80) {
+			c.registers.P.ClearV()
+		} else {
+			c.registers.P.UpdateV(beforeA, c.registers.A)
+		}
 		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.UpdateC(ans)
+		c.registers.P.Carry = (ans & 0xFF00) == 0x0000
 		return
 	case domain.AND:
 		var b byte
@@ -934,7 +944,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		ans := c.registers.A - b
 		c.registers.P.UpdateN(ans)
 		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = ans >= 0
+		c.registers.P.Carry = c.registers.A >= b
 		return
 	case domain.CPX:
 		var b byte
@@ -961,7 +971,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		ans := c.registers.X - b
 		c.registers.P.UpdateN(ans)
 		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = ans >= 0
+		c.registers.P.Carry = c.registers.X >= b
 		return
 	case domain.CPY:
 		var b byte
@@ -988,7 +998,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		ans := c.registers.Y - b
 		c.registers.P.UpdateN(ans)
 		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = ans >= 0
+		c.registers.P.Carry = c.registers.Y >= b
 		return
 	case domain.INC:
 		var addr domain.Address

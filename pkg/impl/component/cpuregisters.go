@@ -168,17 +168,26 @@ func (s *CPUStatusRegister) UpdateAll(b byte) {
 }
 
 // UpdateN ...
-func (s *CPUStatusRegister) UpdateN(result byte) {
+func (s *CPUStatusRegister) UpdateN(ans byte) {
 	old := s.Negative
-	s.Negative = ((result & 0x80) == 0x80)
-	log.Trace("CPU.update[N] %#v => %#v", old, s.Negative)
+	s.Negative = ((ans & 0x80) == 0x80)
+	log.Trace("CPU.update[N](ans:%#2X) %#v => %#v", ans, old, s.Negative)
 }
 
 // UpdateV ...
-func (s *CPUStatusRegister) UpdateV(org int8, ans int16) {
+func (s *CPUStatusRegister) UpdateV(before byte, after byte) {
 	old := s.Overflow
-	s.Overflow = ((org > 0) && (ans < 0)) || ((org < 0) && (ans > 0))
-	log.Debug("CPU.update[V] %#v => %#v", old, s.Overflow)
+	b := int8(before)
+	a := int8(after)
+	s.Overflow = ((b >= 0) && (a < 0)) || ((b < 0) && (a >= 0))
+	log.Trace("CPU.update[V](%#2X=>%#2X) %#v => %#v", before, after, old, s.Overflow)
+}
+
+// ClearV ...
+func (s *CPUStatusRegister) ClearV() {
+	old := s.Overflow
+	s.Overflow = false
+	log.Trace("CPU.update[V] %#v => %#v", old, s.Overflow)
 }
 
 // UpdateI ...
@@ -189,15 +198,15 @@ func (s *CPUStatusRegister) UpdateI(i bool) {
 }
 
 // UpdateZ ...
-func (s *CPUStatusRegister) UpdateZ(result byte) {
+func (s *CPUStatusRegister) UpdateZ(ans byte) {
 	old := s.Zero
-	s.Zero = (result == 0x00)
-	log.Trace("CPU.update[Z] %#v => %#v", old, s.Zero)
+	s.Zero = (ans == 0x00)
+	log.Trace("CPU.update[Z](ans:%#4X) %#v => %#v", ans, old, s.Zero)
 }
 
 // UpdateC ...
-func (s *CPUStatusRegister) UpdateC(result int16) {
+func (s *CPUStatusRegister) UpdateC(ans uint16) {
 	old := s.Carry
-	s.Carry = result > 0xFF
-	log.Trace("CPU.update[C] %#v => %#v", old, s.Carry)
+	s.Carry = (ans & 0xFF00) != 0x00
+	log.Trace("CPU.update[C](ans:%#4X) %#v => %#v", ans, old, s.Carry)
 }
