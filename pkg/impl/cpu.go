@@ -84,8 +84,8 @@ func (c *CPU) Run() (int, error) {
 	c.executeLog.FetchedValue = nil
 	c.executeLog.Mnemonic = domain.NOP
 	c.executeLog.AddressingMode = domain.Implied
-	c.executeLog.Address = domain.Address(0)
-	c.executeLog.Data = 0x00
+	c.executeLog.Address = nil
+	c.executeLog.Data = nil
 	c.executeLog.A = c.registers.A
 	c.executeLog.X = c.registers.X
 	c.executeLog.Y = c.registers.Y
@@ -219,6 +219,10 @@ func (c *CPU) fetchAsOperand(mode domain.AddressingMode) (op []byte, err error) 
 	case domain.IndexedZeroPageY:
 		fallthrough
 	case domain.Relative:
+		fallthrough
+	case domain.IndexedIndirect:
+		fallthrough
+	case domain.IndirectIndexed:
 		var b byte
 		b, err = c.fetch()
 		if err != nil {
@@ -232,10 +236,6 @@ func (c *CPU) fetchAsOperand(mode domain.AddressingMode) (op []byte, err error) 
 	case domain.IndexedAbsoluteX:
 		fallthrough
 	case domain.IndexedAbsoluteY:
-		fallthrough
-	case domain.IndexedIndirect:
-		fallthrough
-	case domain.IndirectIndexed:
 		fallthrough
 	case domain.AbsoluteIndirect:
 		var l byte
@@ -261,7 +261,7 @@ func (c *CPU) fetchAsOperand(mode domain.AddressingMode) (op []byte, err error) 
 }
 
 // makeAddress ...
-func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Address, err error) {
+func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Address, pageCrossed bool, err error) {
 	log.Trace("CPU.makeAddress[%#v][%#v] ...", mode, op)
 	defer func() {
 		if err != nil {
@@ -276,85 +276,133 @@ func (c *CPU) makeAddress(mode domain.AddressingMode, op []byte) (addr domain.Ad
 		l := op[0]
 		h := op[1]
 		addr = domain.Address((uint16(h) << 8) | uint16(l))
+		c.executeLog.AddAddress(addr)
 		return
 	case domain.ZeroPage:
 		l := op[0]
 		addr = domain.Address(l)
+		c.executeLog.AddAddress(addr)
 		return
 	case domain.IndexedZeroPageX:
 		l := op[0]
 		addr = domain.Address(uint8(l) + uint8(c.registers.X))
+		c.executeLog.AddAddress(addr)
 		return
 	case domain.IndexedZeroPageY:
 		l := op[0]
 		addr = domain.Address(uint8(l) + uint8(c.registers.Y))
+		c.executeLog.AddAddress(addr)
 		return
 	case domain.IndexedAbsoluteX:
 		l := op[0]
 		h := op[1]
-		addr = domain.Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.X))
+
+		addr = domain.Address(((uint16(h) << 8) | uint16(l)))
+		c.executeLog.AddAddress(addr)
+		addr = domain.Address(uint16(addr) + uint16(c.registers.X))
+		c.executeLog.AddAddress(addr)
+
+		pageCrossed = (uint16(addr) & 0xFF00) != (uint16(h) << 8)
+
 		return
 	case domain.IndexedAbsoluteY:
 		l := op[0]
 		h := op[1]
-		addr = domain.Address(((uint16(h) << 8) | uint16(l)) + uint16(c.registers.Y))
+
+		addr = domain.Address(((uint16(h) << 8) | uint16(l)))
+		c.executeLog.AddAddress(addr)
+		addr = domain.Address(uint16(addr) + uint16(c.registers.Y))
+		c.executeLog.AddAddress(addr)
+
+		pageCrossed = (uint16(addr) & 0xFF00) != (uint16(h) << 8)
+
 		return
 	case domain.Relative:
 		b := op[0]
 		addr = domain.Address(c.registers.PC + uint16(int8(b)))
+		c.executeLog.AddAddress(addr)
 		return
 	case domain.IndexedIndirect:
 		b := op[0]
-		dest := domain.Address(uint8(b) + c.registers.X)
+		destL := domain.Address(b + c.registers.X)
+		destH := domain.Address(b + c.registers.X + 1)
+		c.executeLog.AddAddress(destL)
 
 		var l byte
-		l, err = c.bus.ReadByCPU(dest)
+		l, err = c.bus.ReadByCPU(destL)
 		if err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
-		h := op[1]
+		var h byte
+		h, err = c.bus.ReadByCPU(destH)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
 
 		addr = domain.Address((uint16(h) << 8) | uint16(l))
+		c.executeLog.AddAddress(addr)
+
+		pageCrossed = (uint16(addr) & 0xFF00) != (uint16(h) << 8)
+
 		return
 	case domain.IndirectIndexed:
 		b := op[0]
-		dest := domain.Address(uint8(b) + c.registers.X)
+		destL := domain.Address(b)
+		destH := domain.Address(b + 1)
 
 		var h byte
-		h, err = c.bus.ReadByCPU(dest)
+		h, err = c.bus.ReadByCPU(destH)
 		if err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
-		l := op[1]
+		var l byte
+		l, err = c.bus.ReadByCPU(destL)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+			return
+		}
 
-		addr = domain.Address((uint16(h) << 8) + uint16(l) + uint16(c.registers.Y))
+		addr = domain.Address((uint16(h) << 8) + uint16(l))
+		c.executeLog.AddAddress(addr)
+
+		addr = domain.Address(uint16(addr) + uint16(c.registers.Y))
+		c.executeLog.AddAddress(addr)
+
+		pageCrossed = (uint16(addr) & 0xFF00) != (uint16(h) << 8)
+
 		return
 	case domain.AbsoluteIndirect:
 		f1 := op[0]
 		f2 := op[1]
 
-		dest := domain.Address((uint16(f2) << 8) | uint16(f1))
-		nextDest := dest + 1
+		destL := domain.Address((uint16(f2) << 8) | uint16(f1))
+
+		// 6502のバグ：上位バイト取得先アドレスの上位8ビットはインクリメントの影響を受けない
+		destH := domain.Address((uint16(f2) << 8) | uint16(f1+1))
+
+		c.executeLog.AddAddress(destL)
 
 		var addrL byte
-		addrL, err = c.bus.ReadByCPU(dest)
+		addrL, err = c.bus.ReadByCPU(destL)
 		if err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
 		var addrH byte
-		addrH, err = c.bus.ReadByCPU(nextDest)
+		addrH, err = c.bus.ReadByCPU(destH)
 		if err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
 		addr = domain.Address((uint16(addrH) << 8) | uint16(addrL))
+		c.executeLog.AddAddress(addr)
 		return
 	default:
 		err = xerrors.Errorf("failed to make address, AddressingMode is not supported; mode: %#v", mode)
@@ -501,13 +549,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
@@ -515,6 +561,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
+		c.executeLog.Data = &b
 		ans := uint16(c.registers.A) + uint16(b)
 		if c.registers.P.Carry {
 			ans = ans + 1
@@ -539,13 +586,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
@@ -553,6 +598,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
+		c.executeLog.Data = &b
 		ans := uint16(c.registers.A) - uint16(b)
 		if !c.registers.P.Carry {
 			ans = ans - 1
@@ -577,13 +623,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
@@ -591,6 +635,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
+		c.executeLog.Data = &b
 		c.registers.A = c.registers.A & b
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
@@ -603,13 +648,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
@@ -617,6 +660,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
+		c.executeLog.Data = &b
 		c.registers.A = c.registers.A | b
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
@@ -629,13 +673,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
@@ -643,115 +685,162 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
+		c.executeLog.Data = &b
 		c.registers.A = c.registers.A ^ b
 		c.registers.P.UpdateN(c.registers.A)
 		c.registers.P.UpdateZ(c.registers.A)
 		return
 	case domain.ASL:
-		var b byte
+		var b, ans byte
 		if mode == domain.Accumulator {
 			b = c.registers.A
-			c.executeLog.Data = b
+			c.executeLog.Data = &b
+
+			ans = b << 1
+			c.registers.A = ans
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
+			c.executeLog.Data = &b
+
+			ans = b << 1
+			err = c.bus.WriteByCPU(addr, ans)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
 		}
-		c.registers.A = b << 1
-		c.registers.P.UpdateN(c.registers.A)
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
 		c.registers.P.Carry = (b & 0x80) == 0x80
 		return
 	case domain.LSR:
-		var b byte
+		var b, ans byte
 		if mode == domain.Accumulator {
 			b = c.registers.A
-			c.executeLog.Data = b
+			c.executeLog.Data = &b
+
+			ans = b >> 1
+			c.registers.A = ans
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
+			c.executeLog.Data = &b
+
+			ans = b >> 1
+			err = c.bus.WriteByCPU(addr, ans)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
 		}
-		c.registers.A = b >> 1
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
+
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
 		c.registers.P.Carry = (b & 0x01) == 0x01
 		return
 	case domain.ROL:
-		var b byte
+		var b, ans byte
 		if mode == domain.Accumulator {
 			b = c.registers.A
-			c.executeLog.Data = b
+			c.executeLog.Data = &b
+
+			ans = b << 1
+			if c.registers.P.Carry {
+				ans = ans + 1
+			}
+			c.registers.A = ans
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
-		}
-		c.registers.A = b << 1
-		if c.registers.P.Carry {
-			c.registers.A = c.registers.A + 1
+			c.executeLog.Data = &b
+
+			ans = b << 1
+			if c.registers.P.Carry {
+				ans = ans + 1
+			}
+
+			err = c.bus.WriteByCPU(addr, ans)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
 		}
 
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
 		c.registers.P.Carry = (b & 0x80) == 0x80
 		return
 	case domain.ROR:
-		var b byte
+		var b, ans byte
 		if mode == domain.Accumulator {
 			b = c.registers.A
-			c.executeLog.Data = b
+			c.executeLog.Data = &b
+
+			ans = b >> 1
+			if c.registers.P.Carry {
+				ans = ans | 0x80
+			}
+
+			c.registers.A = ans
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
-		}
-		c.registers.A = b >> 1
-		if c.registers.P.Carry {
-			c.registers.A = c.registers.A | 0x80
+			c.executeLog.Data = &b
+
+			ans = b >> 1
+			if c.registers.P.Carry {
+				ans = ans | 0x80
+			}
+
+			err = c.bus.WriteByCPU(addr, ans)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
 		}
 
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
+		c.registers.P.UpdateN(ans)
+		c.registers.P.UpdateZ(ans)
 		c.registers.P.Carry = (b & 0x01) == 0x01
 		return
 	case domain.BCC:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		if !c.registers.P.Carry {
 			c.registers.UpdatePC(uint16(addr))
@@ -760,10 +849,9 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.BCS:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		if c.registers.P.Carry {
 			c.registers.UpdatePC(uint16(addr))
@@ -772,10 +860,9 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.BEQ:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		if c.registers.P.Zero {
 			c.registers.UpdatePC(uint16(addr))
@@ -784,10 +871,9 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.BNE:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		if !c.registers.P.Zero {
 			c.registers.UpdatePC(uint16(addr))
@@ -796,10 +882,9 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.BVC:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		if !c.registers.P.Overflow {
 			c.registers.UpdatePC(uint16(addr))
@@ -808,10 +893,9 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.BVS:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		if c.registers.P.Overflow {
 			c.registers.UpdatePC(uint16(addr))
@@ -820,10 +904,9 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.BPL:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		if !c.registers.P.Negative {
 			c.registers.UpdatePC(uint16(addr))
@@ -832,21 +915,20 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.BMI:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		if c.registers.P.Negative {
 			c.registers.UpdatePC(uint16(addr))
+			cycle++
 		}
 		return
 	case domain.BIT:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		var b byte
 		b, err = c.bus.ReadByCPU(addr)
@@ -854,7 +936,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
-		c.executeLog.Data = b
+		c.executeLog.Data = &b
 
 		c.registers.P.Zero = (c.registers.A & b) == 0
 		c.registers.P.Negative = (b & 0x80) == 0x80
@@ -862,24 +944,25 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.JMP:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		c.registers.UpdatePC(uint16(addr))
 		return
 	case domain.JSR:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
-		if err = c.pushStack(byte((c.registers.PC & 0xFF00) >> 8)); err != nil {
+		// 6502のバグ:1つ前のアドレスを格納
+		pc := c.registers.PC - 1
+
+		if err = c.pushStack(byte((pc & 0xFF00) >> 8)); err != nil {
 			return
 		}
-		if err = c.pushStack(byte(c.registers.PC & 0x00FF)); err != nil {
+		if err = c.pushStack(byte(pc & 0x00FF)); err != nil {
 			return
 		}
 		c.registers.PC = uint16(addr)
@@ -895,6 +978,10 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 			return
 		}
 		c.registers.PC = (uint16(h) << 8) | uint16(l)
+
+		// 6502のバグ:インクリメントしたもの復帰アドレスとする
+		c.registers.PC = c.registers.PC + 1
+
 		return
 	case domain.BRK:
 		c.registers.P.BreakMode = true
@@ -927,13 +1014,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
@@ -941,6 +1026,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
+		c.executeLog.Data = &b
 		ans := c.registers.A - b
 		c.registers.P.UpdateN(ans)
 		c.registers.P.UpdateZ(ans)
@@ -954,13 +1040,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
@@ -968,6 +1052,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
+		c.executeLog.Data = &b
 		ans := c.registers.X - b
 		c.registers.P.UpdateN(ans)
 		c.registers.P.UpdateZ(ans)
@@ -981,13 +1066,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
@@ -995,6 +1078,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 		}
+		c.executeLog.Data = &b
 		ans := c.registers.Y - b
 		c.registers.P.UpdateN(ans)
 		c.registers.P.UpdateZ(ans)
@@ -1002,10 +1086,9 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.INC:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			return
 		}
-		c.executeLog.Address = addr
 
 		var b byte
 		b, err = c.bus.ReadByCPU(addr)
@@ -1013,6 +1096,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
+		c.executeLog.Data = &b
 
 		ans := b + 1
 		err = c.bus.WriteByCPU(addr, ans)
@@ -1026,11 +1110,10 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.DEC:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
-		c.executeLog.Address = addr
 
 		var b byte
 		b, err = c.bus.ReadByCPU(addr)
@@ -1038,6 +1121,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 			err = xerrors.Errorf(": %w", err)
 			return
 		}
+		c.executeLog.Data = &b
 
 		ans := b - 1
 		err = c.bus.WriteByCPU(addr, ans)
@@ -1098,21 +1182,34 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
-			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			var (
+				addr        domain.Address
+				pageCrossed bool
+			)
+			if addr, pageCrossed, err = c.makeAddress(mode, op); err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
+
+			switch opc.AddressingMode {
+			case domain.IndexedAbsoluteX:
+				fallthrough
+			case domain.IndexedAbsoluteY:
+				fallthrough
+			case domain.IndirectIndexed:
+				if pageCrossed {
+					cycle++
+				}
+			}
 		}
+		c.executeLog.Data = &b
 
 		c.registers.UpdateA(b)
 		c.registers.P.UpdateN(c.registers.A)
@@ -1126,21 +1223,25 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			var pageCrossed bool
+			if addr, pageCrossed, err = c.makeAddress(mode, op); err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
+
+			if opc.AddressingMode == domain.IndexedAbsoluteY && pageCrossed {
+				cycle++
+			}
 		}
+		c.executeLog.Data = &b
 
 		c.registers.UpdateX(b)
 		c.registers.P.UpdateN(c.registers.X)
@@ -1154,21 +1255,25 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 				return
 			}
 			b = op[0]
-			c.executeLog.Data = b
 		} else {
 			var addr domain.Address
-			if addr, err = c.makeAddress(mode, op); err != nil {
+			var pageCrossed bool
+			if addr, pageCrossed, err = c.makeAddress(mode, op); err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
-			c.executeLog.Address = addr
 
 			b, err = c.bus.ReadByCPU(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
 			}
+
+			if opc.AddressingMode == domain.IndexedAbsoluteX && pageCrossed {
+				cycle++
+			}
 		}
+		c.executeLog.Data = &b
 
 		c.registers.UpdateY(b)
 		c.registers.P.UpdateN(c.registers.Y)
@@ -1176,33 +1281,17 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.STA:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
 		}
-		c.executeLog.Address = addr
 
 		var b byte
 		b, err = c.bus.ReadByCPU(addr)
 		if err != nil {
 			return
 		}
-		c.executeLog.Data = b
-
-		switch mode {
-		case domain.IndexedZeroPageX:
-			fallthrough
-		case domain.Absolute:
-			cycle++
-		case domain.IndexedAbsoluteX:
-			fallthrough
-		case domain.IndexedAbsoluteY:
-			cycle = cycle + 2
-		case domain.IndirectIndexed:
-			fallthrough
-		case domain.IndexedIndirect:
-			cycle = cycle + 3
-		}
+		c.executeLog.Data = &b
 
 		err = c.bus.WriteByCPU(addr, c.registers.A)
 		if err != nil {
@@ -1211,11 +1300,17 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.STX:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
 		}
-		c.executeLog.Address = addr
+
+		var b byte
+		b, err = c.bus.ReadByCPU(addr)
+		if err != nil {
+			return
+		}
+		c.executeLog.Data = &b
 
 		err = c.bus.WriteByCPU(addr, c.registers.X)
 		if err != nil {
@@ -1224,11 +1319,17 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		return
 	case domain.STY:
 		var addr domain.Address
-		if addr, err = c.makeAddress(mode, op); err != nil {
+		if addr, _, err = c.makeAddress(mode, op); err != nil {
 			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
 			return
 		}
-		c.executeLog.Address = addr
+
+		var b byte
+		b, err = c.bus.ReadByCPU(addr)
+		if err != nil {
+			return
+		}
+		c.executeLog.Data = &b
 
 		err = c.bus.WriteByCPU(addr, c.registers.Y)
 		if err != nil {
@@ -1303,6 +1404,23 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.STP:
 		return
 	case domain.NOP:
+		switch mode {
+		case domain.ZeroPage:
+			var addr domain.Address
+			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+
+			var b byte
+			b, err = c.bus.ReadByCPU(addr)
+			if err != nil {
+				err = xerrors.Errorf(": %w", err)
+				return
+			}
+			c.executeLog.Data = &b
+		}
+
 		return
 	default:
 		err = xerrors.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", mne)
@@ -1325,6 +1443,7 @@ func (c *CPU) pushStack(b byte) error {
 	addr := domain.Address(uint16(0x0100) | uint16(c.registers.S))
 	err := c.bus.WriteByCPU(addr, b)
 	c.registers.S--
+	log.Debug("CPU.pushStack[%2X] => [addr=%v]", b, addr)
 	return err
 }
 
@@ -1332,5 +1451,7 @@ func (c *CPU) pushStack(b byte) error {
 func (c *CPU) popStack() (byte, error) {
 	c.registers.S++
 	addr := domain.Address(uint16(0x0100) | uint16(c.registers.S))
-	return c.bus.ReadByCPU(addr)
+	b, err := c.bus.ReadByCPU(addr)
+	log.Debug("CPU.popStack[%2X] <= [addr=%v]", b, addr)
+	return b, err
 }
