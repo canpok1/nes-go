@@ -3,6 +3,7 @@ package log
 import (
 	"io"
 	"log"
+	"runtime"
 )
 
 // Level ...
@@ -25,11 +26,13 @@ const (
 type Config struct {
 	logLevel         Level
 	enableLevelLabel bool
+	enableFuncName   bool
 }
 
 var config = Config{
 	logLevel:         LevelDebug,
 	enableLevelLabel: true,
+	enableFuncName:   true,
 }
 
 // SetOutput ...
@@ -47,6 +50,11 @@ func SetEnableLevelLabel(enable bool) {
 	config.enableLevelLabel = enable
 }
 
+// SetEnableFuncName ...
+func SetEnableFuncName(enable bool) {
+	config.enableFuncName = enable
+}
+
 // SetEnableTimestamp ...
 func SetEnableTimestamp(enable bool) {
 	if enable {
@@ -58,13 +66,25 @@ func SetEnableTimestamp(enable bool) {
 
 // print ...
 func print(level string, format string, v ...interface{}) {
-	if config.enableLevelLabel {
-		args := append([]interface{}{level}, v...)
-		f := "[%v]" + format
-		log.Printf(f, args...)
-	} else {
-		log.Printf(format, v...)
+	args := v
+	f := format
+
+	if config.enableFuncName {
+		pc, _, _, ok := runtime.Caller(2)
+		if ok {
+			funcName := runtime.FuncForPC(pc).Name()
+
+			args = append([]interface{}{funcName}, args...)
+			f = "[%s]" + f
+		}
 	}
+
+	if config.enableLevelLabel {
+		args = append([]interface{}{level}, args...)
+		f = "[%v]" + f
+	}
+
+	log.Printf(f, args...)
 }
 
 // Fatal ...
