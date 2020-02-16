@@ -289,6 +289,9 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	if addr >= 0x2000 && addr <= 0x2007 {
 		target = "PPU Register"
 		err = b.ppu.WriteRegisters(addr, data)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+		}
 		return err
 	}
 
@@ -296,6 +299,9 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	if addr >= 0x2008 && addr <= 0x3FFF {
 		target = "PPU Register Mirror"
 		err = b.ppu.WriteRegisters(addr, data)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+		}
 		return err
 	}
 
@@ -303,6 +309,9 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	if addr == 0x4014 {
 		target = "OAMDMA"
 		err = b.ppu.WriteRegisters(addr, data)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+		}
 		return err
 	}
 
@@ -376,11 +385,13 @@ func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 	addrTmp := addr
 	// 0x3000～0x3EFF	-	0x2000-0x2EFFのミラー
 	if addr >= 0x3000 && addr <= 0x3EFF {
-		addrTmp = addr - (0x3000 - 0x2000)
+		var l uint16 = 0x2EFF - 0x2000
+		addrTmp = domain.Address(0x2000 + ((uint16(addr) - 0x3000) % l))
 	}
 	// 0x3F20～0x3FFF	-	0x3F00-0x3F1Fのミラー
 	if addr >= 0x3F20 && addr <= 0x3FFF {
-		addrTmp = addr - (0x3F20 - 0x3F00)
+		var l uint16 = 0x3F1F - 0x3F00
+		addrTmp = domain.Address(0x3F00 + ((uint16(addr) - 0x3F20) % l))
 	}
 
 	// 0x0000～0x0FFF	0x1000	パターンテーブル0
@@ -470,7 +481,7 @@ func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 		return
 	}
 
-	err = xerrors.Errorf("failed to read by PPU; addr: %v", addr)
+	err = xerrors.Errorf("failed to read by PPU; addr: %#v", addr)
 	return
 }
 
@@ -497,11 +508,13 @@ func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 	addrTmp := addr
 	// 0x3000～0x3EFF	-	0x2000-0x2EFFのミラー
 	if addr >= 0x3000 && addr <= 0x3EFF {
-		addrTmp = addr - (0x3000 - 0x2000)
+		var l uint16 = 0x2EFF - 0x2000
+		addrTmp = domain.Address(0x2000 + ((uint16(addr) - 0x3000) % l))
 	}
 	// 0x3F20～0x3FFF	-	0x3F00-0x3F1Fのミラー
 	if addr >= 0x3F20 && addr <= 0x3FFF {
-		addrTmp = addr - (0x3F20 - 0x3F00)
+		var l uint16 = 0x3F1F - 0x3F00
+		addrTmp = domain.Address(0x3F00 + ((uint16(addr) - 0x3F20) % l))
 	}
 
 	// 0x0000～0x0FFF	0x1000	パターンテーブル0
@@ -601,7 +614,7 @@ func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 		return
 	}
 
-	err = xerrors.Errorf("failed to read by PPU; addr: %v", addr)
+	err = xerrors.Errorf("failed to write by PPU; addr: %#v", addr)
 	return
 }
 

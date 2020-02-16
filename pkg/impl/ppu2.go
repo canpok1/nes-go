@@ -129,6 +129,9 @@ func (p *PPU2) ReadRegisters(addr domain.Address) (byte, error) {
 		ppuaddr := p.registers.PPUAddr.ToFullAddress()
 		target = fmt.Sprintf("PPUDATA(from PPU Memory %#v)", ppuaddr)
 		data, err = p.bus.ReadByPPU(ppuaddr)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+		}
 		p.incrementPPUADDR()
 		p.internalRegisters.IncrementV(p.registers.PPUCtrl)
 	default:
@@ -195,6 +198,9 @@ func (p *PPU2) WriteRegisters(addr domain.Address, data byte) error {
 		ppuaddr := p.registers.PPUAddr.ToFullAddress()
 		target = fmt.Sprintf("PPUDATA(to PPU Memory %#v)", ppuaddr)
 		err = p.bus.WriteByPPU(ppuaddr, data)
+		if err != nil {
+			err = xerrors.Errorf(": %w", err)
+		}
 		p.incrementPPUADDR()
 		p.internalRegisters.IncrementV(p.registers.PPUCtrl)
 	}

@@ -91,6 +91,7 @@ func (n *NES) Run() error {
 			if err := n.Run1Cycle(); err != nil {
 				log.Warn("error occured")
 				log.Warn("%s", n.Recorder.String())
+				log.Warn("%+v", err)
 				panic(err)
 			}
 		}

@@ -557,6 +557,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -594,6 +595,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -631,6 +633,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -656,6 +659,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -681,6 +685,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -706,6 +711,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -738,6 +744,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -774,6 +781,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -815,6 +823,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -844,6 +853,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.BCC:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -855,6 +865,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.BCS:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -867,6 +878,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		var addr domain.Address
 		var pageCrossed bool
 		if addr, pageCrossed, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -882,6 +894,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.BNE:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -893,6 +906,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.BVC:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -904,6 +918,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.BVS:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -915,6 +930,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.BPL:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -926,6 +942,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.BMI:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -937,6 +954,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.BIT:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -955,6 +973,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.JMP:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -963,6 +982,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.JSR:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -970,9 +990,11 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		pc := c.registers.PC - 1
 
 		if err = c.pushStack(byte((pc & 0xFF00) >> 8)); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		if err = c.pushStack(byte(pc & 0x00FF)); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		c.registers.PC = uint16(addr)
@@ -1027,6 +1049,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -1053,6 +1076,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -1079,6 +1103,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -1097,6 +1122,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 	case domain.INC:
 		var addr domain.Address
 		if addr, _, err = c.makeAddress(mode, op); err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 
@@ -1299,12 +1325,14 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		var b byte
 		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		c.executeLog.Data = &b
 
 		err = c.bus.WriteByCPU(addr, c.registers.A)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		return
@@ -1318,12 +1346,14 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		var b byte
 		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		c.executeLog.Data = &b
 
 		err = c.bus.WriteByCPU(addr, c.registers.X)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		return
@@ -1337,12 +1367,14 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		var b byte
 		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		c.executeLog.Data = &b
 
 		err = c.bus.WriteByCPU(addr, c.registers.Y)
 		if err != nil {
+			err = xerrors.Errorf(": %w", err)
 			return
 		}
 		return
@@ -1570,6 +1602,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -1606,6 +1639,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -1644,6 +1678,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -1682,6 +1717,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		} else {
 			var addr domain.Address
 			if addr, _, err = c.makeAddress(mode, op); err != nil {
+				err = xerrors.Errorf(": %w", err)
 				return
 			}
 
@@ -1792,6 +1828,9 @@ func (c *CPU) ReceiveNMI(active bool) {
 func (c *CPU) pushStack(b byte) error {
 	addr := domain.Address(uint16(0x0100) | uint16(c.registers.S))
 	err := c.bus.WriteByCPU(addr, b)
+	if err != nil {
+		err = xerrors.Errorf(": %w", err)
+	}
 	c.registers.S--
 	log.Trace("CPU.pushStack[%2X] => [addr=%v]", b, addr)
 	return err
@@ -1802,6 +1841,9 @@ func (c *CPU) popStack() (byte, error) {
 	c.registers.S++
 	addr := domain.Address(uint16(0x0100) | uint16(c.registers.S))
 	b, err := c.bus.ReadByCPU(addr)
+	if err != nil {
+		err = xerrors.Errorf(": %w", err)
+	}
 	log.Trace("CPU.popStack[%2X] <= [addr=%v]", b, addr)
 	return b, err
 }
