@@ -86,18 +86,18 @@ func (p *PPU2) ReadRegisters(addr domain.Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
-	log.Trace("PPU.ReadRegisters[%#v] ...", addr)
+	log.Trace("begin[%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Warn("PPU.ReadRegisters[%#v][%#v] => %#v", addr, target, err)
+			log.Warn("end[%#v][%#v] => %#v", addr, target, err)
 		} else {
-			log.Trace("PPU.ReadRegisters[%#v][%#v] => %#v", addr, target, data)
+			log.Trace("end[%#v][%#v] => %#v", addr, target, data)
 		}
 	}()
 
 	if addr < 0x2000 && addr > 0x3FFF {
 		target = "-"
-		err = xerrors.Errorf("failed to read PPURegisters, address is out of range; addr: %#v", addr)
+		err = xerrors.Errorf("address is out of range; addr: %#v", addr)
 		return data, err
 	}
 
@@ -136,7 +136,7 @@ func (p *PPU2) ReadRegisters(addr domain.Address) (byte, error) {
 		p.internalRegisters.IncrementV(p.registers.PPUCtrl)
 	default:
 		target = "-"
-		err = xerrors.Errorf("failed to read PPURegisters, address is out of range; addr: %#v", addr)
+		err = xerrors.Errorf("address is out of range; addr: %#v", addr)
 	}
 
 	return data, err
@@ -146,18 +146,18 @@ func (p *PPU2) ReadRegisters(addr domain.Address) (byte, error) {
 func (p *PPU2) WriteRegisters(addr domain.Address, data byte) error {
 	var err error
 	var target string
-	log.Trace("PPU.WriteRegisters[%#v] ...", addr)
+	log.Trace("begin[%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Warn("PPU.WriteRegisters[%#v][%#v] => %#v", addr, target, err)
+			log.Warn("end[%#v][%#v] => %#v", addr, target, err)
 		} else {
-			log.Trace("PPU.WriteRegisters[%#v][%#v] <= %#v", addr, target, data)
+			log.Trace("end[%#v][%#v] <= %#v", addr, target, data)
 		}
 	}()
 
 	if addr < 0x2000 && addr > 0x3FFF && addr != 0x4014 {
 		target = "-"
-		err = xerrors.Errorf("failed to write PPURegisters, address is out of range; addr: %#v", addr)
+		err = xerrors.Errorf("address is out of range; addr: %#v", addr)
 		return err
 	}
 
@@ -177,7 +177,7 @@ func (p *PPU2) WriteRegisters(addr domain.Address, data byte) error {
 		p.registers.PPUMask.UpdateAll(data)
 		target = "PPUMASK"
 	case 2:
-		err = xerrors.Errorf("failed to write, PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
+		err = xerrors.Errorf("PPURegister[PPUSTATUS] is read only; addr: %#v", addr)
 		target = "PPUSTATUS"
 	case 3:
 		p.registers.OAMAddr = data

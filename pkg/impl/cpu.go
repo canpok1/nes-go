@@ -168,10 +168,10 @@ func (c *CPU) Run() (int, error) {
 // decodeOpcode ...
 func decodeOpcode(o domain.Opcode) (*domain.OpcodeProp, error) {
 	if p, ok := domain.OpcodeProps[o]; ok {
-		log.Trace("CPU.decode[opcode=%#v] => %#v", o, p)
+		log.Trace("begin[opcode=%#v] => %#v", o, p)
 		return &p, nil
 	}
-	log.Trace("CPU.decode[%#v] => not found", o)
+	log.Trace("begin[%#v] => not found", o)
 	return nil, xerrors.Errorf("opcode is not support; opcode: %#v", o)
 }
 
@@ -181,12 +181,12 @@ func (c *CPU) fetch() (byte, error) {
 	var data byte
 	var err error
 
-	log.Trace("CPU.fetch ...")
+	log.Trace("begin ...")
 	defer func() {
 		if err != nil {
-			log.Warn("CPU.fetch[addr=%#v] => error %#v", addr, err)
+			log.Warn("end[addr=%#v] => error %#v", addr, err)
 		} else {
-			log.Trace("CPU.fetch[addr=%#v] => %#v", addr, data)
+			log.Trace("end[addr=%#v] => %#v", addr, data)
 		}
 	}()
 
@@ -214,28 +214,29 @@ func (c *CPU) fetchOpcode() (domain.Opcode, error) {
 
 // InterruptNMI ...
 func (c *CPU) InterruptNMI() error {
-	log.Trace("CPU.Interrupt[NMI] ...")
+	log.Trace("begin[Interrupt NMI] ...")
+	defer log.Trace("end[Interrupt NMI]")
 
 	c.registers.P.BreakMode = false
 	if err := c.pushStack(byte((c.registers.PC & 0xFF00) >> 8)); err != nil {
-		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	if err := c.pushStack(byte(c.registers.PC & 0x00FF)); err != nil {
-		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	if err := c.pushStack(c.registers.P.ToByte()); err != nil {
-		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 
 	c.registers.P.InterruptDisable = true
 
 	l, err := c.bus.ReadByCPU(0xFFFA)
 	if err != nil {
-		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	h, err := c.bus.ReadByCPU(0xFFFB)
 	if err != nil {
-		return xerrors.Errorf("failed to interrupt[NMI]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	c.registers.PC = (uint16(h) << 8) + uint16(l)
 
@@ -245,7 +246,8 @@ func (c *CPU) InterruptNMI() error {
 
 // interruptRESET ...
 func (c *CPU) interruptRESET() error {
-	log.Trace("CPU.Interrupt[RESET] ...")
+	log.Trace("begin[Interrupt RESET] ...")
+	defer log.Trace("end[Interrupt RESET]")
 
 	c.registers.P.UpdateI(true)
 
@@ -254,12 +256,12 @@ func (c *CPU) interruptRESET() error {
 	} else {
 		l, err := c.bus.ReadByCPU(0xFFFC)
 		if err != nil {
-			return xerrors.Errorf("failed to reset: %w", err)
+			return xerrors.Errorf(": %w", err)
 		}
 
 		h, err := c.bus.ReadByCPU(0xFFFD)
 		if err != nil {
-			return xerrors.Errorf("failed to reset: %w", err)
+			return xerrors.Errorf(": %w", err)
 		}
 
 		c.registers.UpdatePC((uint16(h) << 8) | uint16(l))
@@ -271,26 +273,27 @@ func (c *CPU) interruptRESET() error {
 
 // interruptBRK ...
 func (c *CPU) interruptBRK() error {
-	log.Trace("CPU.Interrupt[BRK] ...")
+	log.Trace("begin[Interrupt BRK] ...")
+	defer log.Trace("end[Interrupt BRK]")
 
 	if err := c.pushStack(byte((c.registers.PC & 0xFF00) >> 8)); err != nil {
-		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	if err := c.pushStack(byte(c.registers.PC & 0x00FF)); err != nil {
-		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	if err := c.pushStack(c.registers.P.ToByte()); err != nil {
-		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	c.registers.P.InterruptDisable = true
 
 	l, err := c.bus.ReadByCPU(0xFFFE)
 	if err != nil {
-		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	h, err := c.bus.ReadByCPU(0xFFFF)
 	if err != nil {
-		return xerrors.Errorf("failed to interrupt[BRK]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	c.registers.PC = (uint16(h) << 8) + uint16(l)
 	return nil
@@ -298,26 +301,27 @@ func (c *CPU) interruptBRK() error {
 
 // interruptIRQ ...
 func (c *CPU) interruptIRQ() error {
-	log.Trace("CPU.Interrupt[IRQ] ...")
+	log.Trace("begin[Interrupt IRQ] ...")
+	defer log.Trace("end[Interrupt IRQ]")
 
 	if err := c.pushStack(byte((c.registers.PC & 0xFF00) >> 8)); err != nil {
-		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	if err := c.pushStack(byte(c.registers.PC & 0x00FF)); err != nil {
-		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	if err := c.pushStack(c.registers.P.ToByte()); err != nil {
-		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	c.registers.P.InterruptDisable = true
 
 	l, err := c.bus.ReadByCPU(0xFFFE)
 	if err != nil {
-		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	h, err := c.bus.ReadByCPU(0xFFFF)
 	if err != nil {
-		return xerrors.Errorf("failed to interrupt[IRQ]: %w", err)
+		return xerrors.Errorf(": %w", err)
 	}
 	c.registers.PC = (uint16(h) << 8) + uint16(l)
 	return nil
@@ -325,7 +329,8 @@ func (c *CPU) interruptIRQ() error {
 
 // ReceiveNMI ...
 func (c *CPU) ReceiveNMI(active bool) {
-	log.Trace("CPU.ReceiveNMI[%v]", active)
+	log.Trace("begin[%v] ...", active)
+	defer log.Trace("end[%v]", active)
 	if !c.beforeNMIActive && active {
 		// activeが　false => true となったときにNMI割り込みを発生
 		c.shouldNMI = true

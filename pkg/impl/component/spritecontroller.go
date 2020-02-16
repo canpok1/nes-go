@@ -71,7 +71,7 @@ func (s *SpriteController) ClearSecondaryOAM(spriteIdx, byteIdx uint16) {
 	case 3:
 		s.oam2[spriteIdx].X = 0xFF
 	default:
-		log.Warn("SpriteController.ClearSecondaryOAM byteIdx out of range byteIdx=%v", byteIdx)
+		log.Warn("byteIdx out of range byteIdx=%v", byteIdx)
 	}
 	s.n = 0
 	s.secondarySize = 0
@@ -103,7 +103,7 @@ func (s *SpriteController) EvaluateSprite(scanline uint16) {
 	if top != 1 && y >= top && y <= btm {
 		// セカンダリにコピー
 		s.oam2[s.secondarySize] = sprite
-		log.Trace("SpriteController.EvaluateSprite[%v]copy to secondaryOAM; sprite: %v", scanline, s.oam2[s.secondarySize])
+		log.Trace("copy to secondaryOAM; scanline: %v, sprite: %v", scanline, s.oam2[s.secondarySize])
 
 		s.secondarySize++
 	}

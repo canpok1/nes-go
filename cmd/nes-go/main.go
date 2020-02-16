@@ -14,12 +14,14 @@ const (
 	LOGLEVEL           = log.LevelInfo
 	SCALE              = 2.5
 	ENABLE_DEBUG_PRINT = true
+	ENABLE_FUNC_NAME   = false
 	FIRST_PC           = 0x0000
 )
 
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetLogLevel(LOGLEVEL)
+	log.SetEnableFuncName(ENABLE_FUNC_NAME)
 
 	log.Debug("========================================")
 	log.Debug("program start")

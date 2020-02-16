@@ -74,21 +74,21 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
-	log.Trace("Bus.readByCPU[addr=%#v] ...", addr)
+	log.Trace("begin[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.readByCPU[addr=%#v][%v] => %#v", addr, target, err)
+			log.Warn("end[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
-			log.Trace("Bus.readByCPU[addr=%#v][%v] => %#v", addr, target, data)
+			log.Trace("end[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 
 	if b == nil {
-		err = xerrors.Errorf("failed to readByCPU, bus is nil")
+		err = xerrors.Errorf("bus is nil")
 		return data, err
 	}
 	if !b.setupped {
-		err = xerrors.Errorf("failed to readByCPU, bus setup is not completed")
+		err = xerrors.Errorf("bus setup is not completed")
 		return data, err
 	}
 
@@ -245,28 +245,28 @@ func (b *Bus) ReadByCPU(addr domain.Address) (byte, error) {
 		return data, err
 	}
 
-	return 0, xerrors.Errorf("failed read, addr out of range; addr: %#v", addr)
+	return 0, xerrors.Errorf("addr out of range; addr: %#v", addr)
 }
 
 // WriteByCPU ...
 func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	var err error
 	var target string
-	log.Trace("Bus.writeByCPU[addr=%#v] (<=%#v) ...", addr, data)
+	log.Trace("begin[addr=%#v] (<=%#v) ...", addr, data)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.writeByCPU[addr=%#v][%v] => %#v", addr, target, err)
+			log.Warn("end[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
-			log.Trace("Bus.writeByCPU[addr=%#v][%v] <= %#v", addr, target, data)
+			log.Trace("end[addr=%#v][%v] <= %#v", addr, target, data)
 		}
 	}()
 
 	if b == nil {
-		err = xerrors.Errorf("failed to writeByCPU, bus is nil")
+		err = xerrors.Errorf("bus is nil")
 		return err
 	}
 	if !b.setupped {
-		err = xerrors.Errorf("failed to writeByCPU, bus setup is not completed")
+		err = xerrors.Errorf("bus setup is not completed")
 		return err
 	}
 
@@ -342,7 +342,7 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 
 	// 0x4020～0x5FFF	0x1FE0	拡張ROM
 	if addr >= 0x4000 && addr <= 0x401F {
-		return xerrors.Errorf("failed write, cannot write EX ROM; addr: %#v", addr)
+		return xerrors.Errorf("cannot write EX ROM; addr: %#v", addr)
 	}
 
 	// 0x6000～0x7FFF	0x2000	拡張RAM
@@ -355,30 +355,30 @@ func (b *Bus) WriteByCPU(addr domain.Address, data byte) error {
 	// 0x8000～0xBFFF	0x4000	PRG-ROM
 	// 0xC000～0xFFFF	0x4000	PRG-ROM
 	if addr >= 0x8000 && addr <= 0xFFFF {
-		return xerrors.Errorf("failed write, cannot write PRG-ROM; addr: %#v", addr)
+		return xerrors.Errorf("cannot write PRG-ROM; addr: %#v", addr)
 	}
 
-	return xerrors.Errorf("failed write, addr out of range; addr: %#v", addr)
+	return xerrors.Errorf("addr out of range; addr: %#v", addr)
 }
 
 // ReadByPPU ...
 func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 	var target string
-	log.Trace("Bus.readByPPU[addr=%#v] ...", addr)
+	log.Trace("begin[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.readByPPU[addr=%#v][%v] => %#v", addr, target, err)
+			log.Warn("end[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
-			log.Trace("Bus.readByPPU[addr=%#v][%v] => %#v", addr, target, data)
+			log.Trace("end[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 
 	if b == nil {
-		err = xerrors.Errorf("failed to readByPPU, bus is nil")
+		err = xerrors.Errorf("bus is nil")
 		return data, err
 	}
 	if !b.setupped {
-		err = xerrors.Errorf("failed to readByPPU, bus setup is not completed")
+		err = xerrors.Errorf("bus setup is not completed")
 		return data, err
 	}
 
@@ -481,28 +481,28 @@ func (b *Bus) ReadByPPU(addr domain.Address) (data byte, err error) {
 		return
 	}
 
-	err = xerrors.Errorf("failed to read by PPU; addr: %#v", addr)
+	err = xerrors.Errorf("addr out of range; addr: %#v", addr)
 	return
 }
 
 // WriteByPPU ...
 func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 	var target string
-	log.Trace("Bus.writeByPPU[addr=%#v] (<=%#v)...", addr, data)
+	log.Trace("begin[addr=%#v] (<=%#v)...", addr, data)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.writeByPPU[addr=%#v][%v] => %#v", addr, target, err)
+			log.Warn("end[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
-			log.Trace("Bus.writeByPPU[addr=%#v][%v] <= %#v", addr, target, data)
+			log.Trace("end[addr=%#v][%v] <= %#v", addr, target, data)
 		}
 	}()
 
 	if b == nil {
-		err = xerrors.Errorf("failed to writeByPPU, bus is nil")
+		err = xerrors.Errorf("bus is nil")
 		return err
 	}
 	if !b.setupped {
-		err = xerrors.Errorf("failed to writeByPPU, bus setup is not completed")
+		err = xerrors.Errorf("bus setup is not completed")
 		return err
 	}
 	addrTmp := addr
@@ -519,14 +519,14 @@ func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 
 	// 0x0000～0x0FFF	0x1000	パターンテーブル0
 	if addrTmp >= 0x0000 && addrTmp <= 0x0FFF {
-		err = xerrors.Errorf("failed write, PatternTable0(CHR-ROM) is read only; addr: %#v", addr)
+		err = xerrors.Errorf("PatternTable0(CHR-ROM) is read only; addr: %#v", addr)
 		target = "PatternTable0"
 		return
 	}
 
 	// 0x1000～0x1FFF	0x1000	パターンテーブル1
 	if addrTmp >= 0x1000 && addrTmp <= 0x1FFF {
-		err = xerrors.Errorf("failed write, PatternTable1(CHR-ROM) is read only; addr: %#v", addr)
+		err = xerrors.Errorf("PatternTable1(CHR-ROM) is read only; addr: %#v", addr)
 		target = "PatternTable1"
 		return
 	}
@@ -614,18 +614,18 @@ func (b *Bus) WriteByPPU(addr domain.Address, data byte) (err error) {
 		return
 	}
 
-	err = xerrors.Errorf("failed to write by PPU; addr: %#v", addr)
+	err = xerrors.Errorf("addr out of range; addr: %#v", addr)
 	return
 }
 
 // GetTileNo ...
 func (b *Bus) GetTileNo(nameTblIdx uint8, p domain.NameTablePoint) (no uint8, err error) {
-	log.Trace("Bus.GetTileNo[%#v] ...", p)
+	log.Trace("begin[%#v] ...", p)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.GetTileNo[%#v] => %#v", p, err)
+			log.Warn("end[%#v] => %#v", p, err)
 		} else {
-			log.Trace("Bus.GetTileNo[%#v] => %#v", p, no)
+			log.Trace("end[%#v] => %#v", p, no)
 		}
 	}()
 
@@ -654,12 +654,12 @@ func (b *Bus) GetTilePattern(patternTblIdx, no uint8) *domain.TilePattern {
 
 // GetAttribute ...
 func (b *Bus) GetAttribute(tableIndex uint8, p domain.NameTablePoint) (attribute byte, err error) {
-	log.Trace("Bus.GetAttribute[%v][%#v] ...", tableIndex, p)
+	log.Trace("begin[%v][%#v] ...", tableIndex, p)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.GetAttribute[%v][%#v] => %#v", tableIndex, p, err)
+			log.Warn("end[%v][%#v] => %#v", tableIndex, p, err)
 		} else {
-			log.Trace("Bus.GetAttribute[%v][%#v] => %#v", tableIndex, p, attribute)
+			log.Trace("end[%v][%#v] => %#v", tableIndex, p, attribute)
 		}
 	}()
 
@@ -686,12 +686,12 @@ func (b *Bus) GetAttribute(tableIndex uint8, p domain.NameTablePoint) (attribute
 
 // GetPaletteNo ...
 func (b *Bus) GetPaletteNo(p domain.NameTablePoint, attribute byte) (no uint8, err error) {
-	log.Trace("Bus.GetPaletteNo[%#v][%#v] ...", p, attribute)
+	log.Trace("begin[%#v][%#v] ...", p, attribute)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.GetPaletteNo[%#v][%#v] => %#v", p, attribute, err)
+			log.Warn("end[%#v][%#v] => %#v", p, attribute, err)
 		} else {
-			log.Trace("Bus.GetPaletteNo[%#v][%#v] => %#v", p, attribute, no)
+			log.Trace("end[%#v][%#v] => %#v", p, attribute, no)
 		}
 	}()
 
@@ -720,21 +720,21 @@ func (b *Bus) ReadByRecorder(addr domain.Address) (byte, error) {
 	var data byte
 	var err error
 	var target string
-	log.Trace("Bus.ReadByRecorder[addr=%#v] ...", addr)
+	log.Trace("begin[addr=%#v] ...", addr)
 	defer func() {
 		if err != nil {
-			log.Warn("Bus.ReadByRecorder[addr=%#v][%v] => %#v", addr, target, err)
+			log.Warn("end[addr=%#v][%v] => %#v", addr, target, err)
 		} else {
-			log.Trace("Bus.ReadByRecorder[addr=%#v][%v] => %#v", addr, target, data)
+			log.Trace("end[addr=%#v][%v] => %#v", addr, target, data)
 		}
 	}()
 
 	if b == nil {
-		err = xerrors.Errorf("failed to readByCPU, bus is nil")
+		err = xerrors.Errorf("bus is nil")
 		return data, err
 	}
 	if !b.setupped {
-		err = xerrors.Errorf("failed to readByCPU, bus setup is not completed")
+		err = xerrors.Errorf("bus setup is not completed")
 		return data, err
 	}
 
@@ -887,5 +887,5 @@ func (b *Bus) ReadByRecorder(addr domain.Address) (byte, error) {
 		return data, err
 	}
 
-	return 0, xerrors.Errorf("failed read, addr out of range; addr: %#v", addr)
+	return 0, xerrors.Errorf("addr out of range; addr: %#v", addr)
 }

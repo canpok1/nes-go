@@ -15,7 +15,7 @@ func (c *DEY) Execute(op []byte) (cycle int, err error) {
 	mode := c.ocp.AddressingMode
 	cycle = c.ocp.Cycle
 
-	log.Trace("BaseInstruction.Execute[%#x][%v][%v][%#v] ...", c.registers.PC, mne, mode, op)
+	log.Trace("begin[%#x][%v][%v][%#v] ...", c.registers.PC, mne, mode, op)
 
 	c.recorder.Mnemonic = mne
 	c.recorder.Documented = c.ocp.Documented
@@ -23,9 +23,9 @@ func (c *DEY) Execute(op []byte) (cycle int, err error) {
 
 	defer func() {
 		if err != nil {
-			log.Warn("BaseInstruction.Execute[%v][%v][%#v] => %v", mne, mode, op, err)
+			log.Warn("end[%v][%v][%#v] => %v", mne, mode, op, err)
 		} else {
-			log.Trace("BaseInstruction.Execute[%v][%v][%#v] => completed", mne, mode, op)
+			log.Trace("end[%v][%v][%#v] => completed", mne, mode, op)
 		}
 	}()
 

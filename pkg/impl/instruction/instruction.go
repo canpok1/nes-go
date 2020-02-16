@@ -202,7 +202,7 @@ func (b *BaseInstruction) SetAllParams(org *BaseInstruction) {
 	b.popStack = org.popStack
 }
 
-// fetchAsOperand ...
+// FetchAsOperand ...
 func (b *BaseInstruction) FetchAsOperand() (op []byte, err error) {
 	switch b.ocp.AddressingMode {
 	case domain.Accumulator:
