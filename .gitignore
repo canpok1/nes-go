@@ -13,3 +13,12 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Mac meta data
+.DS_Store
+
+# Test ROM directory
+test/roms/
+
+# Execute binary, built with `go build`
+main
