@@ -1101,7 +1101,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 
 		var b byte
-		b, err = c.bus.ReadByCPU(addr)
+		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
@@ -1126,7 +1126,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 
 		var b byte
-		b, err = c.bus.ReadByCPU(addr)
+		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
@@ -1297,7 +1297,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 
 		var b byte
-		b, err = c.bus.ReadByCPU(addr)
+		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
 			return
 		}
@@ -1316,7 +1316,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 
 		var b byte
-		b, err = c.bus.ReadByCPU(addr)
+		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
 			return
 		}
@@ -1335,7 +1335,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 
 		var b byte
-		b, err = c.bus.ReadByCPU(addr)
+		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
 			return
 		}
@@ -1470,7 +1470,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 			}
 
 			var b byte
-			b, err = c.bus.ReadByCPU(addr)
+			b, err = c.bus.ReadByRecorder(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return
@@ -1501,7 +1501,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 		}
 
 		var b byte
-		b, err = c.bus.ReadByCPU(addr)
+		b, err = c.bus.ReadByRecorder(addr)
 		if err != nil {
 			err = xerrors.Errorf(": %w", err)
 			return
@@ -1752,7 +1752,7 @@ func (c *CPU) exec(opc *domain.OpcodeProp, op []byte) (cycle int, err error) {
 			}
 
 			var b byte
-			b, err = c.bus.ReadByCPU(addr)
+			b, err = c.bus.ReadByRecorder(addr)
 			if err != nil {
 				err = xerrors.Errorf(": %w", err)
 				return

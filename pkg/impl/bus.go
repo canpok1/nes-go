@@ -701,3 +701,178 @@ func (b *Bus) GetPalette(no uint8) *domain.Palette {
 func (b *Bus) SendNMI(active bool) {
 	b.cpu.ReceiveNMI(active)
 }
+
+// ReadByRecorder ...
+func (b *Bus) ReadByRecorder(addr domain.Address) (byte, error) {
+	var data byte
+	var err error
+	var target string
+	log.Trace("Bus.ReadByRecorder[addr=%#v] ...", addr)
+	defer func() {
+		if err != nil {
+			log.Warn("Bus.ReadByRecorder[addr=%#v][%v] => %#v", addr, target, err)
+		} else {
+			log.Trace("Bus.ReadByRecorder[addr=%#v][%v] => %#v", addr, target, data)
+		}
+	}()
+
+	if b == nil {
+		err = xerrors.Errorf("failed to readByCPU, bus is nil")
+		return data, err
+	}
+	if !b.setupped {
+		err = xerrors.Errorf("failed to readByCPU, bus setup is not completed")
+		return data, err
+	}
+
+	// 0x0000～0x07FF	0x0800	WRAM
+	if addr >= 0x0000 && addr <= 0x07FF {
+		target = "WRAM"
+		data = b.wram[addr]
+		return data, err
+	}
+
+	// 0x0800～0x0FFF	-	WRAMのミラー1
+	if addr >= 0x0800 && addr <= 0x0FFF {
+		target = "WRAM Mirror 1"
+		data = b.wram[addr-0x0800]
+		return data, err
+	}
+
+	// 0x1000～0x17FF	-	WRAMのミラー2
+	if addr >= 0x1000 && addr <= 0x17FF {
+		target = "WRAM Mirror 2"
+		data = b.wram[addr-0x1000]
+		return data, err
+	}
+
+	// 0x1800～0x1FFF	-	WRAMのミラー3
+	if addr >= 0x1800 && addr <= 0x1FFF {
+		target = "WRAM Mirror 3"
+		data = b.wram[addr-0x1800]
+		return data, err
+	}
+
+	// 0x2000～0x2007	0x0008	PPU レジスタ
+	if addr >= 0x2000 && addr <= 0x2007 {
+		target = "PPU Register"
+		// TODO 実装
+		// if data, err = b.ppu.ReadRegisters(addr); err != nil {
+		// 	err = xerrors.Errorf(": %w", err)
+		// }
+		return data, err
+	}
+
+	// 0x2008～0x3FFF	-	PPUレジスタのミラー
+	if addr >= 0x2008 && addr <= 0x3FFF {
+		target = "PPU Register Mirror"
+		// TODO 実装
+		// if data, err = b.ppu.ReadRegisters(addr); err != nil {
+		// 	err = xerrors.Errorf(": %w", err)
+		// }
+		return data, err
+	}
+
+	// 0x4016 PAD1
+	if addr == 0x4016 {
+		var pressed bool
+		switch b.pad1ReadCount {
+		case 0:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeA)
+		case 1:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeB)
+		case 2:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeSelect)
+		case 3:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeStart)
+		case 4:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeUp)
+		case 5:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeDown)
+		case 6:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeLeft)
+		case 7:
+			pressed = b.pad1.IsPressed(domain.ButtonTypeRight)
+		}
+
+		if pressed {
+			data = 1
+		} else {
+			data = 0
+		}
+
+		return data, nil
+	}
+	// 0x4017 PAD2
+	if addr == 0x4017 {
+		var pressed bool
+		switch b.pad2ReadCount {
+		case 0:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeA)
+		case 1:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeB)
+		case 2:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeSelect)
+		case 3:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeStart)
+		case 4:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeUp)
+		case 5:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeDown)
+		case 6:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeLeft)
+		case 7:
+			pressed = b.pad2.IsPressed(domain.ButtonTypeRight)
+		}
+
+		if pressed {
+			data = 1
+		} else {
+			data = 0
+		}
+
+		return data, nil
+	}
+
+	// 0x4000～0x401F	0x0020	APU I/O、PAD
+	if addr >= 0x4000 && addr <= 0x401F {
+		target = "APU I/O, PAD"
+		data = b.io[addr-0x4000]
+		return data, err
+	}
+
+	// 0x4020～0x5FFF	0x1FE0	拡張ROM
+	if addr >= 0x4020 && addr <= 0x5FFF {
+		target = "EX ROM"
+		data = b.exrom[addr-0x4020]
+		return data, err
+	}
+
+	// 0x6000～0x7FFF	0x2000	拡張RAM
+	if addr >= 0x6000 && addr <= 0x7FFF {
+		target = "EX RAM"
+		data = b.exram[addr-0x6000]
+		return data, err
+	}
+
+	// 0x8000～0xBFFF	0x4000	PRG-ROM
+	if addr >= 0x8000 && addr <= 0xBFFF {
+		target = "PRG-ROM"
+		r := *b.programROM
+		data = r[addr-0x8000]
+		return data, err
+	}
+	// 0xC000～0xFFFF	0x4000	PRG-ROM
+	if addr >= 0xC000 && addr <= 0xFFFF {
+		target = "PRG-ROM"
+		r := *b.programROM
+		if len(r) <= 0x4000 {
+			data = r[addr-0xC000]
+		} else {
+			data = r[addr-0x8000]
+		}
+		return data, err
+	}
+
+	return 0, xerrors.Errorf("failed read, addr out of range; addr: %#v", addr)
+}

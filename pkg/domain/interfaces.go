@@ -26,6 +26,7 @@ type Bus interface {
 	WriteByCPU(Address, byte) error
 	ReadByPPU(Address) (byte, error)
 	WriteByPPU(Address, byte) error
+	ReadByRecorder(Address) (byte, error)
 	GetTileNo(uint8, NameTablePoint) (uint8, error)
 	GetTilePattern(uint8, uint8) *TilePattern
 	GetPaletteNo(NameTablePoint, byte) (uint8, error)
