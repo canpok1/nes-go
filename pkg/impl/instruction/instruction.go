@@ -10,6 +10,7 @@ import (
 
 // Instruction ...
 type Instruction interface {
+	SetAllParams(org *BaseInstruction)
 	FetchAsOperand() (op []byte, err error)
 	Execute(op []byte) (cycle int, err error)
 }
@@ -25,18 +26,156 @@ type Factory struct {
 }
 
 // Make ...
-func (f *Factory) Make(opc *domain.OpcodeProp) Instruction {
-	return &BaseInstruction{
+func (f *Factory) Make(ocp *domain.OpcodeProp) Instruction {
+	params := BaseInstruction{
 		registers: f.Registers,
 		bus:       f.Bus,
 		recorder:  f.Recorder,
 
-		opc: opc,
+		ocp: ocp,
 
 		fetch:     f.Fetch,
 		pushStack: f.PushStack,
 		popStack:  f.PopStack,
 	}
+
+	var ins Instruction
+	switch ocp.Mnemonic {
+	case domain.ADC:
+		ins = &ADC{}
+	case domain.SBC:
+		ins = &SBC{}
+	case domain.AND:
+		ins = &AND{}
+	case domain.ORA:
+		ins = &ORA{}
+	case domain.EOR:
+		ins = &EOR{}
+	case domain.ASL:
+		ins = &ASL{}
+	case domain.LSR:
+		ins = &LSR{}
+	case domain.ROL:
+		ins = &ROL{}
+	case domain.ROR:
+		ins = &ROR{}
+	case domain.BCC:
+		ins = &BCC{}
+	case domain.BCS:
+		ins = &BCS{}
+	case domain.BEQ:
+		ins = &BEQ{}
+	case domain.BNE:
+		ins = &BNE{}
+	case domain.BVC:
+		ins = &BVC{}
+	case domain.BVS:
+		ins = &BVS{}
+	case domain.BPL:
+		ins = &BPL{}
+	case domain.BMI:
+		ins = &BMI{}
+	case domain.BIT:
+		ins = &BIT{}
+	case domain.JMP:
+		ins = &JMP{}
+	case domain.JSR:
+		ins = &JSR{}
+	case domain.RTS:
+		ins = &RTS{}
+	case domain.BRK:
+		ins = &BRK{}
+	case domain.RTI:
+		ins = &RTI{}
+	case domain.CMP:
+		ins = &CMP{}
+	case domain.CPX:
+		ins = &CPX{}
+	case domain.CPY:
+		ins = &CPY{}
+	case domain.INC:
+		ins = &INC{}
+	case domain.DEC:
+		ins = &DEC{}
+	case domain.INX:
+		ins = &INX{}
+	case domain.DEX:
+		ins = &DEX{}
+	case domain.INY:
+		ins = &INY{}
+	case domain.DEY:
+		ins = &DEY{}
+	case domain.CLC:
+		ins = &CLC{}
+	case domain.SEC:
+		ins = &SEC{}
+	case domain.CLI:
+		ins = &CLI{}
+	case domain.SEI:
+		ins = &SEI{}
+	case domain.CLD:
+		ins = &CLD{}
+	case domain.SED:
+		ins = &SED{}
+	case domain.CLV:
+		ins = &CLV{}
+	case domain.LDA:
+		ins = &LDA{}
+	case domain.LDX:
+		ins = &LDX{}
+	case domain.LDY:
+		ins = &LDY{}
+	case domain.STA:
+		ins = &STA{}
+	case domain.STX:
+		ins = &STX{}
+	case domain.STY:
+		ins = &STY{}
+	case domain.TAX:
+		ins = &TAX{}
+	case domain.TXA:
+		ins = &TXA{}
+	case domain.TAY:
+		ins = &TAY{}
+	case domain.TYA:
+		ins = &TYA{}
+	case domain.TSX:
+		ins = &TSX{}
+	case domain.TXS:
+		ins = &TXS{}
+	case domain.PHA:
+		ins = &PHA{}
+	case domain.PLA:
+		ins = &PLA{}
+	case domain.PHP:
+		ins = &PHP{}
+	case domain.PLP:
+		ins = &PLP{}
+	case domain.LAX:
+		ins = &LAX{}
+	case domain.SAX:
+		ins = &SAX{}
+	case domain.DCP:
+		ins = &DCP{}
+	case domain.ISC:
+		fallthrough
+	case domain.ISB:
+		ins = &ISC{}
+	case domain.SLO:
+		ins = &SLO{}
+	case domain.RLA:
+		ins = &RLA{}
+	case domain.SRE:
+		ins = &SRE{}
+	case domain.RRA:
+		ins = &RRA{}
+	case domain.NOP:
+		ins = &NOP{}
+	default:
+		ins = &BaseInstruction{}
+	}
+	ins.SetAllParams(&params)
+	return ins
 }
 
 // BaseInstruction ...
@@ -44,7 +183,7 @@ type BaseInstruction struct {
 	registers *component.CPURegisters
 	bus       domain.Bus
 
-	opc      *domain.OpcodeProp
+	ocp      *domain.OpcodeProp
 	recorder *domain.Recorder
 
 	fetch     func() (byte, error)
@@ -52,9 +191,20 @@ type BaseInstruction struct {
 	popStack  func() (byte, error)
 }
 
+// SetAllParams ...
+func (b *BaseInstruction) SetAllParams(org *BaseInstruction) {
+	b.registers = org.registers
+	b.bus = org.bus
+	b.ocp = org.ocp
+	b.recorder = org.recorder
+	b.fetch = org.fetch
+	b.pushStack = org.pushStack
+	b.popStack = org.popStack
+}
+
 // fetchAsOperand ...
 func (b *BaseInstruction) FetchAsOperand() (op []byte, err error) {
-	switch b.opc.AddressingMode {
+	switch b.ocp.AddressingMode {
 	case domain.Accumulator:
 		fallthrough
 	case domain.Implied:
@@ -105,22 +255,22 @@ func (b *BaseInstruction) FetchAsOperand() (op []byte, err error) {
 		op = []byte{l, h}
 		return
 	default:
-		err = xerrors.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", b.opc.AddressingMode)
+		err = xerrors.Errorf("failed to fetch operands, AddressingMode is unsupported; mode: %#v", b.ocp.AddressingMode)
 		return
 	}
 }
 
 func (b *BaseInstruction) makeAddress(op []byte) (addr domain.Address, pageCrossed bool, err error) {
-	log.Trace("BaseInstruction.makeAddress[%#v][%#v] ...", b.opc.AddressingMode, op)
+	log.Trace("BaseInstruction.makeAddress[%#v][%#v] ...", b.ocp.AddressingMode, op)
 	defer func() {
 		if err != nil {
-			log.Warn("BaseInstruction.makeAddress[%#v][%#v] => %#v", b.opc.AddressingMode, op, err)
+			log.Warn("BaseInstruction.makeAddress[%#v][%#v] => %#v", b.ocp.AddressingMode, op, err)
 		} else {
-			log.Trace("BaseInstruction.makeAddress[%#v][%#v] => %#v", b.opc.AddressingMode, op, addr)
+			log.Trace("BaseInstruction.makeAddress[%#v][%#v] => %#v", b.ocp.AddressingMode, op, addr)
 		}
 	}()
 
-	switch b.opc.AddressingMode {
+	switch b.ocp.AddressingMode {
 	case domain.Absolute:
 		l := op[0]
 		h := op[1]
@@ -257,1296 +407,12 @@ func (b *BaseInstruction) makeAddress(op []byte) (addr domain.Address, pageCross
 		b.recorder.AddAddress(addr)
 		return
 	default:
-		err = xerrors.Errorf("failed to make address, AddressingMode is not supported; mode: %#v", b.opc.AddressingMode)
+		err = xerrors.Errorf("failed to make address, AddressingMode is not supported; mode: %#v", b.ocp.AddressingMode)
 		return
 	}
 }
 
 // Execute ...
 func (c *BaseInstruction) Execute(op []byte) (cycle int, err error) {
-	mne := c.opc.Mnemonic
-	mode := c.opc.AddressingMode
-	cycle = c.opc.Cycle
-
-	log.Trace("BaseInstruction.Execute[%#x][%v][%v][%#v] ...", c.registers.PC, mne, mode, op)
-
-	c.recorder.Mnemonic = mne
-	c.recorder.Documented = c.opc.Documented
-	c.recorder.AddressingMode = mode
-
-	defer func() {
-		if err != nil {
-			log.Warn("BaseInstruction.Execute[%v][%v][%#v] => %v", mne, mode, op, err)
-		} else {
-			log.Trace("BaseInstruction.Execute[%v][%v][%#v] => completed", mne, mode, op)
-		}
-	}()
-
-	switch mne {
-	case domain.ADC:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.recorder.Data = &b
-		ans := uint16(c.registers.A) + uint16(b)
-		if c.registers.P.Carry {
-			ans = ans + 1
-		}
-
-		beforeA := c.registers.A
-		c.registers.A = byte(ans & 0xFF)
-		c.registers.P.UpdateN(c.registers.A)
-		if (b & 0x80) == 0x00 {
-			c.registers.P.UpdateV(beforeA, c.registers.A)
-		} else {
-			c.registers.P.ClearV()
-		}
-		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.UpdateC(ans)
-		return
-	case domain.SBC:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.recorder.Data = &b
-		ans := uint16(c.registers.A) - uint16(b)
-		if !c.registers.P.Carry {
-			ans = ans - 1
-		}
-
-		beforeA := c.registers.A
-		c.registers.A = byte(ans & 0x00FF)
-		c.registers.P.UpdateN(c.registers.A)
-		if (beforeA & 0x80) == (b & 0x80) {
-			c.registers.P.ClearV()
-		} else {
-			c.registers.P.UpdateV(beforeA, c.registers.A)
-		}
-		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.Carry = (ans & 0xFF00) == 0x0000
-		return
-	case domain.AND:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.recorder.Data = &b
-		c.registers.A = c.registers.A & b
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		return
-	case domain.ORA:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.recorder.Data = &b
-		c.registers.A = c.registers.A | b
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		return
-	case domain.EOR:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.recorder.Data = &b
-		c.registers.A = c.registers.A ^ b
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		return
-	case domain.ASL:
-		var b, ans byte
-		if mode == domain.Accumulator {
-			b = c.registers.A
-			c.recorder.Data = &b
-
-			ans = b << 1
-			c.registers.A = ans
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			ans = b << 1
-			err = c.bus.WriteByCPU(addr, ans)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = (b & 0x80) == 0x80
-		return
-	case domain.LSR:
-		var b, ans byte
-		if mode == domain.Accumulator {
-			b = c.registers.A
-			c.recorder.Data = &b
-
-			ans = b >> 1
-			c.registers.A = ans
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			ans = b >> 1
-			err = c.bus.WriteByCPU(addr, ans)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = (b & 0x01) == 0x01
-		return
-	case domain.ROL:
-		var b, ans byte
-		if mode == domain.Accumulator {
-			b = c.registers.A
-			c.recorder.Data = &b
-
-			ans = b << 1
-			if c.registers.P.Carry {
-				ans = ans + 1
-			}
-			c.registers.A = ans
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			ans = b << 1
-			if c.registers.P.Carry {
-				ans = ans + 1
-			}
-
-			err = c.bus.WriteByCPU(addr, ans)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = (b & 0x80) == 0x80
-		return
-	case domain.ROR:
-		var b, ans byte
-		if mode == domain.Accumulator {
-			b = c.registers.A
-			c.recorder.Data = &b
-
-			ans = b >> 1
-			if c.registers.P.Carry {
-				ans = ans | 0x80
-			}
-
-			c.registers.A = ans
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			ans = b >> 1
-			if c.registers.P.Carry {
-				ans = ans | 0x80
-			}
-
-			err = c.bus.WriteByCPU(addr, ans)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = (b & 0x01) == 0x01
-		return
-	case domain.BCC:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		if !c.registers.P.Carry {
-			c.registers.UpdatePC(uint16(addr))
-			cycle++
-		}
-		return
-	case domain.BCS:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		if c.registers.P.Carry {
-			c.registers.UpdatePC(uint16(addr))
-			cycle++
-		}
-		return
-	case domain.BEQ:
-		var addr domain.Address
-		var pageCrossed bool
-		if addr, pageCrossed, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		if c.registers.P.Zero {
-			c.registers.UpdatePC(uint16(addr))
-			cycle++
-			if pageCrossed {
-				cycle++
-			}
-		}
-
-		return
-	case domain.BNE:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		if !c.registers.P.Zero {
-			c.registers.UpdatePC(uint16(addr))
-			cycle++
-		}
-		return
-	case domain.BVC:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		if !c.registers.P.Overflow {
-			c.registers.UpdatePC(uint16(addr))
-			cycle++
-		}
-		return
-	case domain.BVS:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		if c.registers.P.Overflow {
-			c.registers.UpdatePC(uint16(addr))
-			cycle++
-		}
-		return
-	case domain.BPL:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		if !c.registers.P.Negative {
-			c.registers.UpdatePC(uint16(addr))
-			cycle++
-		}
-		return
-	case domain.BMI:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		if c.registers.P.Negative {
-			c.registers.UpdatePC(uint16(addr))
-			cycle++
-		}
-		return
-	case domain.BIT:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		var b byte
-		b, err = c.bus.ReadByCPU(addr)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.recorder.Data = &b
-
-		c.registers.P.Zero = (c.registers.A & b) == 0
-		c.registers.P.Negative = (b & 0x80) == 0x80
-		c.registers.P.Overflow = (b & 0x40) == 0x40
-		return
-	case domain.JMP:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		c.registers.UpdatePC(uint16(addr))
-		return
-	case domain.JSR:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		// 6502のバグ:1つ前のアドレスを格納
-		pc := c.registers.PC - 1
-
-		if err = c.pushStack(byte((pc & 0xFF00) >> 8)); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		if err = c.pushStack(byte(pc & 0x00FF)); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.registers.PC = uint16(addr)
-		return
-	case domain.RTS:
-		var l, h byte
-		if l, err = c.popStack(); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		if h, err = c.popStack(); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.registers.PC = (uint16(h) << 8) | uint16(l)
-
-		// 6502のバグ:インクリメントしたもの復帰アドレスとする
-		c.registers.PC = c.registers.PC + 1
-
-		return
-	case domain.BRK:
-		c.registers.P.BreakMode = true
-		c.registers.IncrementPC()
-		return
-	case domain.RTI:
-		var b byte
-		if b, err = c.popStack(); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.registers.P.UpdateAll(b)
-
-		var l, h byte
-		if l, err = c.popStack(); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		if h, err = c.popStack(); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.registers.PC = (uint16(h) << 8) | uint16(l)
-		return
-	case domain.CMP:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.recorder.Data = &b
-		ans := c.registers.A - b
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = c.registers.A >= b
-		return
-	case domain.CPX:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.recorder.Data = &b
-		ans := c.registers.X - b
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = c.registers.X >= b
-		return
-	case domain.CPY:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.recorder.Data = &b
-		ans := c.registers.Y - b
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = c.registers.Y >= b
-		return
-	case domain.INC:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		var b byte
-		b, err = c.bus.ReadByRecorder(addr)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.recorder.Data = &b
-
-		ans := b + 1
-		err = c.bus.WriteByCPU(addr, ans)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		return
-	case domain.DEC:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		var b byte
-		b, err = c.bus.ReadByRecorder(addr)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.recorder.Data = &b
-
-		ans := b - 1
-		err = c.bus.WriteByCPU(addr, ans)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		return
-	case domain.INX:
-		c.registers.UpdateX(c.registers.X + 1)
-		c.registers.P.UpdateN(c.registers.X)
-		c.registers.P.UpdateZ(c.registers.X)
-		return
-	case domain.DEX:
-		c.registers.UpdateX(c.registers.X - 1)
-		c.registers.P.UpdateN(c.registers.X)
-		c.registers.P.UpdateZ(c.registers.X)
-		return
-	case domain.INY:
-		c.registers.UpdateY(c.registers.Y + 1)
-		c.registers.P.UpdateN(c.registers.Y)
-		c.registers.P.UpdateZ(c.registers.Y)
-		return
-	case domain.DEY:
-		c.registers.UpdateY(c.registers.Y - 1)
-		c.registers.P.UpdateN(c.registers.Y)
-		c.registers.P.UpdateZ(c.registers.Y)
-		return
-	case domain.CLC:
-		c.registers.P.Carry = false
-		return
-	case domain.SEC:
-		c.registers.P.Carry = true
-		return
-	case domain.CLI:
-		c.registers.P.UpdateI(false)
-		return
-	case domain.SEI:
-		c.registers.P.UpdateI(true)
-		return
-	case domain.CLD:
-		c.registers.P.DecimalMode = false
-		return
-	case domain.SED:
-		c.registers.P.DecimalMode = true
-		return
-	case domain.CLV:
-		c.registers.P.Overflow = false
-		return
-	case domain.LDA:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var (
-				addr        domain.Address
-				pageCrossed bool
-			)
-			if addr, pageCrossed, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			switch c.opc.AddressingMode {
-			case domain.IndexedAbsoluteX:
-				fallthrough
-			case domain.IndexedAbsoluteY:
-				fallthrough
-			case domain.IndirectIndexed:
-				if pageCrossed {
-					cycle++
-				}
-			}
-		}
-		c.recorder.Data = &b
-
-		c.registers.UpdateA(b)
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		return
-	case domain.LDX:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			var pageCrossed bool
-			if addr, pageCrossed, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			if c.opc.AddressingMode == domain.IndexedAbsoluteY && pageCrossed {
-				cycle++
-			}
-		}
-		c.recorder.Data = &b
-
-		c.registers.UpdateX(b)
-		c.registers.P.UpdateN(c.registers.X)
-		c.registers.P.UpdateZ(c.registers.X)
-		return
-	case domain.LDY:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			var pageCrossed bool
-			if addr, pageCrossed, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			if c.opc.AddressingMode == domain.IndexedAbsoluteX && pageCrossed {
-				cycle++
-			}
-		}
-		c.recorder.Data = &b
-
-		c.registers.UpdateY(b)
-		c.registers.P.UpdateN(c.registers.Y)
-		c.registers.P.UpdateZ(c.registers.Y)
-		return
-	case domain.STA:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
-			return
-		}
-
-		var b byte
-		b, err = c.bus.ReadByRecorder(addr)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.recorder.Data = &b
-
-		err = c.bus.WriteByCPU(addr, c.registers.A)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		return
-	case domain.STX:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
-			return
-		}
-
-		var b byte
-		b, err = c.bus.ReadByRecorder(addr)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.recorder.Data = &b
-
-		err = c.bus.WriteByCPU(addr, c.registers.X)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		return
-	case domain.STY:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf("failed to exec, address is nil; mnemonic: %#v, op: %#v", mne, op)
-			return
-		}
-
-		var b byte
-		b, err = c.bus.ReadByRecorder(addr)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.recorder.Data = &b
-
-		err = c.bus.WriteByCPU(addr, c.registers.Y)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		return
-	case domain.TAX:
-		c.registers.X = c.registers.A
-		c.registers.P.UpdateN(c.registers.X)
-		c.registers.P.UpdateZ(c.registers.X)
-		return
-	case domain.TXA:
-		c.registers.A = c.registers.X
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		return
-	case domain.TAY:
-		c.registers.Y = c.registers.A
-		c.registers.P.UpdateN(c.registers.Y)
-		c.registers.P.UpdateZ(c.registers.Y)
-		return
-	case domain.TYA:
-		c.registers.A = c.registers.Y
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		return
-	case domain.TSX:
-		c.registers.X = c.registers.S
-		c.registers.P.UpdateN(c.registers.X)
-		c.registers.P.UpdateZ(c.registers.X)
-		return
-	case domain.TXS:
-		c.registers.UpdateS(c.registers.X)
-		return
-	case domain.PHA:
-		if err = c.pushStack(c.registers.A); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		return
-	case domain.PLA:
-		if c.registers.A, err = c.popStack(); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.UpdateN(c.registers.A)
-		return
-	case domain.PHP:
-		p := c.registers.P.ToByte()
-
-		// 6502のバグ：スタックに格納するフラグはBフラグがセットされた状態になる
-		p = (p & 0xEF) | 0x10
-
-		if err = c.pushStack(p); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		return
-	case domain.PLP:
-		var b byte
-		if b, err = c.popStack(); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.registers.P.UpdateAll(b)
-		return
-	case domain.LAX:
-		var b byte
-		if mode == domain.Immediate {
-			if len(op) < 1 {
-				err = xerrors.Errorf("failed to exec, data is nil; mnemonic: %#v, op: %#v", mne, op)
-				return
-			}
-			b = op[0]
-		} else {
-			var addr domain.Address
-			var pageCrossed bool
-			if addr, pageCrossed, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			if c.opc.AddressingMode == domain.IndirectIndexed && pageCrossed {
-				cycle++
-			}
-		}
-		c.recorder.Data = &b
-
-		c.registers.UpdateA(b)
-		c.registers.UpdateX(b)
-
-		c.registers.P.UpdateN(b)
-		c.registers.P.UpdateZ(b)
-		return
-	case domain.SAX:
-		switch mode {
-		case domain.Absolute:
-			fallthrough
-		case domain.ZeroPage:
-			fallthrough
-		case domain.IndexedZeroPageX:
-			fallthrough
-		case domain.IndexedZeroPageY:
-			fallthrough
-		case domain.IndexedAbsoluteX:
-			fallthrough
-		case domain.IndexedAbsoluteY:
-			fallthrough
-		case domain.Relative:
-			fallthrough
-		case domain.IndexedIndirect:
-			fallthrough
-		case domain.IndirectIndexed:
-			fallthrough
-		case domain.AbsoluteIndirect:
-			var addr domain.Address
-			var pageCrossed bool
-			if addr, pageCrossed, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			var b byte
-			b, err = c.bus.ReadByRecorder(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			switch c.opc.AddressingMode {
-			case domain.IndexedAbsoluteX:
-				if pageCrossed {
-					cycle++
-				}
-			}
-
-			ans := c.registers.A & c.registers.X
-			err = c.bus.WriteByCPU(addr, ans)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-
-		return
-	case domain.DCP:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		var b byte
-		b, err = c.bus.ReadByRecorder(addr)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.recorder.Data = &b
-
-		ans := b - 1
-		err = c.bus.WriteByCPU(addr, ans)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		ans = c.registers.A - ans
-		c.registers.P.UpdateN(ans)
-		c.registers.P.UpdateZ(ans)
-		c.registers.P.Carry = c.registers.A >= b
-		return
-	case domain.ISB:
-		fallthrough
-	case domain.ISC:
-		var addr domain.Address
-		if addr, _, err = c.makeAddress(op); err != nil {
-			return
-		}
-
-		var b byte
-		b, err = c.bus.ReadByCPU(addr)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-		c.recorder.Data = &b
-
-		ans1 := b + 1
-		err = c.bus.WriteByCPU(addr, ans1)
-		if err != nil {
-			err = xerrors.Errorf(": %w", err)
-			return
-		}
-
-		ans2 := uint16(c.registers.A) - uint16(ans1)
-		if !c.registers.P.Carry {
-			ans2 = ans2 - 1
-		}
-
-		beforeA := c.registers.A
-		c.registers.A = byte(ans2 & 0x00FF)
-		c.registers.P.UpdateN(c.registers.A)
-		if (beforeA & 0x80) == (b & 0x80) {
-			c.registers.P.ClearV()
-		} else {
-			c.registers.P.UpdateV(beforeA, c.registers.A)
-		}
-		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.Carry = (ans2 & 0xFF00) == 0x0000
-		return
-	case domain.SLO:
-		var b, ans byte
-		if mode == domain.Accumulator {
-			b = c.registers.A
-			c.recorder.Data = &b
-
-			ans = b << 1
-			c.registers.A = ans
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			ans = b << 1
-			err = c.bus.WriteByCPU(addr, ans)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.registers.A = c.registers.A | ans
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.Carry = (b & 0x80) == 0x80
-		return
-	case domain.RLA:
-		var b, ans byte
-		if mode == domain.Accumulator {
-			b = c.registers.A
-			c.recorder.Data = &b
-
-			ans = b << 1
-			if c.registers.P.Carry {
-				ans = ans + 1
-			}
-			c.registers.A = ans
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			ans = b << 1
-			if c.registers.P.Carry {
-				ans = ans + 1
-			}
-
-			err = c.bus.WriteByCPU(addr, ans)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-
-		c.registers.A = c.registers.A & ans
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.Carry = (b & 0x80) == 0x80
-		return
-	case domain.SRE:
-		var b, ans byte
-		if mode == domain.Accumulator {
-			b = c.registers.A
-			c.recorder.Data = &b
-
-			ans = b >> 1
-			c.registers.A = ans
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			ans = b >> 1
-			err = c.bus.WriteByCPU(addr, ans)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-
-		c.registers.A = c.registers.A ^ ans
-		c.registers.P.UpdateN(c.registers.A)
-		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.Carry = (b & 0x01) == 0x01
-		return
-	case domain.RRA:
-		var b, ans1 byte
-		if mode == domain.Accumulator {
-			b = c.registers.A
-			c.recorder.Data = &b
-
-			ans1 = b >> 1
-			if c.registers.P.Carry {
-				ans1 = ans1 | 0x80
-			}
-
-			c.registers.A = ans1
-		} else {
-			var addr domain.Address
-			if addr, _, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			b, err = c.bus.ReadByCPU(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			ans1 = b >> 1
-			if c.registers.P.Carry {
-				ans1 = ans1 | 0x80
-			}
-
-			err = c.bus.WriteByCPU(addr, ans1)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-		}
-		c.registers.P.Carry = (b & 0x01) == 0x01
-
-		ans2 := uint16(c.registers.A) + uint16(ans1)
-		if c.registers.P.Carry {
-			ans2 = ans2 + 1
-		}
-
-		beforeA := c.registers.A
-		c.registers.A = byte(ans2 & 0xFF)
-		c.registers.P.UpdateN(c.registers.A)
-		if (b & 0x80) == 0x00 {
-			c.registers.P.UpdateV(beforeA, c.registers.A)
-		} else {
-			c.registers.P.ClearV()
-		}
-		c.registers.P.UpdateZ(c.registers.A)
-		c.registers.P.UpdateC(ans2)
-		return
-	case domain.STP:
-		fallthrough
-	case domain.NOP:
-		switch mode {
-		case domain.Absolute:
-			fallthrough
-		case domain.ZeroPage:
-			fallthrough
-		case domain.IndexedZeroPageX:
-			fallthrough
-		case domain.IndexedZeroPageY:
-			fallthrough
-		case domain.IndexedAbsoluteX:
-			fallthrough
-		case domain.IndexedAbsoluteY:
-			fallthrough
-		case domain.Relative:
-			fallthrough
-		case domain.IndexedIndirect:
-			fallthrough
-		case domain.IndirectIndexed:
-			fallthrough
-		case domain.AbsoluteIndirect:
-			var addr domain.Address
-			var pageCrossed bool
-			if addr, pageCrossed, err = c.makeAddress(op); err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-
-			var b byte
-			b, err = c.bus.ReadByRecorder(addr)
-			if err != nil {
-				err = xerrors.Errorf(": %w", err)
-				return
-			}
-			c.recorder.Data = &b
-
-			switch c.opc.AddressingMode {
-			case domain.IndexedAbsoluteX:
-				if pageCrossed {
-					cycle++
-				}
-			}
-
-		case domain.Immediate:
-			b := op[0]
-			c.recorder.Data = &b
-		}
-
-		return
-	default:
-		err = xerrors.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", mne)
-		return
-	}
+	return 0, xerrors.Errorf("failed to exec, mnemonic is not supported; mnemonic: %#v", c.ocp.AddressingMode)
 }
