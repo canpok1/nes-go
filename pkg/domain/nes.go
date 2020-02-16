@@ -55,6 +55,16 @@ func (n *NES) Run1Cycle() error {
 			if err != nil {
 				return xerrors.Errorf(": %w", err)
 			}
+
+			err = n.Pad1.Load()
+			if err != nil {
+				return xerrors.Errorf(": %w", err)
+			}
+
+			err = n.Pad2.Load()
+			if err != nil {
+				return xerrors.Errorf(": %w", err)
+			}
 		}
 	} else {
 		n.ppuDelayCycle = n.ppuDelayCycle - n.cpuBeforeCycle

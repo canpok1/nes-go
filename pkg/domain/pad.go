@@ -14,7 +14,19 @@ const (
 	ButtonTypeRight  ButtonType = ButtonType("RIGHT")
 )
 
+var ButtonList []ButtonType = []ButtonType{
+	ButtonTypeA,
+	ButtonTypeB,
+	ButtonTypeSelect,
+	ButtonTypeStart,
+	ButtonTypeUp,
+	ButtonTypeDown,
+	ButtonTypeLeft,
+	ButtonTypeRight,
+}
+
 // Pad ...
 type Pad interface {
+	Load() error
 	IsPressed(ButtonType) bool
 }
